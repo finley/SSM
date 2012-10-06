@@ -1,0 +1,243 @@
+#
+#   $Id: TODO 371 2010-08-30 03:22:55Z finley $
+#
+
+########################################################################
+#
+#   Do
+#
+
+* global option to allow for auto-resolution of dependencies
+    auto_add_deps = yes/no
+
+* when we see this, add option to add package(s) to definition file:
+
+    Additional packages to install:  The packages below are not defined,
+    but are dependencies of the packages above, which are defined.  This is
+    generally an indication that you need to update your definition file to
+    a) include the packages below, or b) remove the packages above.
+    Hope that helps! --TheMgmt
+
+
+*   ssm test for proper serial console config?
+    (test module)
+
+*   Consider abstracting target file from file name?
+    Ie.: Object -> hosts data
+         Object.name{/etc/hosts}
+         Object.name{/etc/inet/hosts}
+
+*   add auth capability
+    * via certs?
+
+*   add/verify ssl capability
+
+*   fix svn on lucid -- can't "add" a file
+
+*   New option:  --no-ssm-update (or --dont-upgrade-ssm)
+        Or should we change the behavior of --only-this-file and
+        --only-files to disable ssm_update checking? 
+    
+*   Fix logging so that screen output ain't so ugly w/pkg installs
+
+*   Use some kind of auth from client to server.
+
+*   New feature:  action-tag
+
+    Concept:  
+     * Ability to assign an "action-tag" to each file in a group of
+       associated files.  If one or more of those files is modified
+       during an SSM run (installed, chowned, etc.), then that file's
+       action-tag is activated.
+
+     * Ability to assign an "action-tag" to packages too.
+
+     * At the end of an SSM run, if an action-tags were activated,
+       then the action specified by that action-tag's stanza is
+       executed.
+
+    [file]
+    name        = /etc/iptables.d/chunks/monkey
+    type        = regular
+    mode        = 640
+    owner       = root
+    group       = root
+    action-tag  = iptables-restart
+
+    [file]
+    name        = /etc/iptables.d/chunks/soup
+    type        = regular
+    mode        = 640
+    owner       = root
+    group       = root
+    action-tag  = iptables-restart
+
+    [action-tag]
+    name        = iptables-restart
+    action      = /etc/init.d/iptables restart
+
+
+*   Handle "Need to reboot".
+    * include "last rebooted" on ssm web page
+    * include "reboot needed as of $date" on ssm web page
+        (if $last_reboot newer than $reboot_needed) then clear
+        see p.example_get_uptime_code code chunk
+
+*   Change the name.  Ideas:
+        SUCM -> Simple Unix Configuration Manager
+        SCM  -> Simple Configuration Manager
+        LCM  -> Linux Configuration Manager
+        UCM  -> Unix Configuration Manager
+
+*   catch <ctrl>+<c> and clean-up
+
+    In order to make this work, for the sake of cleaning up temporary
+    data, we need to establish a temporary folder when SSM first starts
+    up, and use that as the root for storing everything else.  Then, on
+    $SIG{INT}, we can simply unlink that folder.
+
+    Here's the code to put into place:
+
+        $SIG{INT} = \&clean_up;
+        
+        sub clean_up {
+            print "\n\n";
+            print "Caught <CTRL>+<C> (SIGINT).  Cleaning up temp files...\n";
+            # unlink $root_dir;
+            print "...done.  Exiting.\n";
+            exit 7;
+        }
+
+
+*   [test]
+    name = test FILE1 -nt FILE2
+    postscript = blah.sh
+    priority = 0
+
+    Ie.:
+        [condition]
+        name = test /boot/grub/grub.conf -nt /lib/modules/qlogic.update_drivers.buildstamp -o ! -f /lib/modules/qlogic.update_drivers.buildstamp 
+        postscript = /usr/local/bin/qlogic.update_drivers && touch /lib/modules/qlogic.update_drivers.timestamp
+
+*   Fix bug: ssm may not auto-upgrade with Aptitude.pm
+
+*   Fix bug: output from package installs cannot go interactive.  Look
+    into alternate perl modules that will allow: a) printing of output,
+    and b) interaction with program
+
+*   Handle this situation:
+
+    The following packages will be upgraded:
+      ssm 
+    1 packages upgraded, 0 newly installed, 0 to remove and 21 not upgraded.
+    Need to get 0B/69.5kB of archives. After unpacking 0B will be used.
+    WARNING: untrusted versions of the following packages will be installed!
+    
+    Untrusted packages could compromise your system's security.
+    You should only proceed with the installation if you are certain that
+    this is what you want to do.
+    
+      ssm 
+    
+    Do you want to ignore this warning and proceed anyway?
+        
+*   do we need to keep the re-install code if we're not doing versions
+    of packages?
+
+*   For files, ability to say "no backup"?
+    
+    For some directories, where contents are processed as includes or
+    iterations by another script, having a RETIRED directory and it's
+    contents can cause errors or even an operational problem.
+
+    Short hack solution, include the following in a postscript:
+
+        "rm -r /usr/share/initramfs-tools/hooks/RETIRED"
+
+*   apt-get options examples taken from cron-apt package in the
+    /etc/cron-apt/config file:
+
+    # General apt options that will be passed to all APTCOMMAND calls.
+    # Use "-o quiet" instead of "-q" for aptitude compatibility.
+    #  OPTIONS="-o quiet=1"
+    # You can for example add an alternative sources.list file here.
+    #  OPTIONS="-o quiet=1 -o
+    #  Dir::Etc::SourceList=/etc/apt/security.sources.list"
+    # If you want to allow unauthenticated and untrusted packages add
+    # the
+    # following to your options directive.
+    #  OPTIONS="-o quiet=1 -o APT::Get::AllowUnauthenticated=true -o aptitude::Cmdline::ignore-trust-violations=yes"
+
+    Also consider just using signing keys for our linus repository.
+
+    The install of 'libpam-radius-auth' is a package that is an example
+    where we need to automate better.  It won't install without
+    interaction, if /etc/pam_radius_auth.conf already exists.
+
+*   Consider using "u" for "upload" or "c" for "commit" instead of "a"
+    for "add".
+
+*   if ( -e /etc/purpose ) {
+        include in log file output
+    }
+
+*   Consider allowing depends and pre/postscripts in [services] sections
+
+*   Maybe just do a "yum install ssm.$arch"?
+
+*   Add "actiongroup" (or similar name) package option 
+    * At the end of a run, after packages that are members of an 
+      actiongroup are installed, run the postscript associated with 
+      "actiongroup".
+
+*   Add "yum clean all" to Yum.pm
+    * prolly early on
+
+*   Fix Dpkg.pm to handle some packages wanting to go interactive.
+    Here's a test: 
+
+        cp /etc/ntp.conf /tmp
+        sudo dpkg -P ntp
+        sudo cp /tmp/ntp.conf /etc/ntp.conf
+        echo "helo" >> /etc/ntp.conf
+
+        Then run "ssm --sync".
+
+
+*   postinstall for packages
+*   dont-ask-just-do-it option
+        * when a file changes, don't prompt for input, and assume "yes".
+*   Test for svn binary (which svn) prior to adding files.
+*   Should we remove items that are versioned from the list of packages
+    to install?  are they not already in the re-install list if the 
+    version doesn't match?
+
+
+########################################################################
+#
+#   Someday, Maybe
+#
+
+* For an unwanted file, the directory in which the file sits should not
+  be a pre-requisite.
+
+- SDE - State Description Engine (the GUI)
+  - GUI for describing the state of systems (obviously)
+  - Ability to use "generator" plugins
+    - Initially create plugins for:
+      - SSM
+      - Bcfg2
+
+- Add --create-definition
+    - creates a definition file based on current client state
+    - if definition file exists
+        - [packages] sections
+            - information will be overwritten
+        - [file] sections
+            - "name = /file" parameters will be read, and based on the
+              state of the name file, all other relevant info will be
+              discovered and recorded in the config file.
+
+*   email owner(s) with report
+    * add owner field to definition
+

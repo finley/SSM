@@ -1,0 +1,794 @@
+2007-04-27 19:00  finley
+
+	* VERSION: v0.3.0
+
+2007-04-27 18:59  finley
+
+	* lib/SystemStateManager.pm: Gracefully handle commit of file in
+	  new path
+
+2007-04-27 18:28  finley
+
+	* debian/changelog, lib/SystemStateManager.pm,
+	  usr/share/doc/examples/one-of-each.conf: Genericize svn_uri;
+	  include it in definition file.
+
+2007-04-23 21:29  finley
+
+	* lib/SystemStateManager.pm: Add 'a' option for adding a file to
+	  the repo.
+
+2007-04-06 20:16  finley
+
+	* TODO: TODO update
+
+2007-03-23 22:14  finley
+
+	* TODO: Update TODO
+
+2007-03-15 17:14  finley
+
+	* lib/SystemStateManager.pm: * Fix the following bugs when using on
+	  non-dpkg systems:
+	  * Odd number of elements in hash assignment
+	  * Use of uninitialized value in list assignment
+
+2007-03-07 20:41  finley
+
+	* VERSION: up version to 0.2.1
+
+2007-03-07 20:41  finley
+
+	* lib/SystemStateManager.pm: * Handle packages "provided" by
+	  packages in state definition
+	  * Better output when running pre and post-script commands
+
+2007-02-15 22:07  finley
+
+	* VERSION, debian/changelog: update changelog and VERSION
+
+2007-02-15 22:01  finley
+
+	* TODO, bin/ssm, lib/SystemStateManager.pm: * ADDED: In
+	  /etc/ssm/client.conf, if "definition_file" value ends with a
+	  slash (/), auto append `hostname -f`
+	  * ADDED: Print "Number of errors: N" at end of run.
+
+2007-02-15 20:21  finley
+
+	* TODO, lib/SystemStateManager.pm: * FIXED BUG: Still says it's
+	  going to create a directory for a file whos
+	  directory doesn't exist.
+	  * ADDED: automatically add a file's directory to it's dependency
+	  list.
+
+2007-02-15 18:17  finley
+
+	* TODO, VERSION, debian/changelog, lib/SystemStateManager.pm: * Fix
+	  spaces between bundle names in display. Again.
+	  * If base_uri is not set in the definition file, then do a
+	  dirname on the location of the definition file (from the
+	  client.conf file) and use that as base_uri.
+
+2007-01-22 20:06  finley
+
+	* TODO: * update TODO
+
+2007-01-10 16:45  finley
+
+	* TODO:
+
+2007-01-10 16:44  finley
+
+	* Makefile: fix shell regex/globs to work properly with 'sh'
+
+2007-01-10 16:42  finley
+
+	* lib/SystemStateManager.pm: Remove 'Please verify owner' bit from
+	  ssm_add-file sample entries.
+
+2007-01-05 15:35  finley
+
+	* TODO, VERSION, debian/changelog, lib/SystemStateManager.pm: Use
+	  "bu" to backup modified files (if bu exists) prior to installing
+	  a file.
+
+2006-12-11 20:35  finley
+
+	* TODO:
+
+2006-12-01 20:12  finley
+
+	* debian/changelog, lib/SystemStateManager.pm: Fix spaces between
+	  included bundles.
+
+2006-12-01 19:16  finley
+
+	* VERSION, debian/changelog: VERSION rev.
+
+2006-12-01 19:03  finley
+
+	* TODO, bin/ssm, lib/SystemStateManager.pm: - check first for
+	  updates to ssm
+	  - install them first, then re-start with new binary
+
+2006-12-01 17:53  finley
+
+	* TODO, lib/SystemStateManager.pm: print out bundles being used.
+
+2006-11-29 04:38  finley
+
+	* TODO, VERSION, debian/changelog, lib/SystemStateManager.pm: Fixed
+	  symlink bug.
+
+2006-09-27 16:46  finley
+
+	* VERSION, debian/changelog: * new release
+
+2006-09-27 16:45  finley
+
+	* lib/SystemStateManager.pm,
+	  usr/share/doc/examples/one-of-each.conf: * Add directory file
+	  type
+
+2006-09-13 17:25  finley
+
+	* VERSION, debian/changelog: v0.1.147
+
+2006-09-13 17:23  finley
+
+	* lib/SystemStateManager.pm: * remove too many blank lines with
+	  each get_file()
+	  * add a space to the end of bundles (which may not have one to
+	  indicate the end of a section)
+
+2006-09-03 05:00  finley
+
+	* VERSION, debian/changelog: * New dev release.
+
+2006-09-03 04:59  finley
+
+	* TODO, lib/SystemStateManager.pm,
+	  usr/share/doc/examples/one-of-each.conf: * Added support for
+	  'bundles' (include files).
+
+2006-09-01 16:28  finley
+
+	* lib/SystemStateManager.pm: * allow deps for backwards
+	  compatibility
+
+2006-09-01 16:26  finley
+
+	* lib/SystemStateManager.pm: * change 'deps' tag to 'depends'
+
+2006-09-01 15:08  finley
+
+	* usr/share/doc/examples/one-of-each.conf: * document 'depends'
+	  option.
+
+2006-08-29 19:49  finley
+
+	* VERSION, debian/changelog: * new dev release
+
+2006-08-29 19:48  finley
+
+	* Makefile: * include latest link in Makefile
+
+2006-08-29 19:46  finley
+
+	* TODO, lib/SystemStateManager.pm: * Add check_deps() for files.
+
+2006-08-25 15:22  finley
+
+	* VERSION, debian/changelog:
+
+2006-08-25 15:21  finley
+
+	* lib/SystemStateManager.pm: * Add date stamp to COMMENT in
+	  $md5sum.README files
+	  * Add "comment = " field to example [file] entries
+
+2006-08-22 16:18  finley
+
+	* VERSION, debian/changelog: * New version
+
+2006-08-22 16:18  finley
+
+	* lib/SystemStateManager.pm: * fix bug: fix ownership and
+	  permissions (even though they don't need fixing).
+
+2006-08-17 20:15  finley
+
+	* lib/SystemStateManager.pm: * Add get_rpm_pkgs_currently_installed
+	  function.
+
+2006-08-08 22:02  finley
+
+	* VERSION, debian/changelog, lib/SystemStateManager.pm:
+
+2006-08-08 20:02  finley
+
+	* VERSION, debian/changelog:
+
+2006-08-08 19:59  finley
+
+	* VERSION:
+
+2006-08-08 19:59  finley
+
+	* TODO:
+
+2006-08-08 19:56  finley
+
+	* lib/SystemStateManager.pm: * get deps of rdeps and verify that
+	  rdeps really are.
+
+2006-08-08 19:40  finley
+
+	* lib/SystemStateManager.pm: * Improve dependency checking.
+
+2006-08-08 16:50  finley
+
+	* lib/SystemStateManager.pm: * comments and such
+
+2006-08-02 06:01  finley
+
+	* lib/SystemStateManager.pm: * add dependency support for services
+
+2006-08-02 05:59  finley
+
+	* TODO:
+
+2006-08-02 05:38  finley
+
+	* lib/SystemStateManager.pm: * add dependency support for services
+
+2006-08-01 21:20  finley
+
+	* Makefile, lib/SystemStateManager.pm,
+	  usr/share/doc/examples/one-of-each.conf: * add services
+	  capability
+
+2006-08-01 18:39  finley
+
+	* lib/SystemStateManager.pm: * add list of subroutines
+
+2006-08-01 18:38  finley
+
+	* TODO:
+
+2006-08-01 18:37  finley
+
+	* debian/changelog: * arch all
+
+2006-08-01 18:21  finley
+
+	* debian/control: * arch all
+
+2006-07-21 16:52  finley
+
+	* VERSION, debian/changelog: * Update VERSION, debian/changelog,
+	  and/or similar files.
+
+2006-07-21 16:52  finley
+
+	* debian/control: * Fix Depends for deb building.
+
+2006-07-21 16:29  finley
+
+	* VERSION, debian/changelog: * Update VERSION, debian/changelog,
+	  and/or similar files.
+
+2006-07-21 16:27  finley
+
+	* Makefile: * add release and debs targets to Makefile
+
+2006-07-21 16:09  finley
+
+	* debian/files: * don't keep debian/files
+
+2006-07-21 15:41  finley
+
+	* Makefile: * improve putting of VERSION into files
+	  * extract log from svn when creating tarball
+
+2006-07-21 15:37  finley
+
+	* bin/ssm, bin/ssm_add-file: * change /usr/lib/system-state-manager
+	  -> /usr/lib/ssm
+
+2006-07-21 15:36  finley
+
+	* TODO, VERSION, debian/changelog: * Update TODO, VERSION, and/or
+	  similar files.
+
+2006-07-21 04:25  finley
+
+	* VERSION:
+
+2006-07-21 04:20  finley
+
+	* debian, debian/README.Debian, debian/changelog, debian/compat,
+	  debian/conffiles.ex, debian/control, debian/copyright,
+	  debian/dirs, debian/docs, debian/files, debian/manpage.1.ex,
+	  debian/postinst.ex, debian/postrm.ex, debian/preinst.ex,
+	  debian/prerm.ex, debian/rules, debian/watch: * Add ./debian
+	  directory
+
+2006-07-21 04:02  finley
+
+	* Makefile: * mods to make for easy deb building.
+
+2006-07-19 22:02  finley
+
+	* VERSION:
+
+2006-07-19 21:55  finley
+
+	* Makefile:
+
+2006-07-19 19:35  finley
+
+	* VERSION:
+
+2006-07-19 05:07  finley
+
+	* lib/SystemStateManager.pm,
+	  usr/share/doc/examples/one-of-each.conf: - Say when updating a
+	  file when --yes
+	  - Improve consistency of action output
+
+2006-07-19 04:55  finley
+
+	* TODO, lib/SystemStateManager.pm: - Say when updating a file when
+	  --yes
+	  - Improve consistency of action output
+
+2006-07-19 04:24  finley
+
+	* TODO, lib/SystemStateManager.pm: - sort packages to remove output
+
+2006-07-03 17:17  finley
+
+	* VERSION:
+
+2006-07-03 17:17  finley
+
+	* VERSION:
+
+2006-07-03 17:16  finley
+
+	* usr/share/doc/examples/one-of-each.conf:
+
+2006-07-03 17:01  finley
+
+	* usr/share/doc/examples/one-of-each.conf:
+
+2006-07-03 16:04  finley
+
+	* VERSION:
+
+2006-07-03 16:03  finley
+
+	* Makefile, bin/ssm, bin/system-state-manager: * rename primary
+	  binary from system-state-manager to ssm
+
+2006-07-03 03:48  finley
+
+	* TODO:
+
+2006-07-03 03:43  finley
+
+	* lib/SystemStateManager.pm: * present user with reverse
+	  dependencies for packages to be removed.
+
+2006-06-21 19:00  finley
+
+	* TODO, VERSION, lib/SystemStateManager.pm: present dependencies to
+	  user
+
+2006-06-20 21:20  finley
+
+	* VERSION:
+
+2006-06-20 21:19  finley
+
+	* bin/system-state-manager, lib/SystemStateManager.pm: handle
+	  undefined packages
+
+2006-06-20 21:19  finley
+
+	* TODO:
+
+2006-06-20 21:19  finley
+
+	* NOTES.design:
+
+2006-06-20 17:03  finley
+
+	* lib/SystemStateManager.pm: * specify package manager in
+	  definition, instead of pkg type
+
+2006-06-19 17:32  finley
+
+	* lib/SystemStateManager.pm: * process files alphabetically.
+
+2006-06-19 17:07  finley
+
+	* VERSION:
+
+2006-06-19 17:06  finley
+
+	* lib/SystemStateManager.pm: * Remove packages first. Then deal
+	  with updates/installs
+
+2006-06-13 19:56  finley
+
+	* Makefile, VERSION:
+
+2006-06-13 01:46  finley
+
+	* lib/SystemStateManager.pm: * use integer value that represents
+	  the number of packages specified.
+
+2006-06-13 01:32  finley
+
+	* lib/SystemStateManager.pm: * install /etc as /etc/ssm
+
+2006-06-13 01:30  finley
+
+	* Makefile, bin/system-state-manager: * install etc as /etc/ssm
+
+2006-06-13 01:27  finley
+
+	* usr/share/doc/examples/ssm_add_file: no longer needed
+
+2006-06-13 01:24  finley
+
+	* lib/SystemStateManager.pm,
+	  usr/share/doc/README.state_definition_file_details,
+	  usr/share/doc/examples/one-of-each.conf: * add no [packages]
+	  capability
+	  * add diff before install file capability
+	  * add print $msg capability to do_you_want_to()
+
+2006-06-13 01:16  finley
+
+	* TODO:
+
+2006-06-06 17:16  finley
+
+	* lib/SystemStateManager.pm: * Warn about multiple (conflicting)
+	  [file] entries
+
+2006-06-05 15:27  finley
+
+	* lib/SystemStateManager.pm: * Deal with comments for most [file]
+	  stanza arguments
+
+2006-06-05 04:54  finley
+
+	* lib/SystemStateManager.pm: * add pre and postscript support for
+	  each file type
+
+2006-06-05 04:16  finley
+
+	* lib/SystemStateManager.pm: * spit out a [file] definition section
+	  when ssm_add-file
+
+2006-06-04 22:22  finley
+
+	* lib/SystemStateManager.pm: * verbiage format
+
+2006-06-03 04:38  finley
+
+	* TODO, lib/SystemStateManager.pm: * add [file] type=unwanted
+	  capability
+
+2006-06-02 20:00  finley
+
+	* VERSION:
+
+2006-06-02 19:59  finley
+
+	* TODO:
+
+2006-06-02 19:59  finley
+
+	* Makefile, lib/SystemStateManager.pm: * take complete list of
+	  packages from definition, not client.
+
+2006-06-02 16:57  finley
+
+	* lib/SystemStateManager.pm: * chmod 644 on files when publishing
+	  to repo
+
+2006-06-02 16:51  finley
+
+	* lib/SystemStateManager.pm: * add_file improvements
+
+2006-06-02 15:16  finley
+
+	* Makefile, VERSION, lib/SystemStateManager.pm: * get version thing
+	  down right
+
+2006-06-02 15:11  finley
+
+	* VERSION:
+
+2006-06-02 15:11  finley
+
+	* VERSION:
+
+2006-06-02 15:10  finley
+
+	* VERSION:
+
+2006-06-02 15:10  finley
+
+	* VERSION:
+
+2006-05-31 18:55  finley
+
+	* bin/ssm_add-file: * now functional
+
+2006-05-31 18:54  finley
+
+	* lib/SystemStateManager.pm: * add add_file_to_repo()
+
+2006-05-31 14:23  finley
+
+	* Makefile:
+
+2006-05-31 14:22  finley
+
+	* bin/ssm_add-file:
+
+2006-05-30 18:32  finley
+
+	* TODO:
+
+2006-05-30 04:47  finley
+
+	* TODO:
+
+2006-05-27 20:56  finley
+
+	* Makefile, lib/SystemStateManager.pm: * use dist-upgrade instead
+	  of upgrade to find list of updated packages
+
+2006-05-23 22:17  finley
+
+	* usr/share/doc/examples/ssm_add_file:
+
+2006-05-23 19:02  finley
+
+	* lib/SystemStateManager.pm: * add informative validation feedback
+	  on [file]
+
+2006-05-23 18:27  finley
+
+	* Makefile:
+
+2006-05-23 16:53  finley
+
+	* Makefile: install doc dir too
+
+2006-05-23 16:46  finley
+
+	* usr, usr/share, usr/share/doc, usr/share/doc/examples,
+	  usr/share/doc/examples/ssm_add_file:
+
+2006-05-23 16:43  finley
+
+	* TODO:
+
+2006-05-17 20:42  finley
+
+	* lib/SystemStateManager.pm:
+
+2006-05-13 21:09  finley
+
+	* bin/system-state-manager: * Rename state-file option ->
+	  --state-definition-file
+
+2006-05-13 21:09  finley
+
+	* lib/SystemStateManager.pm: Announce 'downloading packages', etc.
+
+2006-05-12 19:32  finley
+
+	* lib/SystemStateManager.pm: don't remove regular file first
+
+2006-05-12 18:58  finley
+
+	* lib/SystemStateManager.pm: * download definition file, even if
+	  --dry-run
+	  * add $even_if_dry_run option to run_cmd()
+
+2006-05-12 17:37  finley
+
+	* lib/SystemStateManager.pm: verify package type
+
+2006-05-11 19:05  finley
+
+	* TODO, etc/localhost.def.example, lib/SystemStateManager.pm: *
+	  Deal with no blank line at end of definition file
+
+2006-05-11 19:02  finley
+
+	* lib/SystemStateManager.pm: * output formatting tweak
+
+2006-05-10 16:29  finley
+
+	* TODO:
+
+2006-05-10 16:20  finley
+
+	* etc/localhost.def.example, lib/SystemStateManager.pm: * regular
+	  files now working
+	  * only set perms, ownership on regular files if md5sum is correct
+	  * improved quiet stanzas around interactive bits
+	  * now handle all 4 protocol types (file:, http:, https:, ftp:)
+	  * entire repo can be any of the four protocol types
+
+2006-05-10 16:17  finley
+
+	* TODO:
+
+2006-05-10 16:17  finley
+
+	* NOTES.design: verbiage tweak
+
+2006-05-08 21:27  finley
+
+	* COPYING, CREDITS, bin/system-state-manager,
+	  etc/localhost.def.example, lib/SystemStateManager.pm: block and
+	  char files working with a pure perl implementation
+
+2006-05-08 16:39  finley
+
+	* lib/SystemStateManager.pm: subroutine:
+	  report_improper_file_definition()
+
+2006-05-08 16:09  finley
+
+	* lib/SystemStateManager.pm: handle block and character special
+	  files
+
+2006-05-08 03:42  finley
+
+	* lib/SystemStateManager.pm: handle fifos
+
+2006-05-07 22:09  finley
+
+	* lib/SystemStateManager.pm: most of handling fifos
+
+2006-05-07 04:45  finley
+
+	* lib/SystemStateManager.pm: formatting tweaks
+
+2006-05-06 16:17  finley
+
+	* lib/SystemStateManager.pm: minor interactive bug fix.
+
+2006-05-05 22:03  finley
+
+	* lib/SystemStateManager.pm: placeholders for other file types.
+
+2006-05-05 21:56  finley
+
+	* lib/SystemStateManager.pm: dry_run tweaks; 21 hours or so
+
+2006-05-05 21:47  finley
+
+	* lib/SystemStateManager.pm: implement relative link support
+
+2006-05-05 16:59  finley
+
+	* bin/system-state-manager, lib/SystemStateManager.pm: implement
+	  hardlink support
+
+2006-05-05 06:11  finley
+
+	* lib/SystemStateManager.pm: softlink tweak and comments
+
+2006-05-04 22:30  finley
+
+	* NOTES.design, lib/SystemStateManager.pm: 18 hours in; handle
+	  softlinks
+
+2006-05-04 20:23  finley
+
+	* bin/system-state-manager: fix some option validation
+
+2006-05-04 20:08  finley
+
+	* bin/system-state-manager, lib/SystemStateManager.pm: verbiage and
+	  formatting
+
+2006-05-04 19:53  finley
+
+	* lib/SystemStateManager.pm: propset
+
+2006-05-04 19:33  finley
+
+	* lib/SystemStateManager.pm: Nope. But now it is. ;-)
+
+2006-05-04 16:43  finley
+
+	* bin/system-state-manager, lib/SystemStateManager.pm: I think
+	  package support is now working.
+
+2006-05-04 15:47  finley
+
+	* lib/SystemStateManager.pm:
+
+2006-05-03 22:05  finley
+
+	* lib/SystemStateManager.pm:
+
+2006-05-02 22:15  finley
+
+	* lib/SystemStateManager.pm:
+
+2006-05-02 22:10  finley
+
+	* lib/SystemStateManager.pm:
+
+2006-05-02 21:55  finley
+
+	* lib/SystemStateManager.pm:
+
+2006-05-02 06:21  finley
+
+	* etc/localhost.def.example:
+
+2006-05-02 06:21  finley
+
+	* etc/localhost.def.example:
+
+2006-05-02 06:20  finley
+
+	* NOTES.design, lib/SystemStateManager.pm:
+
+2006-05-01 22:35  finley
+
+	* bin/system-state-manager, etc/client.conf,
+	  lib/SystemStateManager.pm:
+
+2006-05-01 21:48  finley
+
+	* NOTES.design, bin/system-state-manager,
+	  lib/SystemStateManager.pm: Mon May 1 16:48:11 CDT 2006
+
+2006-04-28 21:14  finley
+
+	* NOTES.design, NOTES.initial_design, bin/system-state-manager,
+	  etc/client.conf:
+
+2006-04-28 21:13  finley
+
+	* VERSION:
+
+2006-04-28 20:37  finley
+
+	* NOTES.initial_design:
+
+2006-04-28 20:21  finley
+
+	* Makefile, bin, bin/system-state-manager, lib,
+	  lib/SystemStateManager.pm: progress
+
+2006-04-27 22:04  finley
+
+	* NOTES.initial_design, TODO, etc, etc/client.conf: * genesis
+
+2006-04-27 21:47  finley
+
+	* Makefile, VERSION:
+
+2006-04-27 21:34  finley
+
+	* ., Makefile, VERSION: * Initial import
+
