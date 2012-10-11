@@ -1,10 +1,10 @@
 Name:         ssm
 Summary:      Manage the state of specific files and packages on a system.
-Version:      0.4.34
+Version:      0.4.35
 Release:      1
 BuildArch:    noarch
 Group:        System Environment/Applications
-Requires:     perl-libwww-perl, perl-MailTools
+Requires:     perl-libwww-perl, perl-MailTools, Unix-Mknod
 License:      GPL
 URL:          http://download.systemimager.org/pub/ssm/
 Source:       http://download.systemimager.org/pub/ssm/ssm-%{version}.tar.bz2
@@ -58,6 +58,7 @@ rm -f $RPM_BUILD_ROOT/%{_prefix}/sbin/ssm_web-report    # This requires deps uns
 %{_prefix}/lib/ssm/SystemStateManager/
 %{_prefix}/sbin/
 %{_prefix}/share/doc/ssm-%{version}/README.state_definition_file_details
+%{_prefix}/share/doc/ssm-%{version}/examples/README
 %{_prefix}/share/doc/ssm-%{version}/examples/one-of-each.conf
 %{_prefix}/share/doc/ssm-%{version}/examples/tmp/one-regular-file.txt/27abe7c7e2423eddec0839a2d0633e37
 %{_prefix}/share/doc/ssm-%{version}/ChangeLog
@@ -67,9 +68,11 @@ rm -f $RPM_BUILD_ROOT/%{_prefix}/sbin/ssm_web-report    # This requires deps uns
 
 # Get date command:   
 #
-#   sh echo -n "* " ; date +'%a %b %d %Y - brian@thefinleys.com' exit
+#   sh echo -n "* " ; date +'%a %b %d %Y - brian@thefinleys.com'
 #
 %changelog -n ssm
+* Wed Oct 10 2012 - brian@thefinleys.com
+- Prep for move to new repo.
 * Mon Sep 20 2010 - brian@thefinleys.com
 - Add ability to specify permissions on log file via state definition
   file.

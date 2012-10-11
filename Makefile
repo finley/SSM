@@ -1,6 +1,6 @@
 #
 # $Id: Makefile 376 2010-09-01 17:25:40Z finley $
-#  vi:set filetype=make:
+#  vi:set filetype=make noet ai:
 #
 
 SHELL = /bin/sh
@@ -78,7 +78,7 @@ install:  all
 release:  tarball debs rpms
 	@echo 
 	@echo "I'm about to upload the following files to:"
-	@echo "  download.systemimager.org:/var/www/download.systemimager.org/pub/ssm/"
+	@echo "  ~/src/www.systemimager.org/pub/ssm/"
 	@echo "-----------------------------------------------------------------------"
 	@/bin/ls -1 $(TOPDIR)/tmp/latest.*
 	@/bin/ls -1 $(TOPDIR)/tmp/${package}[-_]$(VERSION)*.*
@@ -87,14 +87,11 @@ release:  tarball debs rpms
 	@echo
 	@echo "Hit <Enter> to continue..."
 	@read i
-	rsync -av --progress $(TOPDIR)/tmp/latest.* $(TOPDIR)/tmp/${package}[-_]$(VERSION)*.* ${rpmbuild}/RPMS/*/ssm-$(VERSION)-*.rpm ${rpmbuild}/SRPMS/ssm-$(VERSION)-*.rpm download.systemimager.org:/var/www/download.systemimager.org/pub/ssm/
-	@echo 
-	@echo "I'm about to upload the following files to the CIS Linus Repository:"
-	@echo "--------------------------------------------------------------------"
-	@/bin/ls -1 $(TOPDIR)/tmp/ssm_* ${rpmbuild}/RPMS/*/ssm-$(VERSION)-*.rpm ${rpmbuild}/SRPMS/ssm-$(VERSION)-*.rpm
+	#rsync -av --progress $(TOPDIR)/tmp/latest.* $(TOPDIR)/tmp/${package}[-_]$(VERSION)*.* ${rpmbuild}/RPMS/*/ssm-$(VERSION)-*.rpm ${rpmbuild}/SRPMS/ssm-$(VERSION)-*.rpm web.sourceforge.net:/home/project-web/systemimager/htdocs/pub/ssm/
+	rsync -av --progress $(TOPDIR)/tmp/latest.* $(TOPDIR)/tmp/${package}[-_]$(VERSION)*.* ${rpmbuild}/RPMS/*/ssm-$(VERSION)-*.rpm ${rpmbuild}/SRPMS/ssm-$(VERSION)-*.rpm ~/src/www.systemimager.org/pub/ssm/
 	@echo
-	@echo "Hit <Enter> to continue..."
-	@read i
+	@echo "Now run:   cd ~/src/www.systemimager.org/ && make upload"
+	@echo
 
 .PHONY: rpm
 rpm:  rpms
@@ -128,8 +125,9 @@ $(TOPDIR)/tmp/${package}-$(VERSION).tar.bz2:  clean
 	@echo "If 'yes', then hit <Enter> to continue..."; \
 	read i
 	mkdir -p $(TOPDIR)/tmp/
-	svn export . $(TOPDIR)/tmp/${package}-$(VERSION)
-	svn log > $(TOPDIR)/tmp/${package}-$(VERSION)/CHANGE.LOG
+	rsync -a . $(TOPDIR)/tmp/${package}-$(VERSION)/
+	rm -fr $(TOPDIR)/tmp/${package}-$(VERSION)/.git
+	git log > $(TOPDIR)/tmp/${package}-$(VERSION)/CHANGE.LOG
 	find $(TOPDIR)/tmp/${package}-$(VERSION) -type f -exec chmod ug+r  {} \;
 	find $(TOPDIR)/tmp/${package}-$(VERSION) -type d -exec chmod ug+rx {} \;
 	cd $(TOPDIR)/tmp && tar -ch ${package}-$(VERSION) | bzip2 > ${package}-$(VERSION).tar.bz2

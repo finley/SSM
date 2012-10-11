@@ -1,3 +1,9 @@
+ssm (0.4.35-1ubuntu1) precise; urgency=low
+
+  * Prep for move to new repo. 
+
+ -- Brian Elliott Finley <brian@thefinleys.com>  Wed, 10 Oct 2012 21:30:21 -0600
+
 ssm (0.4.34-1ubuntu1) lucid; urgency=low
 
   * Add ability to specify permissions on log file via state definition
