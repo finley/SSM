@@ -401,11 +401,10 @@ sub get_pkg_reverse_dependencies {
         #   Setting up Yum Shell
         #   > Setting up Remove Process
         #   Loading mirror speeds from cached hostfile
-        #    * base: mirror.anl.gov
-        #    * updates: mirror.anl.gov
-        #    * addons: mirror.anl.gov
-        #    * linus: webapps.inside.anl.gov
-        #    * extras: mirror.anl.gov
+        #    * base: mirror.centos.org
+        #    * updates: mirror.centos.org
+        #    * addons: mirror.centos.org
+        #    * extras: mirror.centos.org
         #   > --> Running transaction check
         #   ---> Package popt.x86_64 0:1.10.2-48.el5 set to be erased
         #   --> Processing Dependency: libpopt.so.0()(64bit) for package: util-linux
