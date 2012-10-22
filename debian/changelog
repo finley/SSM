@@ -1,3 +1,9 @@
+ssm (0.4.36-1ubuntu1) precise; urgency=low
+
+  * Add git support.
+
+ -- Brian Finley <brian@thefinleys.com>  Mon, 22 Oct 2012 16:22:34 -0500
+
 ssm (0.4.35-1ubuntu1) precise; urgency=low
 
   * Prep for move to new repo. 
