@@ -295,8 +295,9 @@ sub read_definition_file {
                 s/\s*=\s*/ /o;
 
                 if( m/^pkg_manager\s+(.*)(\s|#|$)/ )    { $main::o{pkg_manager} = lc($1); }
-                if( m/^base_uri\s+(.*)(\s|#|$)/ )       { $main::o{base_uri} = $1; }
-                if( m/^svn_uri\s+(.*)(\s|#|$)/ )        { $main::o{svn_uri} = $1; }
+                if( m/^base_ur[il]\s+(.*)(\s|#|$)/ )       { $main::o{base_url} = $1; }
+                if( m/^git_ur[il]\s+(.*)(\s|#|$)/ )        { $main::o{git_url} = $1; }
+                if( m/^svn_ur[il]\s+(.*)(\s|#|$)/ )        { $main::o{svn_url} = $1; }
                 if( m/^email_log_to\s+(.*)(\s|#|$)/ )   { $main::o{email_log_to} = $1; }
                 if( m/^log_file_perms\s+(.*)(\s|#|$)/ )   { $main::o{log_file_perms} = $1; }
                 if( m/^remove_running_kernel\s+(.*)(\s|#|$)/ )   { $main::o{remove_running_kernel} = $1; }
@@ -324,11 +325,11 @@ sub read_definition_file {
 
             ssm_print "OK:      Package manager -> $main::o{pkg_manager}\n" unless(@{$main::o{only_this_file}}); 
 
-            if( ! defined $main::o{base_uri} ) { 
-                # No base_uri defined.  Therefore, we assume base_uri 
-                # should be the same as the definition file uri, sans
+            if( ! defined $main::o{base_url} ) { 
+                # No base_url defined.  Therefore, we assume base_url 
+                # should be the same as the definition file url, sans
                 # the filename itself. -BEF-
-                $main::o{base_uri} = dirname( $main::o{definition_file} );
+                $main::o{base_url} = dirname( $main::o{definition_file} );
             }
             if( ! defined $main::o{remove_running_kernel} ) { 
                 # Default to "no"
@@ -1956,23 +1957,25 @@ sub show_diff_comments {
 
     my $file     = shift;
 
-    if( ! defined $main::o{svn_uri}) {
+    if( ! defined $main::o{svn_url} and ! defined $main::o{git_url}) {
 
-        ssm_print "INFO:  svn_uri not specified in definition file.  Please take a moment\n";
-        ssm_print "       to add an entry to your [global] section.  Here's an example:\n";
-        ssm_print "\n";
-        ssm_print "         svn_uri = https://svn.example.com/repos/cis_ssm/trunk\n";
-        ssm_print "\n";
+        _try_a_revision_system();
 
-    } else {
+    } elsif(defined $main::o{svn_url}) {
 
         my $svn = qq(svn --no-auth-cache);
 
         # NOTE:  If this is run without connectivity to the svn repository
         # (like if it's on a networked server, and the network is down),
         # then it may produce an error. 2009.11.05 -BEF-
-        my $cmd = "$svn log --limit 1 $main::o{svn_uri}/$file";
+        my $cmd = "$svn log --limit 1 $main::o{svn_url}/$file";
         run_cmd($cmd, undef, 1);
+
+    } elsif(defined $main::o{git_url}) {
+
+        my $cmd = "git log -1 $main::o{git_url}/$file";
+        run_cmd($cmd, undef, 1);
+
     }
 
     return 1;
@@ -1986,10 +1989,10 @@ sub diff_file {
 
     my $unlink = 'no';
 
-    my $uri;
+    my $url;
     if( !defined($tmp_file) ) {
-        $uri = qq($main::o{base_uri}/$file/$MD5SUM{$file});
-        $tmp_file = get_file($uri);
+        $url = qq($main::o{base_url}/$file/$MD5SUM{$file});
+        $tmp_file = get_file($url);
         $unlink = 'yes';
     }
 
@@ -2086,10 +2089,10 @@ sub install_file {
 
     _backup($file);
 
-    my $uri;
+    my $url;
     if( !defined($tmp_file) ) {
-        $uri = qq($main::o{base_uri}/$file/$MD5SUM{$file});
-        $tmp_file = get_file($uri);
+        $url = qq($main::o{base_url}/$file/$MD5SUM{$file});
+        $tmp_file = get_file($url);
     }
 
     remove_file($file);
@@ -2158,7 +2161,7 @@ sub get_file {
         ssm_print "I don't know how to acquire a file using the specified protocol:\n";
         ssm_print "  $file\n";
         ssm_print "\n";
-        ssm_print "  You may want to verify that you have a valid 'base_uri' specified\n";
+        ssm_print "  You may want to verify that you have a valid 'base_url' specified\n";
         ssm_print "  in your definition file.\n";
         ssm_print "\n";
 
@@ -2637,7 +2640,7 @@ sub _include_bundle {
         or ($file =~ m#^https://#) 
         or ($file =~ m#^ftp://#)) {
 
-        $file = $main::o{base_uri} . '/' . $file;
+        $file = $main::o{base_url} . '/' . $file;
     }
 
     my $tmp_file = get_file($file);
@@ -2671,91 +2674,165 @@ sub _backup {
 sub _add_file {
 
     my $file = shift;
-    my $svn     = qq(svn);
-    #my $svn     = qq(svn --no-auth-cache);
-    #XXX instead of --no-auth-cache, try to find a command to
-    # non-interactively initialize the system, then allow caching.
-    # -BEF-
     my $ou_path = "/tmp/ssm_db.repo.$$";
 
+    eval { mkpath("$ou_path") };
+    if($@) { die "Couldn’t create $ou_path: $@"; }
+
+    my $dirname = $file;
+
     ssm_print qq(\n);
-    if( ! defined $main::o{svn_uri}) {
-        ssm_print "ERROR: svn_uri not specified in definition file.  Please take a moment\n";
-        ssm_print "       to add an entry to your [global] section.  Here's an example:\n";
+    if(defined $main::o{git_url}) {
+
+#        #
+#        # Ok -- we want to check out as little of the tree as possible.  Let's
+#        # try to figure out how minimalistic our checkout can be (by finding
+#        # the longest possible path)...  In other words, rather than checking
+#        # out all of "/opt", let's see if we can just check out
+#        # "/opt/corp/bloated_prog/etc/". -BEF-
+#        #
+#        my $success = 'lacking';
+#        until($success eq 'yes') {
+#
+#            my $url = $main::o{svn_url} . "/" . $dirname;
+#            my $cmd = "git status -s $url >/dev/null 2>&1";
+#            if( $main::o{debug} ) { print ">> $cmd\n"; }
+#            if( !system($cmd) ) {
+#                $success = 'yes';  # I'm so excited!
+#            } else {
+#                $dirname = dirname($dirname);
+#            }
+#        }
+#
+#        #
+#        # Ok, we now now that $dirname is the logest path (most minimal
+#        # checkout), let's check it out. -BEF-
+#        #
+
+        #
+        # We'll figure out how to do a minimalist checkout later...  For now,
+        # we clone the whole schmear.
+        #
+        my $cmd = qq(git clone $main::o{git_url}/ $ou_path/);
+        ssm_print qq(>> $cmd\n);
+        !system($cmd) or die("Couldn't run: $cmd");
+
+        my $hostname = `hostname -f`;
+        chomp $hostname;
+        my $comment = "$file on $hostname";
+
+        $main::o{comment} = $comment;
+        $main::o{ou_path} = $ou_path;
+        $main::o{file_to_add} = $file;
+
+        add_file_to_repo($file);
+
+        my $pwd = (getpwuid($<))[1];
+
+        #
+        # Jump into the git repo dir
+        #
+        chdir $ou_path;
+
+        #
+        # Turn file into a relative path name
+        #
+        $file =~ s#^/##;
+        $cmd = qq(git add $file);
+        ssm_print qq(>> $cmd\n);
+        !system($cmd) or die("Couldn't run: $cmd");
         ssm_print "\n";
-        ssm_print "         svn_uri = https://svn.example.com/repos/cis_ssm/trunk\n";
+
+        $cmd = qq(git commit -m "$comment" $file);
+        ssm_print qq(>> $cmd\n);
+        !system($cmd) or die("Couldn't run: $cmd");
         ssm_print "\n";
+
+        #
+        # Jump back to our prior dir
+        #
+        chdir $pwd;
+
+    }
+    elsif(defined $main::o{svn_url}) {
+
+        my $svn     = qq(svn);
+
+        my $success = 'lacking';
+        until($success eq 'yes') {
+
+            my $url = $main::o{svn_url} . "/" . $dirname;
+            my $cmd = "$svn info $url 2>&1";
+            if( $main::o{debug} ) { print ">> $cmd\n"; }
+
+            open(INPUT,"$cmd|") or die("Couldn't $cmd");
+            while(<INPUT>) {
+                if( $main::o{debug} ) { print ">>> $_\n"; }
+                if(m/^URL: /) { 
+                    $success = 'yes'; 
+                }
+            }
+            close(INPUT);
+
+            $dirname = dirname($dirname) if($success eq 'lacking');
+        }
+
+        my $cmd = qq($svn checkout $main::o{svn_url}/$dirname $ou_path/$dirname);
+        ssm_print qq(>> $cmd\n);
+        !system($cmd) or die("Couldn't run: $cmd");
+
+        my $hostname = `hostname -f`;
+        chomp $hostname;
+        my $comment = "$file on $hostname";
+
+        $main::o{comment} = $comment;
+        $main::o{ou_path} = $ou_path;
+        $main::o{file_to_add} = $file;
+        add_file_to_repo($file);
+
+        my $pwd = (getpwuid($<))[1];
+        $cmd = qq($svn stat $ou_path/$dirname);
+        ssm_print qq(>> $cmd\n);
+        open(INPUT, "$cmd|") or die $!;
+            while(<INPUT>) {
+                chomp;
+                s/\S+\s+//;
+
+                $cmd = qq(svn add "$_");
+                ssm_print qq(>> $cmd\n);
+                !system($cmd) or die("Couldn't run: $cmd");
+                ssm_print "\n";
+            }
+        close(INPUT);
+
+        $file =~ s#^/##;
+
+        $cmd = qq($svn commit -m "$comment" $ou_path/$dirname);
+        ssm_print qq(>> $cmd\n);
+        !system($cmd) or die("Couldn't run: $cmd");
+        ssm_print "\n";
+
+        # Unlink that pesky subversion password cache
+        my $cache = "$ENV{HOME}/.subversion/auth/svn.simple/f5066f0fa2dd7dca29c1963bb17227e0";
+        if( $main::o{debug} ) { print "unlink $cache\n"; }
+        unlink $cache;
+
+    } else {
+
+        _try_a_revision_system();
+
         $ERROR_LEVEL++;
         if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
         ssm_print "\n";
         exit $ERROR_LEVEL;
     }
 
-    eval { mkpath("$ou_path") };
-    if($@) { die "Couldn’t create $ou_path: $@"; }
 
-    my $dirname = $file;
-    my $success = 'lacking';
-    until($success eq 'yes') {
-
-        my $uri = $main::o{svn_uri} . "/" . $dirname;
-        my $cmd = "$svn info $uri 2>&1";
-        if( $main::o{debug} ) { print ">> $cmd\n"; }
-
-        open(INPUT,"$cmd|") or die("Couldn't $cmd");
-        while(<INPUT>) {
-            if( $main::o{debug} ) { print ">>> $_\n"; }
-            if(m/^URL: /) { 
-                $success = 'yes'; 
-            }
-        }
-        close(INPUT);
-
-        $dirname = dirname($dirname) if($success eq 'lacking');
+    if(defined $main::o{git_url}) {
+        ssm_print qq(Be sure to do a "git pull" against $ou_path on this machine to\n);
+        ssm_print qq(incorporate these changes in the master repo...\n\n);
+        #XXX should we do this automatically?
     }
-
-    my $cmd = qq($svn checkout $main::o{svn_uri}/$dirname $ou_path/$dirname);
-    ssm_print qq(>> $cmd\n);
-    !system($cmd) or die("Couldn't run: $cmd");
-
-    my $hostname = `hostname -f`;
-    chomp $hostname;
-    my $comment = "$file on $hostname";
-#    $cmd = qq(ssm_add-file --ou-path "$ou_path" --comment "$comment" --file "$file" "$file");
-#    !system($cmd) or die("Couldn't run: $cmd");
-
-    $main::o{comment} = $comment;
-    $main::o{ou_path} = $ou_path;
-    $main::o{file_to_add} = $file;
-    add_file_to_repo($file);
-
-    my $pwd = (getpwuid($<))[1];
-    $cmd = qq($svn stat $ou_path/$dirname);
-    ssm_print qq(>> $cmd\n);
-    open(INPUT, "$cmd|") or die $!;
-        while(<INPUT>) {
-            chomp;
-            s/\S+\s+//;
-
-            $cmd = qq(svn add "$_");
-            ssm_print qq(>> $cmd\n);
-            !system($cmd) or die("Couldn't run: $cmd");
-            ssm_print "\n";
-        }
-    close(INPUT);
-
-    $file =~ s#^/##;
-
-    $cmd = qq($svn commit -m "$comment" $ou_path/$dirname);
-    ssm_print qq(>> $cmd\n);
-    !system($cmd) or die("Couldn't run: $cmd");
-    ssm_print "\n";
-
-    # Unlink that pesky subversion password cache
-    my $cache = "$ENV{HOME}/.subversion/auth/svn.simple/f5066f0fa2dd7dca29c1963bb17227e0";
-    if( $main::o{debug} ) { print "unlink $cache\n"; }
-    unlink $cache;
-
 
     # Config chunks printed to the screen...
     ssm_print <<"EOF";
@@ -3263,6 +3340,20 @@ sub multisort {
     $b1 <=> $a1
         ||
     $a3 cmp $b3
+}
+
+sub _try_a_revision_system {
+        ssm_print "INFO:  You don't have a git or svn repository specified in the definition\n";
+        ssm_print "       file.  Please take a moment to add an entry to your [global] section.\n";
+        ssm_print "\n";
+        ssm_print "       Here's an example or two:\n";
+        ssm_print "\n";
+        ssm_print "         git_url = https://my-xcat-master.cluster/repos/ssm_repo/\n";
+        ssm_print "         git_url = git://git.example.com/repos/ssm_repo/\n";
+        ssm_print "         git_url = ssh://git.example.com/repos/ssm_repo/\n";
+        ssm_print "\n";
+        ssm_print "         svn_url = https://svn.example.com/repos/ssm_repo/trunk\n";
+        ssm_print "\n";
 }
 
 #
