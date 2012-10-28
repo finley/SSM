@@ -107,7 +107,7 @@ rpms:  tarball
 .PHONY: debs
 debs:  tarball
 	cd $(TOPDIR)/tmp/${package}-$(VERSION) \
-		&& fakeroot dpkg-buildpackage
+		&& fakeroot dpkg-buildpackage -uc -us
 
 .PHONY: tarball
 tarball:  $(TOPDIR)/tmp/${package}-$(VERSION).tar.bz2.sign
