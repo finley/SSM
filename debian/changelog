@@ -1,3 +1,9 @@
+ssm (0.4.37-1ubuntu1) precise; urgency=low
+
+  * Auto push entries to upstream git repositories of type (file:///).
+
+ -- Brian Finley <brian@thefinleys.com>  Mon, 29 Oct 2012 10:30:07 -0600
+
 ssm (0.4.36-1ubuntu1) precise; urgency=low
 
   * Add git support.

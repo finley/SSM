@@ -1,6 +1,6 @@
 Name:         ssm
 Summary:      Manage the state of specific files and packages on a system.
-Version:      0.4.36
+Version:      0.4.37
 Release:      1
 BuildArch:    noarch
 Group:        System Environment/Applications
@@ -71,6 +71,8 @@ rm -f $RPM_BUILD_ROOT/%{_prefix}/sbin/ssm_web-report    # This requires deps uns
 #   sh echo -n "* " ; date +'%a %b %d %Y - brian@thefinleys.com'
 #
 %changelog -n ssm
+* Mon Oct 29 2012 - brian@thefinleys.com
+- Auto push changes to git repos of type "file://"
 * Wed Oct 22 2012 - brian@thefinleys.com
 - Add git support.
 * Wed Oct 10 2012 - brian@thefinleys.com
