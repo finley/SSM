@@ -1,5 +1,5 @@
 #  
-#   Copyright (C) 2006-2010 Brian Elliott Finley
+#   Copyright (C) 2006-2012 Brian Elliott Finley
 #
 #   $Id: SystemStateManager.pm 378 2010-09-20 15:23:03Z finley $
 #    vi: set filetype=perl tw=0:
@@ -16,6 +16,10 @@
 #       * check for and store package options
 #       * compare priorities
 #       * add 'unwanted' option for packages
+# 2012.10.28 Brian Elliott Finley
+#   * Add support for git repositories
+#   * Actually put the config chunk in place for git repositories
+#
 
 
 package SystemStateManager;
@@ -139,6 +143,7 @@ my (
     %DETAILS,     # runlevel information for services
     %PRIORITY,    # priority level for files and/or packages
     %GENERATOR,   # script or command to run to generate a generated file
+    %BUNDLEFILE,  # name of bundlefile where each file or package is defined
 );
 
 my $OUTSTANDING_PACKAGES_TO_REMOVE    = 0;
@@ -175,6 +180,7 @@ sub _initialize_variables {
         %DETAILS,
         %PRIORITY,
         %GENERATOR,
+        %BUNDLEFILE,
     ) = ();
     
     $ERROR_LEVEL = 0;
@@ -665,6 +671,7 @@ sub read_definition_file {
                     $DEPENDS{$name}    = $depends    if(defined $depends);
                     $PRIORITY{$name}   = $priority   if(defined $priority);
                     $GENERATOR{$name}  = $generator  if(defined $generator);
+                    $BUNDLEFILE{$name} = $bundlefile if(defined $bundlefile);
 
                 }
 
@@ -856,7 +863,6 @@ sub sync_state {
             return report_improper_file_definition($file);
         }
     }
-    
 
     # Get integer value that represents the number of packages defined.
     if( (scalar (keys %PKGS_FROM_STATE_DEFINITION)) == 0) {
@@ -2497,6 +2503,19 @@ sub add_file_to_repo {
     my $owner = (getpwuid $st_uid)[0];
     my $group = (getgrgid $st_gid)[0];
 
+    #
+    # Add entry to state definition file or bundle
+    #
+    my $bundlefile = $BUNDLEFILE{$main::o{file_to_add}};
+    if($bundlefile =~ m|^\w+:/.*/(.*)|) {
+        #
+        # Bundlefile is prefixed with a URL.  Let's strip the URL and just get
+        # the file.
+        #
+        $bundlefile = $1;
+    }
+
+#XXX ok, now we now the filename, let's edit the sucker.
     ssm_print "\n";
     ssm_print "Here's an entry you can cut and paste into your state definition\n";
     ssm_print "file.  Be sure to verify the owner, group, and mode values\n";
@@ -2510,11 +2529,17 @@ sub add_file_to_repo {
     ssm_print "owner      = $owner\n";
     ssm_print "group      = $group\n";
     ssm_print "mode       = $mode\n";
-    ssm_print "#priority   = 0\n";
-    ssm_print "#depends   = \n";
-    ssm_print "#prescript  = \n";
-    ssm_print "#postscript = \n";
     ssm_print "\n";
+
+    ssm_print <<"EOF";
+  Please take a moment to add the above config chunks to "$bundlefile"
+  and to commit your changes.  You may want to open another terminal to 
+  do these things.
+
+  Hit <Enter> to continue...
+EOF
+
+    $_ = <STDIN>;
 
     return 1;
 }
@@ -2710,12 +2735,29 @@ sub _add_file {
 #        #
 
         #
-        # We'll figure out how to do a minimalist checkout later...  For now,
-        # we clone the whole schmear.
+        # Jump into the git repo dir
         #
-        my $cmd = qq(git clone $main::o{git_url}/ $ou_path/);
+        my $pwd = (getpwuid($<))[1];
+        chdir $ou_path;
+
+        #
+        # Test to see if we've already done a checkout.
+        #
+        my $cmd = qq(git status -s >/dev/null 2>&1);
         ssm_print qq(>> $cmd\n);
-        !system($cmd) or die("Couldn't run: $cmd");
+        if( system($cmd) ) {
+            #
+            # Repo hasn't been checked out yet, let's do it now
+            #
+
+            #
+            # We'll figure out how to do a minimalist checkout later...  For now,
+            # we clone the whole schmear. -BEF-
+            #
+            my $cmd = qq(git clone $main::o{git_url}/ $ou_path/);
+            ssm_print qq(>> $cmd\n);
+            !system($cmd) or die("Couldn't run: $cmd");
+        }
 
         my $hostname = `hostname -f`;
         chomp $hostname;
@@ -2727,16 +2769,11 @@ sub _add_file {
 
         add_file_to_repo($file);
 
-        my $pwd = (getpwuid($<))[1];
+        #
+        # Commit changes to local repo
+        #
 
-        #
-        # Jump into the git repo dir
-        #
-        chdir $ou_path;
-
-        #
         # Turn file into a relative path name
-        #
         $file =~ s#^/##;
         $cmd = qq(git add $file);
         ssm_print qq(>> $cmd\n);
@@ -2747,6 +2784,11 @@ sub _add_file {
         ssm_print qq(>> $cmd\n);
         !system($cmd) or die("Couldn't run: $cmd");
         ssm_print "\n";
+
+        #
+        # Push changes to upstream repo
+        #
+        push_to_upstream_git_repo();
 
         #
         # Jump back to our prior dir
@@ -2826,24 +2868,6 @@ sub _add_file {
         ssm_print "\n";
         exit $ERROR_LEVEL;
     }
-
-
-    if(defined $main::o{git_url}) {
-        ssm_print qq(Be sure to do a "git pull" against $ou_path on this machine to\n);
-        ssm_print qq(incorporate these changes in the master repo...\n\n);
-        #XXX should we do this automatically?
-    }
-
-    # Config chunks printed to the screen...
-    ssm_print <<"EOF";
-  Please take a moment to add the above config chunks to the appropriate
-  state definition file or bundle, and to commit your changes.  You may
-  want to open another terminal to do these things.
-
-  Hit <Enter> to continue...
-EOF
-
-    $_ = <STDIN>;
 
     return 1;
 }
@@ -3354,6 +3378,45 @@ sub _try_a_revision_system {
         ssm_print "\n";
         ssm_print "         svn_url = https://svn.example.com/repos/ssm_repo/trunk\n";
         ssm_print "\n";
+}
+
+#
+#   Usage:  push_to_upstream_git_repo();
+#
+sub push_to_upstream_git_repo {
+
+    if(! defined $main::o{git_url}) {
+        _try_a_revision_system();
+        return 1;
+    } 
+
+    #
+    # For now, we use a 'git pull', as the behavior of 'git push' is not
+    # desirable, unless we can confirm the user is using git v1.7.11 or
+    # newer.  We'll add a test for that later.  Yes, that's the royal we.
+    # -BEF-
+    #
+    if( $main::o{git_url} =~ m|^file:/+(/.*)| ) {
+
+        my $upstream_repo = $1;
+        my $downstream_repo = $main::o{ou_path};
+
+        my $pwd = (getpwuid($<))[1];
+        chdir $upstream_repo;
+        my $cmd = "git pull $downstream_repo";
+        ssm_print qq(RUNNING: $cmd\n);
+        run_cmd($cmd);
+        chdir $pwd;
+
+    } else {
+
+        ssm_print qq(Be sure to do a "git pull ssh://$main::o{ou_path}"\n);
+        ssm_print qq(from the upstream repo: $main::o{git_url}"\n);
+        ssm_print qq(to incorporate these changes\n\n);
+
+    }
+
+    return 1;
 }
 
 #
