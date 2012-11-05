@@ -19,7 +19,8 @@
 # 2012.10.28 Brian Elliott Finley
 #   * Add support for git repositories
 #   * Actually put the config chunk in place for git repositories
-#
+# 2012.11.05 Brian Elliott Finley
+#   - Make sure files added to repo have accessible perms
 
 
 package SystemStateManager;
@@ -2071,10 +2072,9 @@ sub create_directory {
 
     if(-e $file) { remove_file($file); }
 
-    eval { mkpath($file) };
-    if($@) {
-        die "Couldn’t create $file: $@";
-    }
+    my $dir = $file;
+    eval { mkpath($dir, 1, 0775) };
+    if($@) { ssm_print "Couldn’t create $dir: $@"; }
 
     set_ownership_and_permissions($file);
 
@@ -2466,10 +2466,8 @@ sub add_file_to_repo {
 
     # Create the base dir
     my $dir = $main::o{ou_path} . '/' . $main::o{file_to_add};
-    eval { mkpath($dir) };
-    if($@) {
-        ssm_print "Couldn’t create $dir: $@";
-    }
+    eval { mkpath($dir, 1, 0775) };
+    if($@) { ssm_print "Couldn’t create $dir: $@"; }
 
     my $tmp_file = choose_tmp_file();
     open(TMP, "+>$tmp_file") or die "Couldn't open tmp file $!";
@@ -2493,7 +2491,7 @@ sub add_file_to_repo {
 
     ssm_print "Moving target file into place:\n";
     ssm_print "  $file\n";
-    move($tmp_file, $file) or die "Couldn't move($tmp_file, $file) $!";
+    mv($tmp_file, $file) or die "Couldn't mv($tmp_file, $file) $!";
     chmod oct(644), $file;
 
     $main::o{comment} = localtime() . " | " . $main::o{comment};
@@ -2701,8 +2699,9 @@ sub _add_file {
     my $file = shift;
     my $ou_path = "/tmp/ssm_db.repo.$$";
 
-    eval { mkpath("$ou_path") };
-    if($@) { die "Couldn’t create $ou_path: $@"; }
+    my $dir = $ou_path;
+    eval { mkpath($dir, 1, 0775) };
+    if($@) { ssm_print "Couldn’t create $dir: $@"; }
 
     my $dirname = $file;
 
