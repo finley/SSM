@@ -1,3 +1,11 @@
+ssm (0.4.38-1ubuntu1) precise; urgency=low
+
+  * v0.4.38
+  * Update entry in bundlfile when (a) 
+  * Make sure files added to repo have accessible perms
+
+ -- Brian Finley <brian@thefinleys.com>  Tue, 06 Nov 2012 11:50:14 -0500
+
 ssm (0.4.37-1ubuntu1) precise; urgency=low
 
   * Auto push entries to upstream git repositories of type (file:///).
