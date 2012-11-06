@@ -257,9 +257,22 @@ sub read_definition_file {
 
     my $tmp_file = get_file($main::o{definition_file});
 
+    #
+    # We assume base_url should be the same as the definition file url, sans
+    # the filename itself. This will be overridden if specified in a [global]
+    # section. -BEF-
+    #
+    $main::o{base_url}  = dirname( $main::o{definition_file} );
+
+    #
+    # And let's let the bundlefile name simply be the file (no URL).
+    #
+    my $bundlefile      = $main::o{definition_file};
+    $bundlefile         =~ s|^$main::o{base_url}/+||;
+
     # For --analyze-config purposes, prefix the input data from the
     # state definition file with it's own name as a BundleFile. -BEF-
-    my @input = "BundleFile: $main::o{definition_file}\n";
+    my @input = "BundleFile: $bundlefile\n";
     push @input, "\n";
 
     open(FILE,"<$tmp_file") or die "Couldn't open $tmp_file for reading: $!";
@@ -269,7 +282,6 @@ sub read_definition_file {
     
     my $stanza_terminator = '^(\s+|$)';
     my $comment = '^#';
-    my $bundlefile;
 
     #
     # Add a blank line at the end, so that we don't get an error when 
@@ -332,12 +344,6 @@ sub read_definition_file {
 
             ssm_print "OK:      Package manager -> $main::o{pkg_manager}\n" unless(@{$main::o{only_this_file}}); 
 
-            if( ! defined $main::o{base_url} ) { 
-                # No base_url defined.  Therefore, we assume base_url 
-                # should be the same as the definition file url, sans
-                # the filename itself. -BEF-
-                $main::o{base_url} = dirname( $main::o{definition_file} );
-            }
             if( ! defined $main::o{remove_running_kernel} ) { 
                 # Default to "no"
                 $main::o{remove_running_kernel} = 'no';
@@ -673,7 +679,6 @@ sub read_definition_file {
                     $PRIORITY{$name}   = $priority   if(defined $priority);
                     $GENERATOR{$name}  = $generator  if(defined $generator);
                     $BUNDLEFILE{$name} = $bundlefile if(defined $bundlefile);
-
                 }
 
             }
@@ -2073,7 +2078,7 @@ sub create_directory {
     if(-e $file) { remove_file($file); }
 
     my $dir = $file;
-    eval { mkpath($dir, 1, 0775) };
+    eval { mkpath($dir) };
     if($@) { ssm_print "Couldn’t create $dir: $@"; }
 
     set_ownership_and_permissions($file);
@@ -2465,7 +2470,8 @@ sub add_file_to_repo {
     ####################################################################
 
     # Create the base dir
-    my $dir = $main::o{ou_path} . '/' . $main::o{file_to_add};
+    umask 002;
+    my $dir = $main::o{ou_path} . $main::o{file_to_add};
     eval { mkpath($dir, 1, 0775) };
     if($@) { ssm_print "Couldn’t create $dir: $@"; }
 
@@ -2491,7 +2497,7 @@ sub add_file_to_repo {
 
     ssm_print "Moving target file into place:\n";
     ssm_print "  $file\n";
-    mv($tmp_file, $file) or die "Couldn't mv($tmp_file, $file) $!";
+    move($tmp_file, $file) or die "Couldn't move($tmp_file, $file) $!";
     chmod oct(644), $file;
 
     $main::o{comment} = localtime() . " | " . $main::o{comment};
@@ -2513,31 +2519,129 @@ sub add_file_to_repo {
         $bundlefile = $1;
     }
 
-#XXX ok, now we now the filename, let's edit the sucker.
-    ssm_print "\n";
-    ssm_print "Here's an entry you can cut and paste into your state definition\n";
-    ssm_print "file.  Be sure to verify the owner, group, and mode values\n";
-    ssm_print "------------------------------------------------------------------------\n";
-    ssm_print "\n";
-    ssm_print "[file]\n";
-    ssm_print "name       = $main::o{file_to_add}\n";
-    ssm_print "comment    = $main::o{comment}\n";
-    ssm_print "type       = regular\n";
-    ssm_print "md5sum     = $md5sum\n";
-    ssm_print "owner      = $owner\n";
-    ssm_print "group      = $group\n";
-    ssm_print "mode       = $mode\n";
-    ssm_print "\n";
+    # ok, now we now the filename, let's edit the sucker.
+    my $name    = $main::o{file_to_add};
+    my $comment = $main::o{comment};
 
-    ssm_print <<"EOF";
-  Please take a moment to add the above config chunks to "$bundlefile"
-  and to commit your changes.  You may want to open another terminal to 
-  do these things.
+    update_bundlefile_type_regular( $main::o{ou_path}, $bundlefile, $name, "$comment", $md5sum, $owner, $group, $mode );
 
-  Hit <Enter> to continue...
-EOF
+#    ssm_print "Here's an entry you can cut and paste into your state definition\n";
+#    ssm_print "file.  Be sure to verify the owner, group, and mode values\n";
+#    ssm_print "file: $file\n";
+#    ssm_print "------------------------------------------------------------------------\n";
+#    ssm_print "\n";
+#    ssm_print "[file]\n";
+#    ssm_print "name       = $main::o{file_to_add}\n";
+#    ssm_print "comment    = $main::o{comment}\n";
+#    ssm_print "type       = regular\n";
+#    ssm_print "md5sum     = $md5sum\n";
+#    ssm_print "owner      = $owner\n";
+#    ssm_print "group      = $group\n";
+#    ssm_print "mode       = $mode\n";
+#    ssm_print "\n";
+#
+#    ssm_print <<"EOF";
+#  Please take a moment to add the above config chunks to "$bundlefile"
+#  and to commit your changes.  You may want to open another terminal to 
+#  do these things.
+#
+#  Hit <Enter> to continue...
+#EOF
 
+    ssm_print "Hit <Enter> to continue...\n";
     $_ = <STDIN>;
+
+    return 1;
+}
+
+
+#
+# Usage:
+#   update_bundlefile_type_regular( $bundlefile, $name, "$comment", $md5sum, $owner, $group, $mode );
+#
+sub update_bundlefile_type_regular {
+
+    my $local_repo = shift;
+
+    #
+    # name of the bundle file to update
+    #
+    my $bundlefile = shift;
+
+    #
+    # Name of system file in question, and attributes
+    #
+    my $name       = shift;
+    my $comment    = shift;
+    my $type       = 'regular';
+    my $md5sum     = shift;
+    my $owner      = shift;
+    my $group      = shift;
+    my $mode       = shift;
+
+    my $url;
+    if( $bundlefile =~ m|\w+://| ) {
+        $url = $bundlefile;
+    } else {
+        $url = "$main::o{base_url}/$bundlefile";
+    }
+    my $tmp_file   = get_file($url);
+
+    my $file = $tmp_file;
+    open(FILE, "<$file") or die("Couldn't open $file for reading");
+    push my @input, (<FILE>);
+    close(FILE);
+
+    my $stanza_terminator = '^(\s+|$)';
+
+    my @newfile;
+    my $found_entry = 'no';
+    while (@input) {
+
+        $_ = shift @input;
+
+        if( m|^name\s+=\s+$name| ) {
+
+            $found_entry = 'yes';
+
+            until( m/$stanza_terminator/ ) {
+
+                # Allow "key = value" or "key=value" type definitions.
+                s/^comment\s*=.*/comment    = $comment/;
+                   s/^type\s*=.*/type       = regular/;
+                 s/^md5sum\s*=.*/md5sum     = $md5sum/;
+                  s/^owner\s*=.*/owner      = $owner/;
+                  s/^group\s*=.*/group      = $group/;
+                   s/^mode\s*=.*/mode       = $mode/;
+
+                push @newfile, $_;
+
+                $_ = shift @input;
+            }
+
+        }
+
+        push @newfile, $_;
+    }
+
+    if( $found_entry eq 'yes' ) {
+
+        my $newfile = $bundlefile;
+
+        ssm_print qq(Updating entry for file "$name" in definition file "$newfile".\n);
+
+        my $file = "$local_repo/$newfile";
+        open(FILE, ">$file") or die("Couldn't open $file for writing");
+        print FILE @newfile;
+        close(FILE);
+
+    } else {
+        # admonish to commit bundlefile in the upstream repo and try again.
+        ssm_print qq(\n);
+        ssm_print qq(ERROR: I could not find an entry for "$name" in\n);
+        ssm_print qq(       $file.\n);
+        ssm_print qq(\n);
+    }
 
     return 1;
 }
@@ -2699,6 +2803,7 @@ sub _add_file {
     my $file = shift;
     my $ou_path = "/tmp/ssm_db.repo.$$";
 
+    umask 002;
     my $dir = $ou_path;
     eval { mkpath($dir, 1, 0775) };
     if($@) { ssm_print "Couldn’t create $dir: $@"; }
@@ -2768,18 +2873,20 @@ sub _add_file {
 
         add_file_to_repo($file);
 
+        ################################################################
         #
-        # Commit changes to local repo
+        # BEGIN: Commit changes to local repo
         #
-
-        # Turn file into a relative path name
-        $file =~ s#^/##;
-        $cmd = qq(git add $file);
+        $cmd = qq(git add ./$file);
         ssm_print qq(>> $cmd\n);
         !system($cmd) or die("Couldn't run: $cmd");
         ssm_print "\n";
 
-        $cmd = qq(git commit -m "$comment" $file);
+        #
+        # Commit changes to both the new file, and the bundle that refers to it
+        #
+        my $bundlefile = $BUNDLEFILE{$file};
+        $cmd = qq(git commit -m "$comment" ./$file ./$bundlefile);
         ssm_print qq(>> $cmd\n);
         !system($cmd) or die("Couldn't run: $cmd");
         ssm_print "\n";
@@ -2787,7 +2894,13 @@ sub _add_file {
         #
         # Push changes to upstream repo
         #
+        precommit_bundlefile_to_upstream_git_repo($bundlefile);
         push_to_upstream_git_repo();
+
+        #
+        # END: Commit changes to local repo
+        #
+        ################################################################
 
         #
         # Jump back to our prior dir
@@ -3377,6 +3490,40 @@ sub _try_a_revision_system {
         ssm_print "\n";
         ssm_print "         svn_url = https://svn.example.com/repos/ssm_repo/trunk\n";
         ssm_print "\n";
+}
+
+#
+#   Usage:  precommit_bundlefile_to_upstream_git_repo($bundlefile);
+#
+sub precommit_bundlefile_to_upstream_git_repo {
+
+    my $file = shift;
+
+    if(! defined $main::o{git_url}) {
+        _try_a_revision_system();
+        return 1;
+    } 
+
+    #
+    # For now, we use a 'git pull', as the behavior of 'git push' is not
+    # desirable, unless we can confirm the user is using git v1.7.11 or
+    # newer.  We'll add a test for that later.  Yes, that's the royal we.
+    # -BEF-
+    #
+    if( $main::o{git_url} =~ m|^file:/+(/.*)| ) {
+
+        my $upstream_repo = $1;
+
+        my $pwd = (getpwuid($<))[1];
+        chdir $upstream_repo;
+        my $cmd = qq(git commit -m "SSM pre-commit" ./$file);
+        ssm_print qq(RUNNING: $cmd\n);
+        run_cmd($cmd);
+        chdir $pwd;
+
+    }
+
+    return 1;
 }
 
 #
