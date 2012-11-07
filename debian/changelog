@@ -1,3 +1,9 @@
+ssm (0.4.39-1ubuntu1) precise; urgency=low
+
+  *  Allow for a non revision control managed upstream repo
+
+ -- Brian Finley <brian@thefinleys.com>  Wed, 07 Nov 2012 12:19:39 -0500
+
 ssm (0.4.38-1ubuntu1) precise; urgency=low
 
   * v0.4.38

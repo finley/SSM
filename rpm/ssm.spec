@@ -1,6 +1,6 @@
 Name:         ssm
 Summary:      Manage the state of specific files and packages on a system.
-Version:      0.4.38
+Version:      0.4.39
 Release:      1
 BuildArch:    noarch
 Group:        System Environment/Applications
@@ -71,7 +71,10 @@ rm -f $RPM_BUILD_ROOT/%{_prefix}/sbin/ssm_web-report    # This requires deps uns
 #   sh echo -n "* " ; date +'%a %b %d %Y - brian@thefinleys.com'
 #
 %changelog -n ssm
-* Mon Nov 06 2012 - brian@thefinleys.com
+* Wed Nov 07 2012 - brian@thefinleys.com
+- v0.4.39
+- Allow for a non revision control managed upstream repo
+* Mon Nov 05 2012 - brian@thefinleys.com
 - v0.4.38
 - Update entry in bundlfile when (a)
 - Make sure files added to repo have accessible perms

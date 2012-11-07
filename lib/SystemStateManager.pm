@@ -21,6 +21,8 @@
 #   * Actually put the config chunk in place for git repositories
 # 2012.11.05 Brian Elliott Finley
 #   - Make sure files added to repo have accessible perms
+# 2012.11.07 Brian Elliott Finley
+#   - Allow for a non revision control managed upstream repo
 
 
 package SystemStateManager;
@@ -2144,25 +2146,10 @@ sub get_file {
         }
         copy($file, $tmp_file) or die "get_file(): Failed to copy($file, $tmp_file): $!";
 
-    } 
-    elsif($file =~ m#^http://#) {
-        #
-        # Use a pure perl implementation
-        #
-        my $content;
-        if( defined($content = get($file)) ) {
-            open(FILE,">$tmp_file") or die("Couldn't open $tmp_file for writing!\n");
-            print FILE $content;
-            close(FILE);
-
-        } else {
-            ssm_print "WARNING: Failed to retrieve $file.\n";
-            ssm_print "  Skipping this step.\n";
-            $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-            sleep 1;
-        }
-
-    } elsif( ($file =~ m#^https://#) or ($file =~ m#^ftp://#) ) {
+    } elsif(    ($file =~ m#^http://# ) 
+             or ($file =~ m#^https://#) 
+             or ($file =~ m#^ftp://#  ) 
+           ) {
 
         my $cmd = "wget -q $file -O $tmp_file";
         run_cmd($cmd);
@@ -2551,7 +2538,9 @@ sub add_file_to_repo {
     ssm_print "Hit <Enter> to continue...\n";
     $_ = <STDIN>;
 
-    return 1;
+    my $new_file = "$main::o{file_to_add}/$md5sum";
+    return $new_file;
+
 }
 
 
@@ -2607,6 +2596,7 @@ sub update_bundlefile_type_regular {
             until( m/$stanza_terminator/ ) {
 
                 # Allow "key = value" or "key=value" type definitions.
+                   s#^name\s*=.*#name       = $name#;
                 s/^comment\s*=.*/comment    = $comment/;
                    s/^type\s*=.*/type       = regular/;
                  s/^md5sum\s*=.*/md5sum     = $md5sum/;
@@ -2871,31 +2861,33 @@ sub _add_file {
         $main::o{ou_path} = $ou_path;
         $main::o{file_to_add} = $file;
 
-        add_file_to_repo($file);
+        my $new_file = add_file_to_repo($file);
+        copy_file_to_upstream_repo($new_file);          # copy the fresh file
+        copy_file_to_upstream_repo($BUNDLEFILE{$file}); # and copy the updated bundle file that refers to it
 
-        ################################################################
+        #################################################################
+        ##
+        ## BEGIN: Commit changes to local repo
+        ##
+        #$cmd = qq(git add ./$file);
+        #ssm_print qq(>> $cmd\n);
+        #!system($cmd) or die("Couldn't run: $cmd");
+        #ssm_print "\n";
         #
-        # BEGIN: Commit changes to local repo
+        ##
+        ## Commit changes to both the new file, and the bundle that refers to it
+        ##
+        #my $bundlefile = $BUNDLEFILE{$file};
+        #$cmd = qq(git commit -m "$comment" ./$file ./$bundlefile);
+        #ssm_print qq(>> $cmd\n);
+        #!system($cmd) or die("Couldn't run: $cmd");
+        #ssm_print "\n";
         #
-        $cmd = qq(git add ./$file);
-        ssm_print qq(>> $cmd\n);
-        !system($cmd) or die("Couldn't run: $cmd");
-        ssm_print "\n";
-
-        #
-        # Commit changes to both the new file, and the bundle that refers to it
-        #
-        my $bundlefile = $BUNDLEFILE{$file};
-        $cmd = qq(git commit -m "$comment" ./$file ./$bundlefile);
-        ssm_print qq(>> $cmd\n);
-        !system($cmd) or die("Couldn't run: $cmd");
-        ssm_print "\n";
-
         #
         # Push changes to upstream repo
         #
-        precommit_bundlefile_to_upstream_git_repo($bundlefile);
-        push_to_upstream_git_repo();
+        #precommit_bundlefile_to_upstream_git_repo($bundlefile);
+        #push_to_upstream_git_repo();
 
         #
         # END: Commit changes to local repo
@@ -3520,6 +3512,48 @@ sub precommit_bundlefile_to_upstream_git_repo {
         ssm_print qq(RUNNING: $cmd\n);
         run_cmd($cmd);
         chdir $pwd;
+
+    }
+
+    return 1;
+}
+
+#
+#   Usage:  copy_file_to_upstream_repo($file);
+#
+sub copy_file_to_upstream_repo {
+
+    my $file = shift;
+
+    if(! defined $main::o{git_url}) {
+        _try_a_revision_system();
+        return 1;
+    } 
+
+    if( $main::o{git_url} =~ m|^file:/+(/.*)| ) {
+
+        my $upstream_repo = $1;
+        my $downstream_repo = $main::o{ou_path};
+
+        #
+        # Make sure the dir exists
+        #
+        my $dir  = dirname($file);
+        my $cmd = "mkdir -p $upstream_repo/$dir";
+        !system($cmd) or die("Couldn't run $cmd");
+
+        #
+        # Copy up the contents
+        #
+        my $source = "$downstream_repo/$file";
+        my $dest   = "$upstream_repo/$file";
+        copy($source, $dest) or die "Failed to copy($source, $dest): $!";
+
+    } else {
+
+        my $downstream_repo = $main::o{ou_path};
+        ssm_print qq(Please copy $file from $downstream_repo to $main::o{git_url}\n);
+        sleep 1;
 
     }
 
