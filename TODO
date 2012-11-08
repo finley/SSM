@@ -2,6 +2,33 @@
 #   $Id: TODO 371 2010-08-30 03:22:55Z finley $
 #
 
+OK:      Regular file /usr/bin/set_dma_latency
+shell-init: error retrieving current directory: getcwd: cannot access
+parent directories: No such file or directory
+OK:      Packages -> No packages to install.
+OK:      Packages -> No packages to upgrade.
+shell-init: error retrieving current directory: getcwd: cannot access
+parent directories: No such file or directory
+OK:      Packages -> No packages to remove.
+
+
+State Definition File:
+http://hercules-mgmt1/ssm_repo.hercules/login.conf
+Use of uninitialized value $o{"pkg_manager"} in string eq at
+/usr/lib/ssm/SystemStateManager.pm line 798.
+Use of uninitialized value $o{"pkg_manager"} in string eq at
+/usr/lib/ssm/SystemStateManager.pm line 802.
+Use of uninitialized value $o{"pkg_manager"} in string eq at
+/usr/lib/ssm/SystemStateManager.pm line 806.
+Use of uninitialized value $o{"pkg_manager"} in string eq at
+/usr/lib/ssm/SystemStateManager.pm line 810.
+
+    if( ! defined $o{"pkg_manager"} ) {
+        verify  definition file access, perms, URL, etc.
+    }
+
+
+
 ########################################################################
 #
 #   Do
