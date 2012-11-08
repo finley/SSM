@@ -23,6 +23,9 @@
 #   - Make sure files added to repo have accessible perms
 # 2012.11.07 Brian Elliott Finley
 #   - Allow for a non revision control managed upstream repo
+#   - Dump support for git and svn -- no real need, and much complication.
+#     Allow revision control to be handled by the upstream repository, if
+#     desired.  And if not -- eh, no big.  Just make regular backups, eh?
 
 
 package SystemStateManager;
@@ -66,19 +69,23 @@ use Mail::Send;
 #       % egrep '^sub ' lib/SystemStateManager.pm | perl -pi -e 's/^sub /#   /; s/ {//;' | sort
 #
 #   _add_file
-#   add_file_to_repo
 #   _backup
 #   check_depends
 #   choose_tmp_file
 #   close_log_file
 #   compare_package_options
+#   copy_file_to_upstream_repo
 #   create_directory
 #   diff_file
 #   diff_ownership_and_permissions
+#   do_chown_and_chmod
+#   do_contents_unwanted
 #   do_directory
 #   do_generated_file
 #   do_hardlink
 #   do_ignore
+#   do_postscript
+#   do_prescript
 #   do_regular_file
 #   do_softlink
 #   do_special_file
@@ -87,15 +94,21 @@ use Mail::Send;
 #   email_log_file
 #   _get_arch
 #   get_file
+#   get_gid
+#   get_md5sum
+#   get_mode
 #   get_pkgs_to_be_installed
 #   get_pkgs_to_be_reinstalled
 #   get_pkgs_to_be_removed
+#   get_uid
 #   group_to_gid
 #   _include_bundle
 #   _initialize_log_file
 #   _initialize_variables
 #   install_file
 #   md5sum_match
+#   multisort
+#   print_pad
 #   read_definition_file
 #   remove_file
 #   report_improper_file_definition
@@ -103,13 +116,18 @@ use Mail::Send;
 #   rotate_log_file
 #   run_cmd
 #   set_ownership_and_permissions
-#   show_diff_comments
+#   _specify_an_upload_url
 #   ssm_print
 #   sync_state
+#   sync_state_install_packages
+#   sync_state_reinstall_packages
+#   sync_state_remove_packages
+#   sync_state_upgrade_packages
 #   turn_groupnames_into_gids
 #   turn_service_into_file_entry
 #   turn_usernames_into_uids
 #   uid_gid_and_mode_match
+#   update_bundlefile_type_regular
 #   user_is_root
 #   user_to_uid
 #   version
@@ -319,6 +337,7 @@ sub read_definition_file {
                 if( m/^base_ur[il]\s+(.*)(\s|#|$)/ )       { $main::o{base_url} = $1; }
                 if( m/^git_ur[il]\s+(.*)(\s|#|$)/ )        { $main::o{git_url} = $1; }
                 if( m/^svn_ur[il]\s+(.*)(\s|#|$)/ )        { $main::o{svn_url} = $1; }
+                if( m/^upload_url\s+(.*)(\s|#|$)/ )        { $main::o{upload_url} = $1; }
                 if( m/^email_log_to\s+(.*)(\s|#|$)/ )   { $main::o{email_log_to} = $1; }
                 if( m/^log_file_perms\s+(.*)(\s|#|$)/ )   { $main::o{log_file_perms} = $1; }
                 if( m/^remove_running_kernel\s+(.*)(\s|#|$)/ )   { $main::o{remove_running_kernel} = $1; }
@@ -808,6 +827,10 @@ sub sync_state {
         SystemStateManager::Yum->import();
     }
     elsif( $main::o{pkg_manager} eq "none" ) {
+        require SystemStateManager::None;
+        SystemStateManager::None->import();
+    }
+    elsif( ! defined $main::o{pkg_manager} ) {
         require SystemStateManager::None;
         SystemStateManager::None->import();
     }
@@ -1410,6 +1433,49 @@ sub diff_ownership_and_permissions {
     return 1;
 }
 
+sub get_md5sum {
+
+    my $file = shift;
+
+    my $md5sum;
+    open(FILE, "<$file") or die "Can’t open ’$file’ for reading: $!";
+        binmode(FILE);
+        $md5sum = Digest::MD5->new->addfile(*FILE)->hexdigest;
+    close(FILE);
+
+    return $md5sum;
+}
+
+sub get_gid {
+    
+    my $file = shift;
+
+    my $st = stat($file);
+    my $gid = (getgrgid $st_gid)[0];
+    
+    return $gid;
+}
+
+sub get_uid {
+    
+    my $file = shift;
+
+    my $st = stat($file);
+    my $uid = (getpwuid $st_uid)[0];
+    
+    return $uid;
+}
+
+sub get_mode {
+    
+    my $file = shift;
+
+    my $st = stat($file);
+    my $mode  = sprintf "%04o", $st_mode & 07777;
+
+    return $mode;
+}
+
 
 sub set_ownership_and_permissions {
 
@@ -1907,18 +1973,11 @@ sub do_regular_file {
             $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
         } else {
 
-            my $msg = "         Shall I do this? [N/y/d/c/a]: ";
+            my $msg = "         Shall I do this? [N/y/d/a]: ";
             my $answer = do_you_want_me_to($msg);
-            while( $answer eq 'diff' or $answer eq 'comments') {
+            while( $answer eq 'diff' ) {
 
                 diff_file($file);
-
-                if($answer eq 'comments') {
-                    ssm_print "Here are the author's comments on this change:\n";
-                    show_diff_comments($file);
-                    ssm_print "\n";
-                }
-
                 $answer = do_you_want_me_to($msg);
             }
 
@@ -1967,33 +2026,33 @@ sub md5sum_match {
 }
 
 
-sub show_diff_comments {
-
-    my $file     = shift;
-
-    if( ! defined $main::o{svn_url} and ! defined $main::o{git_url}) {
-
-        _try_a_revision_system();
-
-    } elsif(defined $main::o{svn_url}) {
-
-        my $svn = qq(svn --no-auth-cache);
-
-        # NOTE:  If this is run without connectivity to the svn repository
-        # (like if it's on a networked server, and the network is down),
-        # then it may produce an error. 2009.11.05 -BEF-
-        my $cmd = "$svn log --limit 1 $main::o{svn_url}/$file";
-        run_cmd($cmd, undef, 1);
-
-    } elsif(defined $main::o{git_url}) {
-
-        my $cmd = "git log -1 $main::o{git_url}/$file";
-        run_cmd($cmd, undef, 1);
-
-    }
-
-    return 1;
-}
+#sub show_diff_comments {
+#
+#    my $file     = shift;
+#
+#    if( ! defined $main::o{svn_url} and ! defined $main::o{git_url}) {
+#
+#        _try_a_revision_system();
+#
+#    } elsif(defined $main::o{svn_url}) {
+#
+#        my $svn = qq(svn --no-auth-cache);
+#
+#        # NOTE:  If this is run without connectivity to the svn repository
+#        # (like if it's on a networked server, and the network is down),
+#        # then it may produce an error. 2009.11.05 -BEF-
+#        my $cmd = "$svn log --limit 1 $main::o{svn_url}/$file";
+#        run_cmd($cmd, undef, 1);
+#
+#    } elsif(defined $main::o{git_url}) {
+#
+#        my $cmd = "git log -1 $main::o{git_url}/$file";
+#        run_cmd($cmd, undef, 1);
+#
+#    }
+#
+#    return 1;
+#}
 
 
 sub diff_file {
@@ -2152,7 +2211,8 @@ sub get_file {
            ) {
 
         my $cmd = "wget -q $file -O $tmp_file";
-        run_cmd($cmd);
+        if($main::o{debug}) { ssm_print "$cmd\n"; }
+        !system($cmd) or die("Couldn't run $cmd");
 
     } else {
 
@@ -2417,166 +2477,27 @@ sub uid_gid_and_mode_match {
     return undef;
 }
 
-#
-#   add_file_to_repo(@ARGV);
-#
-sub add_file_to_repo {
-
-    my @chunks = @_;
-
-    if(! defined $LOGFILE) {
-        #
-        # If we are invoked independently via ssm_add-file, the log 
-        # file won't be initialized yet. -BEF-
-        _initialize_log_file();
-    }
-
-    ####################################################################
-    #
-    # Validate input
-    #
-    if( ! -d $main::o{ou_path} ) {
-        ssm_print "\n";
-        ssm_print "The OU directory you specified does not exist:\n";
-        ssm_print "  $main::o{ou_path}\n";
-        ssm_print "\n";
-        ssm_print "  Please create it first, set access privileges for it,\n";
-        ssm_print "  then try again.\n";
-        ssm_print "\n";
-        exit 1;
-    }
-
-    foreach(@chunks) {
-        if( ! -e $_ ) {
-            ssm_print "CHUNK $_ doesn't appear to exist.\n";
-            ssm_print "\n";
-            exit 1;
-        }
-    }
-    #
-    ####################################################################
-
-    # Create the base dir
-    umask 002;
-    my $dir = $main::o{ou_path} . $main::o{file_to_add};
-    eval { mkpath($dir, 1, 0775) };
-    if($@) { ssm_print "Couldn’t create $dir: $@"; }
-
-    my $tmp_file = choose_tmp_file();
-    open(TMP, "+>$tmp_file") or die "Couldn't open tmp file $!";
-
-        ssm_print "Concatenating files...\n";
-        foreach my $file (@chunks) {
-            ssm_print "CHUNK: $file\n" if($main::o{debug});
-            open(FILE,"<$file") or die "Couldn't open $file for reading $!";
-                print TMP <FILE>;
-            close(FILE);
-        }
-
-        ssm_print "Calculating md5sum...\n";
-        seek(TMP, 0, 0);
-        my $md5sum = Digest::MD5->new->addfile(*TMP)->hexdigest;
-
-        my $file = $dir . '/' . $md5sum;
-        $file =~ s#/+#/#g;
-
-    close(TMP);
-
-    ssm_print "Moving target file into place:\n";
-    ssm_print "  $file\n";
-    move($tmp_file, $file) or die "Couldn't move($tmp_file, $file) $!";
-    chmod oct(644), $file;
-
-    $main::o{comment} = localtime() . " | " . $main::o{comment};
-
-    my $st = stat($chunks[0]);
-    my $mode  = sprintf "%04o", $st_mode & 07777;
-    my $owner = (getpwuid $st_uid)[0];
-    my $group = (getgrgid $st_gid)[0];
-
-    #
-    # Add entry to state definition file or bundle
-    #
-    my $bundlefile = $BUNDLEFILE{$main::o{file_to_add}};
-    if($bundlefile =~ m|^\w+:/.*/(.*)|) {
-        #
-        # Bundlefile is prefixed with a URL.  Let's strip the URL and just get
-        # the file.
-        #
-        $bundlefile = $1;
-    }
-
-    # ok, now we now the filename, let's edit the sucker.
-    my $name    = $main::o{file_to_add};
-    my $comment = $main::o{comment};
-
-    update_bundlefile_type_regular( $main::o{ou_path}, $bundlefile, $name, "$comment", $md5sum, $owner, $group, $mode );
-
-#    ssm_print "Here's an entry you can cut and paste into your state definition\n";
-#    ssm_print "file.  Be sure to verify the owner, group, and mode values\n";
-#    ssm_print "file: $file\n";
-#    ssm_print "------------------------------------------------------------------------\n";
-#    ssm_print "\n";
-#    ssm_print "[file]\n";
-#    ssm_print "name       = $main::o{file_to_add}\n";
-#    ssm_print "comment    = $main::o{comment}\n";
-#    ssm_print "type       = regular\n";
-#    ssm_print "md5sum     = $md5sum\n";
-#    ssm_print "owner      = $owner\n";
-#    ssm_print "group      = $group\n";
-#    ssm_print "mode       = $mode\n";
-#    ssm_print "\n";
-#
-#    ssm_print <<"EOF";
-#  Please take a moment to add the above config chunks to "$bundlefile"
-#  and to commit your changes.  You may want to open another terminal to 
-#  do these things.
-#
-#  Hit <Enter> to continue...
-#EOF
-
-    ssm_print "Hit <Enter> to continue...\n";
-    $_ = <STDIN>;
-
-    my $new_file = "$main::o{file_to_add}/$md5sum";
-    return $new_file;
-
-}
-
 
 #
 # Usage:
-#   update_bundlefile_type_regular( $bundlefile, $name, "$comment", $md5sum, $owner, $group, $mode );
+#   my $file = update_bundlefile_type_regular( $name, $md5sum, $owner, $group, $mode );
 #
 sub update_bundlefile_type_regular {
-
-    my $local_repo = shift;
-
-    #
-    # name of the bundle file to update
-    #
-    my $bundlefile = shift;
 
     #
     # Name of system file in question, and attributes
     #
     my $name       = shift;
-    my $comment    = shift;
+    my $comment    = $main::o{comment};
     my $type       = 'regular';
     my $md5sum     = shift;
     my $owner      = shift;
     my $group      = shift;
     my $mode       = shift;
 
-    my $url;
-    if( $bundlefile =~ m|\w+://| ) {
-        $url = $bundlefile;
-    } else {
-        $url = "$main::o{base_url}/$bundlefile";
-    }
-    my $tmp_file   = get_file($url);
+    my $url  = "$main::o{base_url}/$BUNDLEFILE{$name}";
+    my $file = get_file($url);
 
-    my $file = $tmp_file;
     open(FILE, "<$file") or die("Couldn't open $file for reading");
     push my @input, (<FILE>);
     close(FILE);
@@ -2614,26 +2535,19 @@ sub update_bundlefile_type_regular {
         push @newfile, $_;
     }
 
+    my $newfile = choose_tmp_file();
     if( $found_entry eq 'yes' ) {
 
-        my $newfile = $bundlefile;
+        ssm_print qq(Updating entry for file "$name" in definition file "$BUNDLEFILE{$name}".\n);
 
-        ssm_print qq(Updating entry for file "$name" in definition file "$newfile".\n);
-
-        my $file = "$local_repo/$newfile";
+        my $file = $newfile;
         open(FILE, ">$file") or die("Couldn't open $file for writing");
         print FILE @newfile;
         close(FILE);
 
-    } else {
-        # admonish to commit bundlefile in the upstream repo and try again.
-        ssm_print qq(\n);
-        ssm_print qq(ERROR: I could not find an entry for "$name" in\n);
-        ssm_print qq(       $file.\n);
-        ssm_print qq(\n);
     }
 
-    return 1;
+    return $newfile;
 }
 
 
@@ -2791,181 +2705,38 @@ sub _backup {
 sub _add_file {
 
     my $file = shift;
-    my $ou_path = "/tmp/ssm_db.repo.$$";
-
-    umask 002;
-    my $dir = $ou_path;
-    eval { mkpath($dir, 1, 0775) };
-    if($@) { ssm_print "Couldn’t create $dir: $@"; }
-
-    my $dirname = $file;
 
     ssm_print qq(\n);
-    if(defined $main::o{git_url}) {
+    if(defined $main::o{upload_url}) {
 
-#        #
-#        # Ok -- we want to check out as little of the tree as possible.  Let's
-#        # try to figure out how minimalistic our checkout can be (by finding
-#        # the longest possible path)...  In other words, rather than checking
-#        # out all of "/opt", let's see if we can just check out
-#        # "/opt/corp/bloated_prog/etc/". -BEF-
-#        #
-#        my $success = 'lacking';
-#        until($success eq 'yes') {
-#
-#            my $url = $main::o{svn_url} . "/" . $dirname;
-#            my $cmd = "git status -s $url >/dev/null 2>&1";
-#            if( $main::o{debug} ) { print ">> $cmd\n"; }
-#            if( !system($cmd) ) {
-#                $success = 'yes';  # I'm so excited!
-#            } else {
-#                $dirname = dirname($dirname);
-#            }
-#        }
-#
-#        #
-#        # Ok, we now now that $dirname is the logest path (most minimal
-#        # checkout), let's check it out. -BEF-
-#        #
-
-        #
-        # Jump into the git repo dir
-        #
-        my $pwd = (getpwuid($<))[1];
-        chdir $ou_path;
-
-        #
-        # Test to see if we've already done a checkout.
-        #
-        my $cmd = qq(git status -s >/dev/null 2>&1);
-        ssm_print qq(>> $cmd\n);
-        if( system($cmd) ) {
-            #
-            # Repo hasn't been checked out yet, let's do it now
-            #
-
-            #
-            # We'll figure out how to do a minimalist checkout later...  For now,
-            # we clone the whole schmear. -BEF-
-            #
-            my $cmd = qq(git clone $main::o{git_url}/ $ou_path/);
-            ssm_print qq(>> $cmd\n);
-            !system($cmd) or die("Couldn't run: $cmd");
-        }
+        my $local_file;
+        my $repo_file;
 
         my $hostname = `hostname -f`;
         chomp $hostname;
-        my $comment = "$file on $hostname";
-
-        $main::o{comment} = $comment;
-        $main::o{ou_path} = $ou_path;
+        $main::o{comment} = "From $hostname on " . localtime();
         $main::o{file_to_add} = $file;
 
-        my $new_file = add_file_to_repo($file);
-        copy_file_to_upstream_repo($new_file);          # copy the fresh file
-        copy_file_to_upstream_repo($BUNDLEFILE{$file}); # and copy the updated bundle file that refers to it
+        my $name   = $file;
+        my $md5sum = get_md5sum($file);
+        my $owner  = get_uid($file);
+        my $group  = get_gid($file);
+        my $mode   = get_mode($file);
 
-        #################################################################
-        ##
-        ## BEGIN: Commit changes to local repo
-        ##
-        #$cmd = qq(git add ./$file);
-        #ssm_print qq(>> $cmd\n);
-        #!system($cmd) or die("Couldn't run: $cmd");
-        #ssm_print "\n";
-        #
-        ##
-        ## Commit changes to both the new file, and the bundle that refers to it
-        ##
-        #my $bundlefile = $BUNDLEFILE{$file};
-        #$cmd = qq(git commit -m "$comment" ./$file ./$bundlefile);
-        #ssm_print qq(>> $cmd\n);
-        #!system($cmd) or die("Couldn't run: $cmd");
-        #ssm_print "\n";
-        #
-        #
-        # Push changes to upstream repo
-        #
-        #precommit_bundlefile_to_upstream_git_repo($bundlefile);
-        #push_to_upstream_git_repo();
+        $local_file = $file;
+        $repo_file = "$file/$md5sum";
+        ssm_print "copy_file_to_upstream_repo($local_file, $repo_file)\n" if($main::o{debug});
+        copy_file_to_upstream_repo($local_file, $repo_file);
 
-        #
-        # END: Commit changes to local repo
-        #
-        ################################################################
-
-        #
-        # Jump back to our prior dir
-        #
-        chdir $pwd;
+        $local_file = update_bundlefile_type_regular( $name, $md5sum, $owner, $group, $mode );
+        $repo_file = "$BUNDLEFILE{$file}";
+        ssm_print "copy_file_to_upstream_repo($local_file, $repo_file)\n" if($main::o{debug});
+        copy_file_to_upstream_repo($local_file, $repo_file);
 
     }
-    elsif(defined $main::o{svn_url}) {
+    else {
 
-        my $svn     = qq(svn);
-
-        my $success = 'lacking';
-        until($success eq 'yes') {
-
-            my $url = $main::o{svn_url} . "/" . $dirname;
-            my $cmd = "$svn info $url 2>&1";
-            if( $main::o{debug} ) { print ">> $cmd\n"; }
-
-            open(INPUT,"$cmd|") or die("Couldn't $cmd");
-            while(<INPUT>) {
-                if( $main::o{debug} ) { print ">>> $_\n"; }
-                if(m/^URL: /) { 
-                    $success = 'yes'; 
-                }
-            }
-            close(INPUT);
-
-            $dirname = dirname($dirname) if($success eq 'lacking');
-        }
-
-        my $cmd = qq($svn checkout $main::o{svn_url}/$dirname $ou_path/$dirname);
-        ssm_print qq(>> $cmd\n);
-        !system($cmd) or die("Couldn't run: $cmd");
-
-        my $hostname = `hostname -f`;
-        chomp $hostname;
-        my $comment = "$file on $hostname";
-
-        $main::o{comment} = $comment;
-        $main::o{ou_path} = $ou_path;
-        $main::o{file_to_add} = $file;
-        add_file_to_repo($file);
-
-        my $pwd = (getpwuid($<))[1];
-        $cmd = qq($svn stat $ou_path/$dirname);
-        ssm_print qq(>> $cmd\n);
-        open(INPUT, "$cmd|") or die $!;
-            while(<INPUT>) {
-                chomp;
-                s/\S+\s+//;
-
-                $cmd = qq(svn add "$_");
-                ssm_print qq(>> $cmd\n);
-                !system($cmd) or die("Couldn't run: $cmd");
-                ssm_print "\n";
-            }
-        close(INPUT);
-
-        $file =~ s#^/##;
-
-        $cmd = qq($svn commit -m "$comment" $ou_path/$dirname);
-        ssm_print qq(>> $cmd\n);
-        !system($cmd) or die("Couldn't run: $cmd");
-        ssm_print "\n";
-
-        # Unlink that pesky subversion password cache
-        my $cache = "$ENV{HOME}/.subversion/auth/svn.simple/f5066f0fa2dd7dca29c1963bb17227e0";
-        if( $main::o{debug} ) { print "unlink $cache\n"; }
-        unlink $cache;
-
-    } else {
-
-        _try_a_revision_system();
+        _specify_an_upload_url();
 
         $ERROR_LEVEL++;
         if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
@@ -3470,134 +3241,139 @@ sub multisort {
     $a3 cmp $b3
 }
 
-sub _try_a_revision_system {
-        ssm_print "INFO:  You don't have a git or svn repository specified in the definition\n";
-        ssm_print "       file.  Please take a moment to add an entry to your [global] section.\n";
+sub _specify_an_upload_url {
+        ssm_print "INFO:  You don't have an upload_url specified in the definition.\n";
+        ssm_print "       Please take a moment to add an entry to your [global] section.\n";
         ssm_print "\n";
         ssm_print "       Here's an example or two:\n";
         ssm_print "\n";
-        ssm_print "         git_url = https://my-xcat-master.cluster/repos/ssm_repo/\n";
-        ssm_print "         git_url = git://git.example.com/repos/ssm_repo/\n";
-        ssm_print "         git_url = ssh://git.example.com/repos/ssm_repo/\n";
-        ssm_print "\n";
-        ssm_print "         svn_url = https://svn.example.com/repos/ssm_repo/trunk\n";
+        ssm_print "         upload_url = file://install/ssm_repo.hostname/\n";
+        #ssm_print "         upload_url = ssh://xcat-master/install/ssm_repo.hostname/\n";
         ssm_print "\n";
 }
 
+##
+##   Usage:  precommit_bundlefile_to_upstream_git_repo($bundlefile);
+##
+#sub precommit_bundlefile_to_upstream_git_repo {
 #
-#   Usage:  precommit_bundlefile_to_upstream_git_repo($bundlefile);
+#    my $file = shift;
 #
-sub precommit_bundlefile_to_upstream_git_repo {
+#    if(! defined $main::o{git_url}) {
+#        _try_a_revision_system();
+#        return 1;
+#    } 
+#
+#    #
+#    # For now, we use a 'git pull', as the behavior of 'git push' is not
+#    # desirable, unless we can confirm the user is using git v1.7.11 or
+#    # newer.  We'll add a test for that later.  Yes, that's the royal we.
+#    # -BEF-
+#    #
+#    if( $main::o{git_url} =~ m|^file:/+(/.*)| ) {
+#
+#        my $upstream_repo = $1;
+#
+#        my $pwd = (getpwuid($<))[1];
+#        chdir $upstream_repo;
+#        my $cmd = qq(git commit -m "SSM pre-commit" ./$file);
+#        ssm_print qq(RUNNING: $cmd\n);
+#        run_cmd($cmd);
+#        chdir $pwd;
+#
+#    }
+#
+#    return 1;
+#}
 
-    my $file = shift;
-
-    if(! defined $main::o{git_url}) {
-        _try_a_revision_system();
-        return 1;
-    } 
-
-    #
-    # For now, we use a 'git pull', as the behavior of 'git push' is not
-    # desirable, unless we can confirm the user is using git v1.7.11 or
-    # newer.  We'll add a test for that later.  Yes, that's the royal we.
-    # -BEF-
-    #
-    if( $main::o{git_url} =~ m|^file:/+(/.*)| ) {
-
-        my $upstream_repo = $1;
-
-        my $pwd = (getpwuid($<))[1];
-        chdir $upstream_repo;
-        my $cmd = qq(git commit -m "SSM pre-commit" ./$file);
-        ssm_print qq(RUNNING: $cmd\n);
-        run_cmd($cmd);
-        chdir $pwd;
-
-    }
-
-    return 1;
-}
 
 #
-#   Usage:  copy_file_to_upstream_repo($file);
+#   Usage:  copy_file_to_upstream_repo($local_file, $repo_file);
+#             Where: 
+#               $local_file => file on this system, can be a temp file, or of any name
+#               $repo_file  => the name of the file as it _should_ be in the repo
+#
+#   Example:  copy_file_to_upstream_repo("/tmp/mytmp_file.2931", "/etc/ssm/client.conf/bf40cf4d09789b92acc43775c8ed43f5");
 #
 sub copy_file_to_upstream_repo {
 
-    my $file = shift;
+    my $local_file = shift;
+    my $repo_file  = shift;
 
-    if(! defined $main::o{git_url}) {
-        _try_a_revision_system();
-        return 1;
-    } 
-
-    if( $main::o{git_url} =~ m|^file:/+(/.*)| ) {
+    #
+    # For URL's of type "file://"
+    #
+    if( $main::o{upload_url} =~ m|^file:/+(/.*)| ) {
 
         my $upstream_repo = $1;
-        my $downstream_repo = $main::o{ou_path};
 
         #
         # Make sure the dir exists
         #
-        my $dir  = dirname($file);
-        my $cmd = "mkdir -p $upstream_repo/$dir";
-        !system($cmd) or die("Couldn't run $cmd");
+        my $dir  = dirname($repo_file);
+        umask 000;
+        my $path = "$upstream_repo/$dir";
+        $path =~ s|/+|/|g;
+        eval { mkpath("$path", 1, 0775) };
+        print qq(mkpath "$path", 1, 0775) if($main::o{debug});
+        if($@) { ssm_print "Couldn’t create $dir: $@"; }
 
         #
         # Copy up the contents
         #
-        my $source = "$downstream_repo/$file";
-        my $dest   = "$upstream_repo/$file";
+        my $source = $local_file;
+        my $dest   = "$upstream_repo/$repo_file";
+        $dest =~ s|/+|/|g;
+        print qq(copy $source, $dest \n) if($main::o{debug});
         copy($source, $dest) or die "Failed to copy($source, $dest): $!";
+        chmod oct(644), $dest;
 
-    } else {
-
-        my $downstream_repo = $main::o{ou_path};
-        ssm_print qq(Please copy $file from $downstream_repo to $main::o{git_url}\n);
-        sleep 1;
-
+    }
+    elsif( $main::o{upload_url} =~ m|^ssh:/+(/.*)| ) {
+        ssm_print "Soon, my friend.  Soon ssh upload_urls will be supported. :-)\n";
     }
 
     return 1;
 }
 
+##
+##   Usage:  push_to_upstream_git_repo();
+##
+#sub push_to_upstream_git_repo {
 #
-#   Usage:  push_to_upstream_git_repo();
+#    if(! defined $main::o{git_url}) {
+#        _try_a_revision_system();
+#        return 1;
+#    } 
 #
-sub push_to_upstream_git_repo {
-
-    if(! defined $main::o{git_url}) {
-        _try_a_revision_system();
-        return 1;
-    } 
-
-    #
-    # For now, we use a 'git pull', as the behavior of 'git push' is not
-    # desirable, unless we can confirm the user is using git v1.7.11 or
-    # newer.  We'll add a test for that later.  Yes, that's the royal we.
-    # -BEF-
-    #
-    if( $main::o{git_url} =~ m|^file:/+(/.*)| ) {
-
-        my $upstream_repo = $1;
-        my $downstream_repo = $main::o{ou_path};
-
-        my $pwd = (getpwuid($<))[1];
-        chdir $upstream_repo;
-        my $cmd = "git pull $downstream_repo";
-        ssm_print qq(RUNNING: $cmd\n);
-        run_cmd($cmd);
-        chdir $pwd;
-
-    } else {
-
-        ssm_print qq(Be sure to do a "git pull ssh://$main::o{ou_path}"\n);
-        ssm_print qq(from the upstream repo: $main::o{git_url}"\n);
-        ssm_print qq(to incorporate these changes\n\n);
-
-    }
-
-    return 1;
-}
+#    #
+#    # For now, we use a 'git pull', as the behavior of 'git push' is not
+#    # desirable, unless we can confirm the user is using git v1.7.11 or
+#    # newer.  We'll add a test for that later.  Yes, that's the royal we.
+#    # -BEF-
+#    #
+#    if( $main::o{git_url} =~ m|^file:/+(/.*)| ) {
+#
+#        my $upstream_repo = $1;
+#        my $downstream_repo = $main::o{ou_path};
+#
+#        my $pwd = (getpwuid($<))[1];
+#        chdir $upstream_repo;
+#        my $cmd = "git pull $downstream_repo";
+#        ssm_print qq(RUNNING: $cmd\n);
+#        run_cmd($cmd);
+#        chdir $pwd;
+#
+#    } else {
+#
+#        ssm_print qq(Be sure to do a "git pull ssh://$main::o{ou_path}"\n);
+#        ssm_print qq(from the upstream repo: $main::o{git_url}"\n);
+#        ssm_print qq(to incorporate these changes\n\n);
+#
+#    }
+#
+#    return 1;
+#}
 
 #
 ################################################################################
