@@ -1,10 +1,10 @@
 Name:         ssm
 Summary:      Manage the state of specific files and packages on a system.
-Version:      0.4.39
+Version:      0.4.40
 Release:      1
 BuildArch:    noarch
 Group:        System Environment/Applications
-Requires:     perl-libwww-perl, perl-MailTools, Unix-Mknod
+Requires:     perl-libwww-perl, perl-MailTools, Unix-Mknod, wget
 License:      GPL
 URL:          http://download.systemimager.org/pub/ssm/
 Source:       http://download.systemimager.org/pub/ssm/ssm-%{version}.tar.bz2
@@ -71,6 +71,11 @@ rm -f $RPM_BUILD_ROOT/%{_prefix}/sbin/ssm_web-report    # This requires deps uns
 #   sh echo -n "* " ; date +'%a %b %d %Y - brian@thefinleys.com'
 #
 %changelog -n ssm
+* Wed Nov 07 2012 - brian@thefinleys.com
+- v0.4.40
+- Dump support for git and svn -- no real need, and much complication.
+  Allow revision control to be handled by the upstream repository, if
+  desired.  And if not -- eh, no big.  Just make regular backups, eh?
 * Wed Nov 07 2012 - brian@thefinleys.com
 - v0.4.39
 - Allow for a non revision control managed upstream repo

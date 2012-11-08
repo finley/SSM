@@ -1,3 +1,12 @@
+ssm (0.4.40-1ubuntu1) precise; urgency=low
+
+  * Dump support for git and svn -- no real need, and much
+    complication.  Allow revision control to be handled by the upstream
+    repository, if desired.  And if not -- eh, no big.  Just make
+    regular backups, eh?
+
+ -- Brian Elliott Finley <brian@thefinleys.com>  Wed, 07 Nov 2012 23:24:35 -0500
+
 ssm (0.4.39-1ubuntu1) precise; urgency=low
 
   *  Allow for a non revision control managed upstream repo
