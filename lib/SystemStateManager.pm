@@ -26,6 +26,8 @@
 #   - Dump support for git and svn -- no real need, and much complication.
 #     Allow revision control to be handled by the upstream repository, if
 #     desired.  And if not -- eh, no big.  Just make regular backups, eh?
+# 2012.11.07 Brian Elliott Finley
+#   - Add support for ssh:// for upstream repos
 
 
 package SystemStateManager;
@@ -38,7 +40,6 @@ use Exporter;
                 get_current_state
                 read_definition_file
                 sync_state
-                add_file_to_repo
                 ssm_print 
                 run_cmd
                 choose_tmp_file
@@ -335,8 +336,8 @@ sub read_definition_file {
 
                 if( m/^pkg_manager\s+(.*)(\s|#|$)/ )    { $main::o{pkg_manager} = lc($1); }
                 if( m/^base_ur[il]\s+(.*)(\s|#|$)/ )       { $main::o{base_url} = $1; }
-                if( m/^git_ur[il]\s+(.*)(\s|#|$)/ )        { $main::o{git_url} = $1; }
-                if( m/^svn_ur[il]\s+(.*)(\s|#|$)/ )        { $main::o{svn_url} = $1; }
+                if( m/^git_ur[il]\s+(.*)(\s|#|$)/ )        { $main::o{git_url} = $1; }  # deprecated, but leave in for warning messages, etc.
+                if( m/^svn_ur[il]\s+(.*)(\s|#|$)/ )        { $main::o{svn_url} = $1; }  # deprecated, but leave in for warning messages, etc.
                 if( m/^upload_url\s+(.*)(\s|#|$)/ )        { $main::o{upload_url} = $1; }
                 if( m/^email_log_to\s+(.*)(\s|#|$)/ )   { $main::o{email_log_to} = $1; }
                 if( m/^log_file_perms\s+(.*)(\s|#|$)/ )   { $main::o{log_file_perms} = $1; }
@@ -345,23 +346,52 @@ sub read_definition_file {
                 $_ = shift @input;
             }
 
+
+            #
+            # Make sure we have a package manager defined
+            #
+            if( ! defined $main::o{pkg_manager} ) {
+
+                please_specify_a_package_manager();
+
+                exit 1;
+            }
+
+            #
+            # Make sure it's one we support
+            #
             unless( ($main::o{pkg_manager} eq 'dpkg'    )
                  or ($main::o{pkg_manager} eq 'aptitude')
                  or ($main::o{pkg_manager} eq 'yum'     )
                  or ($main::o{pkg_manager} eq 'none'    )
             ) {
-                ssm_print "\n";
-                ssm_print "ERROR: Invalid entry in definition file.  Please specify your package\n";
-                ssm_print "       management system with an entry like:\n";
-                ssm_print "\n";
-                ssm_print "          pkg_manager = aptitude\n";
-                ssm_print "       or pkg_manager = dpkg\n";
-                ssm_print "       or pkg_manager = yum\n";
-                ssm_print "       or pkg_manager = none\n";
-                ssm_print "\n";
+
+                please_specify_a_package_manager();
 
                 exit 1;
             }
+
+
+sub please_specify_a_package_manager {
+
+    ssm_print "\n";
+    ssm_print "ERROR: Invalid entry in definition file.  Please specify your package\n";
+    ssm_print "       management system with an entry like:\n";
+    ssm_print "\n";
+    ssm_print "          [global]\n";
+    ssm_print "          pkg_manager = aptitude\n";
+    ssm_print "       or pkg_manager = dpkg\n";
+    ssm_print "       or pkg_manager = yum\n";
+    ssm_print "       or pkg_manager = none\n";
+    ssm_print "\n";
+    ssm_print "   Note:  Use type 'none' for AIX, and other non-Linux Unix-like systems,\n";
+    ssm_print "          not-yet supported package managers, or if you simply don't want\n";
+    ssm_print "          to incorporate package management.\n";
+    ssm_print "\n";
+    
+    return 1;
+}
+
 
             ssm_print "OK:      Package manager -> $main::o{pkg_manager}\n" unless(@{$main::o{only_this_file}}); 
 
@@ -1151,6 +1181,21 @@ sub run_cmd {
 sub do_you_want_me_to {
 
     my $msg = shift;
+
+    my $explanation;
+    if( ! defined $main::o{answer_implications_explained} ) {
+
+        $explanation .= qq/\n/;
+        $explanation .= qq/           N -> "No.  Don't do anything." (This is the default -- if you just hit <Enter>)."\n/;
+        $explanation .= qq/           y -> "Yes.  Execute all actions stated under 'Need to:' above."\n/;
+        $explanation .= qq/           d -> "Show me a diff, then ask me again."\n/;
+        $explanation .= qq/           a -> "Add this file to the upstream_repo."\n/;
+        $explanation .= qq/\n/;
+
+        $msg = $explanation . $msg;
+
+        $main::o{answer_implications_explained} = 'yes';
+    }
 
     ssm_print $msg if(defined $msg);
 
@@ -1973,7 +2018,9 @@ sub do_regular_file {
             $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
         } else {
 
-            my $msg = "         Shall I do this? [N/y/d/a]: ";
+            my $msg;
+
+            $msg .= "         Shall I do this? [N/y/d/a]: ";
             my $answer = do_you_want_me_to($msg);
             while( $answer eq 'diff' ) {
 
@@ -2024,35 +2071,6 @@ sub md5sum_match {
 
     return undef;
 }
-
-
-#sub show_diff_comments {
-#
-#    my $file     = shift;
-#
-#    if( ! defined $main::o{svn_url} and ! defined $main::o{git_url}) {
-#
-#        _try_a_revision_system();
-#
-#    } elsif(defined $main::o{svn_url}) {
-#
-#        my $svn = qq(svn --no-auth-cache);
-#
-#        # NOTE:  If this is run without connectivity to the svn repository
-#        # (like if it's on a networked server, and the network is down),
-#        # then it may produce an error. 2009.11.05 -BEF-
-#        my $cmd = "$svn log --limit 1 $main::o{svn_url}/$file";
-#        run_cmd($cmd, undef, 1);
-#
-#    } elsif(defined $main::o{git_url}) {
-#
-#        my $cmd = "git log -1 $main::o{git_url}/$file";
-#        run_cmd($cmd, undef, 1);
-#
-#    }
-#
-#    return 1;
-#}
 
 
 sub diff_file {
@@ -2723,15 +2741,15 @@ sub _add_file {
         my $group  = get_gid($file);
         my $mode   = get_mode($file);
 
-        $local_file = $file;
         $repo_file = "$file/$md5sum";
-        ssm_print "copy_file_to_upstream_repo($local_file, $repo_file)\n" if($main::o{debug});
-        copy_file_to_upstream_repo($local_file, $repo_file);
+        ssm_print "copy_file_to_upstream_repo($file, $repo_file)\n" if($main::o{debug});
+        copy_file_to_upstream_repo($file, $repo_file);
 
-        $local_file = update_bundlefile_type_regular( $name, $md5sum, $owner, $group, $mode );
+        my $tmp_file = update_bundlefile_type_regular( $name, $md5sum, $owner, $group, $mode );
         $repo_file = "$BUNDLEFILE{$file}";
-        ssm_print "copy_file_to_upstream_repo($local_file, $repo_file)\n" if($main::o{debug});
-        copy_file_to_upstream_repo($local_file, $repo_file);
+        ssm_print "copy_file_to_upstream_repo($tmp_file, $repo_file)\n" if($main::o{debug});
+        copy_file_to_upstream_repo($tmp_file, $repo_file);
+        unlink $tmp_file;
 
     }
     else {
@@ -3245,46 +3263,13 @@ sub _specify_an_upload_url {
         ssm_print "INFO:  You don't have an upload_url specified in the definition.\n";
         ssm_print "       Please take a moment to add an entry to your [global] section.\n";
         ssm_print "\n";
-        ssm_print "       Here's an example or two:\n";
+        ssm_print "       Here's an example or two (I highly recommend an ssh URL):\n";
         ssm_print "\n";
+        ssm_print "         upload_url = ssh://xcat-master/install/ssm_repo.hostname/\n";
+        ssm_print "         upload_url = ssh://username\@xcat-master/install/ssm_repo.hostname/\n";
         ssm_print "         upload_url = file://install/ssm_repo.hostname/\n";
-        #ssm_print "         upload_url = ssh://xcat-master/install/ssm_repo.hostname/\n";
         ssm_print "\n";
 }
-
-##
-##   Usage:  precommit_bundlefile_to_upstream_git_repo($bundlefile);
-##
-#sub precommit_bundlefile_to_upstream_git_repo {
-#
-#    my $file = shift;
-#
-#    if(! defined $main::o{git_url}) {
-#        _try_a_revision_system();
-#        return 1;
-#    } 
-#
-#    #
-#    # For now, we use a 'git pull', as the behavior of 'git push' is not
-#    # desirable, unless we can confirm the user is using git v1.7.11 or
-#    # newer.  We'll add a test for that later.  Yes, that's the royal we.
-#    # -BEF-
-#    #
-#    if( $main::o{git_url} =~ m|^file:/+(/.*)| ) {
-#
-#        my $upstream_repo = $1;
-#
-#        my $pwd = (getpwuid($<))[1];
-#        chdir $upstream_repo;
-#        my $cmd = qq(git commit -m "SSM pre-commit" ./$file);
-#        ssm_print qq(RUNNING: $cmd\n);
-#        run_cmd($cmd);
-#        chdir $pwd;
-#
-#    }
-#
-#    return 1;
-#}
 
 
 #
@@ -3301,79 +3286,89 @@ sub copy_file_to_upstream_repo {
     my $repo_file  = shift;
 
     #
+    # For URL's of type "ssh://"
+    #
+    if( $main::o{upload_url} =~ m|^ssh://([^/]*)(/.*)| ) {
+        #                                 ^^^^^  ^^^ 
+        #                                   |     |---------- Match the path to the repository
+        #                                   |
+        #                                   |---------------- Match the repo_host ( host.example.com or bobby@host.example.com )
+        #
+        my $repo_host = $1;
+        my $repo_dir  = $2;
+        if($main::o{debug}) { ssm_print "\$repo_host $repo_host\n"; }
+        if($main::o{debug}) { ssm_print "\$repo_dir $repo_dir\n"; }
+
+        my $cmd;
+
+        my $dir  = dirname($repo_file);
+
+        my $path = "$repo_dir/$dir";
+        $path =~ s|/+|/|g;
+        if($main::o{debug}) { ssm_print "\$path $path\n"; }
+
+        my $destination_file   = "$repo_dir/$repo_file";
+        $destination_file =~ s|/+|/|g;
+        if($main::o{debug}) { ssm_print "\$destination_file $destination_file\n"; }
+
+        #
+        # Make sure the dir exists
+        #
+        $cmd = qq(ssh $repo_host mkdir -p -m 775 $path);
+        ssm_print qq(Make sure directory exists in repo:\n);
+        ssm_print qq(  $cmd\n);
+        !system($cmd) or die("Couldn't run $cmd\n");
+        ssm_print qq(Success!\n);
+        ssm_print qq(\n);
+
+        #
+        # Copy up the contents
+        #
+        $cmd = qq(scp $local_file $repo_host:$destination_file);
+        ssm_print qq(Copy new file up to repo:\n);
+        ssm_print qq(  $cmd\n);
+        !system($cmd) or die("Couldn't run $cmd\n");
+        ssm_print qq(Success!\n);
+        ssm_print qq(\n);
+
+    }
+    #
     # For URL's of type "file://"
     #
-    if( $main::o{upload_url} =~ m|^file:/+(/.*)| ) {
+    elsif( $main::o{upload_url} =~ m|^file://(/.*)| ) {
 
-        my $upstream_repo = $1;
+        my $repo_dir = $1;
 
         #
         # Make sure the dir exists
         #
         my $dir  = dirname($repo_file);
         umask 000;
-        my $path = "$upstream_repo/$dir";
+        my $path = "$repo_dir/$dir";
         $path =~ s|/+|/|g;
         eval { mkpath("$path", 1, 0775) };
-        print qq(mkpath "$path", 1, 0775) if($main::o{debug});
+        if($main::o{debug}) { ssm_print qq(mkpath "$path", 1, 0775); }
         if($@) { ssm_print "Couldn’t create $dir: $@"; }
 
         #
         # Copy up the contents
         #
-        my $source = $local_file;
-        my $dest   = "$upstream_repo/$repo_file";
-        $dest =~ s|/+|/|g;
-        print qq(copy $source, $dest \n) if($main::o{debug});
-        copy($source, $dest) or die "Failed to copy($source, $dest): $!";
-        chmod oct(644), $dest;
+        my $destination_file   = "$repo_dir/$repo_file";
+        $destination_file =~ s|/+|/|g;
+        if($main::o{debug}) { ssm_print qq(copy $local_file, $destination_file \n); }
+        copy($local_file, $destination_file) or die "Failed to copy($local_file, $destination_file): $!";
+        chmod oct(644), $destination_file;
 
     }
-    elsif( $main::o{upload_url} =~ m|^ssh:/+(/.*)| ) {
-        ssm_print "Soon, my friend.  Soon ssh upload_urls will be supported. :-)\n";
+    elsif( $main::o{upload_url} =~ m|^([^/]+)://| ) {
+        my $unknown_protocol = $1;
+        ssm_print "If you'd like $unknown_protocol to be supported, please let me know.\n";
+        ssm_print '  - Brian Elliott Finley <brian@thefinleys.com>' . "\n";
     }
 
     return 1;
 }
 
-##
-##   Usage:  push_to_upstream_git_repo();
-##
-#sub push_to_upstream_git_repo {
-#
-#    if(! defined $main::o{git_url}) {
-#        _try_a_revision_system();
-#        return 1;
-#    } 
-#
-#    #
-#    # For now, we use a 'git pull', as the behavior of 'git push' is not
-#    # desirable, unless we can confirm the user is using git v1.7.11 or
-#    # newer.  We'll add a test for that later.  Yes, that's the royal we.
-#    # -BEF-
-#    #
-#    if( $main::o{git_url} =~ m|^file:/+(/.*)| ) {
-#
-#        my $upstream_repo = $1;
-#        my $downstream_repo = $main::o{ou_path};
-#
-#        my $pwd = (getpwuid($<))[1];
-#        chdir $upstream_repo;
-#        my $cmd = "git pull $downstream_repo";
-#        ssm_print qq(RUNNING: $cmd\n);
-#        run_cmd($cmd);
-#        chdir $pwd;
-#
-#    } else {
-#
-#        ssm_print qq(Be sure to do a "git pull ssh://$main::o{ou_path}"\n);
-#        ssm_print qq(from the upstream repo: $main::o{git_url}"\n);
-#        ssm_print qq(to incorporate these changes\n\n);
-#
-#    }
-#
-#    return 1;
-#}
 
 #
 ################################################################################

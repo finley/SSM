@@ -2,37 +2,14 @@
 #   $Id: TODO 371 2010-08-30 03:22:55Z finley $
 #
 
-OK:      Regular file /usr/bin/set_dma_latency
-shell-init: error retrieving current directory: getcwd: cannot access
-parent directories: No such file or directory
-OK:      Packages -> No packages to install.
-OK:      Packages -> No packages to upgrade.
-shell-init: error retrieving current directory: getcwd: cannot access
-parent directories: No such file or directory
-OK:      Packages -> No packages to remove.
-
-
-State Definition File:
-http://hercules-mgmt1/ssm_repo.hercules/login.conf
-Use of uninitialized value $o{"pkg_manager"} in string eq at
-/usr/lib/ssm/SystemStateManager.pm line 798.
-Use of uninitialized value $o{"pkg_manager"} in string eq at
-/usr/lib/ssm/SystemStateManager.pm line 802.
-Use of uninitialized value $o{"pkg_manager"} in string eq at
-/usr/lib/ssm/SystemStateManager.pm line 806.
-Use of uninitialized value $o{"pkg_manager"} in string eq at
-/usr/lib/ssm/SystemStateManager.pm line 810.
-
-    if( ! defined $o{"pkg_manager"} ) {
-        verify  definition file access, perms, URL, etc.
-    }
-
-
 
 ########################################################################
 #
 #   Do
 #
+
+* Use 'u' instead of 'a' ->   for "Upload this file and use it instead
+* of hte one curretnly i the repo.
 
 * global option to allow for auto-resolution of dependencies
     auto_add_deps = yes/no
@@ -57,10 +34,6 @@ Use of uninitialized value $o{"pkg_manager"} in string eq at
 *   add auth capability
     * via certs?
 
-*   add/verify ssl capability
-
-*   fix svn on lucid -- can't "add" a file
-
 *   New option:  --no-ssm-update (or --dont-upgrade-ssm)
         Or should we change the behavior of --only-this-file and
         --only-files to disable ssm_update checking? 
@@ -79,7 +52,7 @@ Use of uninitialized value $o{"pkg_manager"} in string eq at
 
      * Ability to assign an "action-tag" to packages too.
 
-     * At the end of an SSM run, if an action-tags were activated,
+     * At the end of an SSM run, if an action-tag was activated,
        then the action specified by that action-tag's stanza is
        executed.
 
@@ -103,18 +76,25 @@ Use of uninitialized value $o{"pkg_manager"} in string eq at
     name        = iptables-restart
     action      = /etc/init.d/iptables restart
 
+*   New feature:  test 
 
-*   Handle "Need to reboot".
-    * include "last rebooted" on ssm web page
-    * include "reboot needed as of $date" on ssm web page
-        (if $last_reboot newer than $reboot_needed) then clear
-        see p.example_get_uptime_code code chunk
+    [test]
+    name = test FILE1 -nt FILE2
+    postscript = blah.sh
+    priority = 0
 
-*   Change the name.  Ideas:
+    Ie.:
+        [condition]
+        name = test /boot/grub/grub.conf -nt /lib/modules/qlogic.update_drivers.buildstamp -o ! -f /lib/modules/qlogic.update_drivers.buildstamp 
+        postscript = /usr/local/bin/qlogic.update_drivers && touch /lib/modules/qlogic.update_drivers.timestamp
+
+
+*   Change the name?  Ideas:
         SUCM -> Simple Unix Configuration Manager
         SCM  -> Simple Configuration Manager
         LCM  -> Linux Configuration Manager
         UCM  -> Unix Configuration Manager
+
 
 *   catch <ctrl>+<c> and clean-up
 
@@ -135,16 +115,6 @@ Use of uninitialized value $o{"pkg_manager"} in string eq at
             exit 7;
         }
 
-
-*   [test]
-    name = test FILE1 -nt FILE2
-    postscript = blah.sh
-    priority = 0
-
-    Ie.:
-        [condition]
-        name = test /boot/grub/grub.conf -nt /lib/modules/qlogic.update_drivers.buildstamp -o ! -f /lib/modules/qlogic.update_drivers.buildstamp 
-        postscript = /usr/local/bin/qlogic.update_drivers && touch /lib/modules/qlogic.update_drivers.timestamp
 
 *   Fix bug: ssm may not auto-upgrade with Aptitude.pm
 
@@ -195,19 +165,6 @@ Use of uninitialized value $o{"pkg_manager"} in string eq at
     # following to your options directive.
     #  OPTIONS="-o quiet=1 -o APT::Get::AllowUnauthenticated=true -o aptitude::Cmdline::ignore-trust-violations=yes"
 
-    Also consider just using signing keys for our linus repository.
-
-    The install of 'libpam-radius-auth' is a package that is an example
-    where we need to automate better.  It won't install without
-    interaction, if /etc/pam_radius_auth.conf already exists.
-
-*   Consider using "u" for "upload" or "c" for "commit" instead of "a"
-    for "add".
-
-*   if ( -e /etc/purpose ) {
-        include in log file output
-    }
-
 *   Consider allowing depends and pre/postscripts in [services] sections
 
 *   Maybe just do a "yum install ssm.$arch"?
@@ -234,7 +191,6 @@ Use of uninitialized value $o{"pkg_manager"} in string eq at
 *   postinstall for packages
 *   dont-ask-just-do-it option
         * when a file changes, don't prompt for input, and assume "yes".
-*   Test for svn binary (which svn) prior to adding files.
 *   Should we remove items that are versioned from the list of packages
     to install?  are they not already in the re-install list if the 
     version doesn't match?

@@ -1,3 +1,9 @@
+ssm (0.4.41-1ubuntu1) precise; urgency=low
+
+  * Add support for ssh:// for upstream repos
+
+ -- Brian Elliott Finley <brian@thefinleys.com>  Wed, 14 Nov 2012 09:25:41 -0500
+
 ssm (0.4.40-1ubuntu1) precise; urgency=low
 
   * Dump support for git and svn -- no real need, and much

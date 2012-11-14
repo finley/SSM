@@ -1,6 +1,6 @@
 Name:         ssm
 Summary:      Manage the state of specific files and packages on a system.
-Version:      0.4.40
+Version:      0.4.41
 Release:      1
 BuildArch:    noarch
 Group:        System Environment/Applications
@@ -71,6 +71,9 @@ rm -f $RPM_BUILD_ROOT/%{_prefix}/sbin/ssm_web-report    # This requires deps uns
 #   sh echo -n "* " ; date +'%a %b %d %Y - brian@thefinleys.com'
 #
 %changelog -n ssm
+* Wed Nov 14 2012 - brian@thefinleys.com
+- v0.4.41
+- Add support for ssh:// for upstream repos
 * Wed Nov 07 2012 - brian@thefinleys.com
 - v0.4.40
 - Dump support for git and svn -- no real need, and much complication.
