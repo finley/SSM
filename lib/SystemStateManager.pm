@@ -3331,6 +3331,17 @@ sub copy_file_to_upstream_repo {
         ssm_print qq(Success!\n);
         ssm_print qq(\n);
 
+        #
+        # Chmod to ensure client style access to repos
+        #
+        $cmd = qq(ssh $repo_host chmod 644 $destination_file);
+        ssm_print qq(Make sure perms allow access:\n);
+        ssm_print qq(  $cmd\n);
+        !system($cmd) or die("Couldn't run $cmd\n");
+        ssm_print qq(Success!\n);
+        ssm_print qq(\n);
+
+
     }
     #
     # For URL's of type "file://"
