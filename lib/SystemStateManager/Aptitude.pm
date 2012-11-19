@@ -41,6 +41,11 @@ use SystemStateManager qw(ssm_print run_cmd);
 #   get_pkgs_provided_by_pkgs_from_state_definition
 #   get_pkgs_that_pkg_manager_says_to_upgrade
 #   get_running_kernel_pkg_name
+#   install_pkgs
+#   reinstall_pkgs
+#   remove_pkgs
+#   upgrade_pkgs
+#   upgrade_ssm
 #
 ################################################################################
 
