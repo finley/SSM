@@ -1,0 +1,4 @@
+ssm
+===
+
+Simple State Manager
