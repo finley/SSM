@@ -1,0 +1,264 @@
+#!/usr/bin/perl -w
+
+#
+# $Id: ssm 362 2010-07-28 17:26:13Z finley $
+#  vi:set filetype=perl:
+#
+# Copyright (C) 2006 Brian Elliott Finley
+#
+
+use strict;
+use Getopt::Long;
+use File::Basename;
+
+use lib "/usr/lib/ssm";
+use SystemStateManager;
+
+our %o;
+
+# Do this before GetOptions mucks up ARGV. -BEF-
+store_invocation_command();
+
+GetOptions( 
+    "help"                      => \$o{help},
+    "version"                   => \$o{version},
+    "state-definition-file=s"   => \$o{definition_file},
+    "sync-state"                => \$o{sync_state},
+    "yes"                       => \$o{yes},
+    "no"                        => \$o{answer_no},
+    "debug"                     => \$o{debug},
+    "only-packages"             => \$o{only_packages},
+    "only-files"                => \$o{only_files},
+    "only-this-file=s@"         => \$o{only_this_file},
+    "analyze-config"            => \$o{analyze_config},
+) or usage() and exit(1);
+
+my $error_level = 0;
+my $changes_made = 0;
+my $prior_changes_made = 'monkey';
+
+validate_options();
+main();
+
+exit $error_level;
+
+
+################################################################################
+#
+#   Subroutines
+#
+sub main {
+
+    # Iterate as long as changes are happening each go-round. -BEF-
+    until("$changes_made" eq "$prior_changes_made") {
+        $prior_changes_made = $changes_made;
+        ($error_level, $changes_made) = take_action();
+        if( $main::o{debug} ) { 
+            ssm_print "ssm:main() receiving:\n";
+            ssm_print "  \$error_level:  $error_level\n";
+            ssm_print "  \$changes_made: $changes_made\n";
+            ssm_print "\n";
+        }
+
+        # If --no, then there's no point in looping.  Exit here. -BEF-
+        last if($o{answer_no});
+    }
+
+    ssm_print "-------------------------------\n";
+    ssm_print "Total outstanding changes: $error_level\n";
+    if($error_level > 0) {
+        ssm_print qq(\n);
+        ssm_print qq(         Please check the output above, and address anything that is\n);
+        ssm_print qq(         "Not OK", then give it another whirl.\n);
+    }
+    ssm_print qq(\n);
+
+    email_log_file();
+
+    return 1;
+}
+
+
+sub take_action {
+
+    my $error_level = read_definition_file();
+    my $changes_made = 0;
+
+    if($o{sync_state}) {
+        ($error_level, $changes_made) = sync_state();
+        if( $main::o{debug} ) { 
+            ssm_print "ssm:take_action() receiving:\n";
+            ssm_print "  \$error_level:  $error_level\n";
+            ssm_print "  \$changes_made: $changes_made\n";
+            ssm_print "\n";
+        }
+
+    }
+    return ($error_level, $changes_made);
+}
+
+
+sub validate_options {
+
+    # Can't use ssm_print in here -- not initialized yet. -BEF-
+
+    if($o{'help'})    { usage()   and exit(0); }
+    if($o{'version'}) { version() and exit(0); }
+
+    unless( user_is_root() ) {
+        usage();
+        print "\n";
+        print "Must run as root!\n";
+        print "\n";
+        exit 1;
+    }
+
+    unless($o{sync_state} or $o{analyze_config}) { 
+        usage();
+        print "\n";
+        print "Try one of the following:\n";
+        print "\n";
+        print "  --sync-state\n";
+        print "  --analyze-config\n";
+        print "\n";
+        exit(1);
+    }
+
+    if($o{sync_state} and $o{analyze_config}) { 
+        print "\n";
+        print "INFO:    The --analyze-config option implies --sync-state.  In this case,\n";
+        print "         the --sync-state option is unnecessary.  Proceeding anyway...\n";
+        print "\n";
+        sleep 1;
+    }
+
+
+    if($o{only_files} and $o{only_packages}) { 
+        usage();
+        print "\n";
+        print "The --only-files and --only-packages options conflict.  Use one or the other.\n";
+        print "\n";
+        exit(1);
+    }
+
+    if( defined(@{$o{only_this_file}}) and $o{only_packages}) { 
+        usage();
+        print "\n";
+        print "The --only-this-file and --only-packages options conflict.  Use one or the other.\n";
+        print "\n";
+        exit(1);
+    }
+
+    if( defined(@{$o{only_this_file}}) and $o{only_files}) { 
+        print "\n";
+        print "INFO:    The --only-this-file implies --only-files.  In this case,\n";
+        print "         the --only-files option is unnecessary.  Proceeding anyway...\n";
+        print "\n";
+        sleep 1;
+    }
+
+    if($o{yes} and $o{answer_no}) { 
+        usage();
+        print "\n";
+        print "The --yes and --no options conflict.  Use one or the other.\n";
+        print "\n";
+        exit(1);
+    }
+
+    if($o{yes} and $o{analyze_config}) { 
+        usage();
+        print "\n";
+        print "The --yes and --analyze-config (implies --no) options conflict.  Use one or the other.\n";
+        print "\n";
+        exit(1);
+    }
+
+    if($o{analyze_config}) { 
+        $o{sync_state} = 1; 
+        $o{answer_no} = 1; 
+    }
+
+    return 1;
+}
+
+
+sub usage {
+    my $progname = basename($0);
+    version();
+    print <<EOF;
+SYNOPSIS
+    $progname [OPTIONS...]
+
+DESCRIPTION
+    $progname 
+
+OPTIONS (options can be presented in any order and may be abbreviated)
+ --help             
+    Display this output.
+
+ --version          
+    Display version and copyright information.
+
+ --sync-state
+    Bring this machine's state in sync with it's state definition file.
+
+ --only-packages
+    Only sync packages.  Disregard files.
+
+ --only-files
+    Only sync files.  Disregard packages.
+
+ --only-this-file FILE [--only-this-file FILE...]
+    Only sync this particular file.  Disregard packages.
+
+ --state-definition-file URI
+    Where URI is the location of the state definition file you want to use
+    with this client.  The URI can be in one of the following forms:
+
+         http://server.example.com/my_OU/myhostname.example.com
+        https://server.example.com/my_OU/i686-smp-desktops.definition
+          ftp://server.example.com/my_OU/fabrication-floor-appliances
+         file:///etc/ssm/localhost
+
+    Defaults to the URI specified in /etc/ssm/client.conf.
+
+ --yes
+    Answer "yes" to all questions.
+
+    Note: Does not install packages that are undefined, even if the 
+          package manager wants to install them.  Must go interactive
+          (omit --yes) to be prompted for installation of undefined 
+          packages.
+
+ --no
+    Answer "no" to all questions.  Don't make any changes to the system.
+    (Well, if a newer version is available, it will still upgrade the
+    'ssm' package itself.)
+
+ --debug
+    Show each command as it is being run.
+
+ --analyze-config
+    Output details about where config elements are defined, and what
+    their priorities are.  Implies the options --sync-state and --no.
+
+Report bugs, and make suggestions to: 
+
+    Brian Elliott Finley <brian\@thefinleys.com>
+
+EOF
+
+    return 1;
+}
+
+sub store_invocation_command {
+
+    my $cmd = "$0";
+    foreach(@ARGV) {
+        $cmd .= " $_";
+    }
+
+    $o{invocation_command} = $cmd;
+
+    return 1;
+}

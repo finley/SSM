@@ -1,0 +1,9 @@
+See NOTES.design
+
+Makefile targets of note include:
+    install
+    release
+    rpms
+    debs
+    tarball
+

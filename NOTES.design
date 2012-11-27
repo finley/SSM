@@ -1,0 +1,374 @@
+#
+#   $Id $
+#    vi:set filetype=text tw=72:
+#
+#   Humorous name suggestions (BF for Brian Finley, of course):
+#       BFEngine
+#       BFCfg
+#
+#   Less humorous name possibilities:
+#       System State Manager
+#       Finley Config
+#
+#   This is the Initial Design Document
+#
+
+Is there any other software that does something similar?
+
+What features does bcfg have that are important to me?
+    - Tell me if a system needs packages updated
+    - Update packages on a system if I say so
+    - Tell me if a system needs local files updated
+    - Update local files on a system if I say so
+    - Web based status of machines
+
+What features does bcfg have that are not so important to me?
+    - Requires version definition for every single package on a machine
+    - Manages run states of init scripts
+    - Sshbase
+        - This is nifty, but I could live without it
+        - Very useful on clusters, not so much in my environment
+            - re-installation of machines is rare
+
+What features does it not have that I need?
+    - User interface
+        - Web based front end
+    - Multi-Adminable
+        - Distinct admin domains
+    - Easy to use
+    - Safe
+
+How much effort would it take for me to create a system that did just what I needed?
+    - do a time estimate after completing initial design (below)
+
+If I were to design a system to do just the things that I need, what would it look like?
+
+Server side
+---------------------------------------------------------------------
+  - relational database as the data store
+      - MySQL (probably; but using standard SQL so could work with
+        others)
+  - no daemon
+  - PHP scripts as User Interface for configuring systems
+  - PHP scripts would generate client state definition files on demand,
+    Ie: when a user clicks "Generate Now" in the GUI 
+  - Scaleable - No dependence on a single daemon for information
+  - Highly Available
+      - client state definition files available even if daemon is dead
+        (as compared to bcfg2 -- no daemon used in this case)
+      - client state definition files can be available across multiple web 
+        servers
+      - User Interface can be available across multiple web
+        servers
+      - MySQL backend can be in a replicated or an HA clustered
+        configuration.
+      - Even if a particular server side config breaks the client
+        state definition file generation code, all other clients are still
+        able to connect and use previously generated files.
+  - web front-end for administering the system
+    - initial system creation via web front-end (ala mediawiki)
+    - templates tables
+        - top level admin can add templates to the templates tables
+        - other admins can copy templates from templates tables to
+          their local OU tables.
+  - OU (Organizational Unit) structure from the get-go
+    - Each OU would have
+        - an isolated priviledges model
+        - seperate tables in the database
+        - seperate base directory structure in http space
+
+
+
+Client side
+---------------------------------------------------------------------
+  - client written in perl (maybe python)
+  - client reads config file (/etc/system-state-manager/client.conf) and
+    consumes the state definition file which is located by the URI as indicated
+    by the client.conf file.  Example URIs could be:
+    - http://server/OU/FQDN
+    - https://server/OU/FQDN
+    - ftp://server/OU/FQDN
+    - file:///etc/system-state-manager/FQDN
+  - state definition file is in a human readable format
+  - files (see Files section below)
+  - reports state to server via POST (or maybe GET)
+  - each client can have a seperate username/password for authenticating
+    to the config server
+    - use any underlying apache auth mechanism
+  - has an interactive mode, prompting for (y/N) before making each
+    change
+
+Packages
+---------------------------------------------------------------------
+  - packages updated using native capabilities
+      - apt-get
+      - yum (instead of rpm)
+      - up2date (instead of rpm)
+      - include solaris?
+  - complete package list provided in state definition file
+  - most recent version of available packages installed
+      - except when explicitly specified by package name and version
+  - example package info in config file
+
+      #
+      # Install the latest version of $name
+      # $name
+      #
+      # Install this particular $version of $name
+      # $name  $version
+
+      [packages]
+      apache2
+      linux-image-686  2.6.12.16.1
+      rsync
+      ssh-krb5
+
+
+Files
+---------------------------------------------------------------------
+  - installed before package updates are done
+    - just like bcfg2
+  - source and dest files compared via md5sum
+  - md5sum info included in state definition file
+  - able to handle soft links, device files, etc.
+
+  - Example for an ASCII text file
+
+    [global]
+    base_uri = https://configserver/MyOU/
+
+    [file]
+    name = /etc/passwd
+    mode = 0644
+    owner = root
+    group = root
+    md5sum = 47a84a7d3da763cecb09e549a629d8ff
+
+    - In the example above, all 5 items in the [file] section should be
+      self explanatory.
+    - However, what is interesting, is how the md5sum is derived, and
+      where the source file is stored.  The "base_uri" setting, in the
+      [global] section, specifies the root for all client consumed files
+      for all machines belonging to a given OU.
+      - The files in here are managed by the server
+      - The files in here are generated files
+      - The source for these files may be in one or more pieces that 
+        can be combined together in various ways through the UI.  
+        
+        Ie:
+        - passwd.header
+        - passwd.bobs_group_users
+        - passwd.nis_footer
+
+        or simply:
+        - passwd
+
+      - Prior to generating a client's state definition file, the server will
+        generate any installable files.  That process is:
+        - Create (or verify) directory structure in the OU that matches
+          the filename.  
+
+            Ie: mkdir -p ./MyOU/etc/password/
+
+        - Combine the source files together in the appropriate way,
+          forming a tmp file.
+        - Determine the md5sum of the tmp file and move it into the
+          directory matching the installable file's name, giving the
+          generated file a name that matches it's md5sum.
+
+            Ie: ./MyOU/etc/passwd/47a84a7d3da763cecb09e549a629d8ff
+
+        If a file with that md5sum already exists, the existing file is
+        left in place (doesn't really matter though, now does it?)
+
+      - Even if dozens of machines have custom files generated for them,
+        if they all end up with the same md5sum, only one file lives on
+        the server.
+
+      - Because the result is a real file, a curious admin can examine
+        it directly, prior to updating a client.
+
+
+  - Example for a binary file
+
+    [global]
+    base_uri = https://configserver/MyOU/
+
+    [file]
+    name = /sbin/ifconfig
+    mode = 0755
+    owner = root
+    group = root
+    md5sum = 7afa5611784ee4373b7f8b25e6c34cd4
+
+    - In this example, everything is the same as in the example for an
+      ASCII text file, except that there would typically be only one
+      source file.  Everything else is handled in exactly the same way.
+
+
+  - Example for a special file
+
+    [global]
+    base_uri = https://configserver/MyOU/
+
+    [file]
+    name = /dev/md0
+    mode = 0755
+    owner = root
+    group = root
+    #
+    # Type can be one of: block, character, fifo, softlink, or hardlink
+    type = block
+    major = 9
+    minor = 0
+
+    - In the previous examples, if "type" is not specified, a "regular"
+      file is assumed, and an md5sum must also be specified.
+    - In the case of special files, additional attributes are required.
+      - For block, character, and fifo files, a major and minor number
+        must be specified.  If a device file of this name, with the
+        right attributes is already in place, it is left alone, 
+        otherwise it is created.
+      - For softlink and hardlink files, the additional attribute of
+        "target" must be specified, where "target" is the file that
+        should be linked to.
+        - softlink files are verified with readlink().
+        - hardlink files are verified by obtaining the inode of the file
+          and it's target with stat(), then comparing the two.
+
+    
+Check-in Records
+---------------------------------------------------------------------
+- Each time a client checks in, if there are any differences between the
+  client state and the desired state, these differences will be sent to
+  the config server, and stored in the database.
+
+  - State definition file URI
+  - Package Diffs
+    - Simple listing of current and desired packages/versions.  Sample
+      table info:
+
+      timestamp             package     needs
+      -------------------   -------     -----
+      2006.04.24:10:05:00   rsync       update
+      2006.04.24:10:05:00   lynx        update
+      2006.04.24:10:05:00   nougate     remove
+      2006.04.24:10:05:00   caramel     install
+
+  - File diffs
+    - For any files that are managed, do a diff of the file and record
+      the output as a blob.  "diff -urN file_current file_target":
+
+      timestamp            file        diff
+      2006.04.24:10:05:00  /etc/hosts  <diff blob>
+
+- Some of the goals for the "Check-in Records" include:
+
+    - Summary view of which machines met their target state when they
+      last checked in.
+    - Click on a client to see it's current list of discrepancies.
+        - Option to choose a different check-in time from the records.
+    - Click on a specific discrepancy to see the details.
+        - Option to choose a different check-in time from the records.
+
+    - Coding notes:
+
+        sub client_state_summary()
+        #
+        # clients are clickable -> discrepancy_summary($client)
+
+        sub discrepancy_summary($client)
+        #
+        # list of discrepancies for $client, as of last check-in
+        # - each discrepancy is clickable for details
+        #   -> discrepancy_details($client,$timestamp,$object)
+        # includes the check-in selector drop-down box
+        # - let's you choose from all available check-in times
+        #   -> discrepancy_summary($client,$timestamp)
+
+        sub discrepancy_details($client,$timestamp,$object)
+        #
+        # each discrepancy is clickable for details
+        # includes the check-in selector drop-down box
+        # - let's you choose from all available check-in times
+        #   -> discrepancy_details($client,$timestamp,$object)
+
+        sub checkin_selector($client)
+         or
+        sub checkin_selector($client,$object)
+        #
+        # used as a form object
+        # creates a drop-down list of check-in times for
+        #   $client[,$object]
+
+        sub get_package_info($client,$package[,$timestamp]);
+        #
+        # perhaps done with javascript
+        # invoked to auto-fill a package definition form
+
+        sub get_package_list($client[,$timestamp]);
+        #
+        # perhaps done with javascript
+        # invoked, if desired, to auto-fill a package bundle form
+
+        sub remove_from_bundle($bundle_name,$packages);
+        #
+        # removes packages, selected on a bundle form, from the bundle
+
+
+User interface
+------------------------------------------------------------------------
+* Configuration objects
+  - Users define configuration objects via the UI and give them a name.
+  - Configuration objects may be copied and saved with other names.
+  - Admins may make their configuration objects visible (ro) outside 
+    their OU.
+  - A configuration object may be a file or a package bundle.
+
+    * Package Bundles
+      - Information includes:
+        * Object name
+        * Object comments
+        * package names [and versions, if desired for certain packages]
+      - Package information may be entered via a form.  Information can
+        be auto-populated ( get_package_list(), get_package_info() )
+        using information from an existing client.  Information can also
+        be added by pasting into a web form (one package per line,
+        optionally followed by a space and version information).
+      - Packages in a bundle have check boxes beside them, allowing
+        selection of packages for removal from the bundle.
+      - Packages in a bundle are clickable, allowing for editing of
+        package details.
+
+    * Files
+      - Information includes:
+        * Object name
+        * Object comments
+      - File objects are added by form.  The files themselves, or file
+        pieces, may be uploaded directly from the administrator's
+        machine via browser, or by specifying a URL from which the
+        config server should pull the file.
+
+* Profiles
+  - Users define profiles via the UI and give them a name.
+  - Profiles may be copied and saved with other names.
+  - Admins may make their profiles visible (ro) outside their OU.
+  - A profile is simply a list of configuration objects.
+  - Each profile may be subscribed to by many machines.
+  - Each managed machine may be subscribed to one, but only one profile.
+
+
+
+Database Design
+----------------------
+- object oriented
+    - files as objects
+    - packages lists as objects
+        - track when a package list is added and by whom
+    - service states as objects
+- objects are associtated with one or more hosts
+    - if an object changes, that change is consumed by all associated hosts
+
+
+
+

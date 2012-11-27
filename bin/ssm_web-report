@@ -1,0 +1,361 @@
+#!/usr/bin/perl -w
+
+#
+# Copyright (C) 2006 Brian Elliott Finley
+#
+
+use strict;
+use Mail::MboxParser;
+use Getopt::Long;
+use File::Basename;
+
+use lib "/usr/lib/ssm";
+use SystemStateManager;
+
+our %o;
+
+GetOptions( 
+    "h|help"                    => \$o{help},
+    "version"                   => \$o{version},
+    "html-dir|htmldir=s"        => \$o{htmldir},
+    "inbox=s"                   => \$o{inbox},
+    "purge-inbox"               => \$o{purgeinbox},
+    "debug"                     => \$o{debug},
+) or usage() and exit(1);
+
+validate_options();
+
+my $file;
+my $index_file = $o{htmldir} . '/index.html';
+my $scoreboardfile = $o{htmldir} . '/scoreboard';
+my $packages_of_security_concern = $o{htmldir} . '/packages_of_security_concern';
+unless($o{inbox}) {
+    $o{inbox} = $o{htmldir} . "/INBOX";
+}
+
+unless(-d $o{htmldir}) {
+    mkdir($o{htmldir}, 2775);
+}
+
+my %sb_total;           # scoreboard total
+my %sb_pkgs_to_in;      # scoreboard packages to install
+my %sb_pkgs_to_ri;      # scoreboard packages to re-install
+my %sb_pkgs_to_rm;      # scoreboard packages to remove
+my %sb_pkgs_to_up;      # scoreboard packages to upgrade
+my %sb_date;            # scoreboard date of last checkin
+my %sb_pkg_of_concern;  # scoreboard packages of concern for this host?
+my @clean;
+my @dirty;
+my @index_file_contents;
+
+# Read scoreboard
+$file = $scoreboardfile;
+if(-e $file) {
+    open(FILE,"<$file") or die("Couldn't open $file for reading");
+    while(<FILE>) {
+        next if( m/^(#|$|,|\s)/ );
+
+        chomp;
+
+        # $host, $total_outstanding_changes, $pkgs_to_install, $pkgs_to_reinstall, $pkgs_to_remove, $pkgs_to_upgrade
+        my ($host, $total, $pkgs_to_in, $pkgs_to_ri, $pkgs_to_rm, $pkgs_to_up, $date, $pkg_of_concern) = split(/,/);
+        unless(defined $pkg_of_concern) { $pkg_of_concern = 'no'; }
+
+        $sb_total{$host}            = $total;
+        $sb_pkgs_to_in{$host}       = $pkgs_to_in;
+        $sb_pkgs_to_ri{$host}       = $pkgs_to_ri;
+        $sb_pkgs_to_rm{$host}       = $pkgs_to_rm;
+        $sb_pkgs_to_up{$host}       = $pkgs_to_up;
+        $sb_date{$host}             = $date;
+        $sb_pkg_of_concern{$host}   = $pkg_of_concern;
+    }
+    close(FILE);
+}
+
+# Read package regex
+my $regex = '(';
+$file = $packages_of_security_concern;
+if(-e $file) {
+    open(FILE,"<$file") or die("Couldn't open $file for reading");
+    while(<FILE>) {
+        next if( m/^(#|$|\s)/ );
+        chomp;
+        $regex .= $_ . '|';
+    }
+    close(FILE);
+}
+$regex =~ s/\|$//;   # strip off trailing pipe if exists
+$regex .= ')';      # close up regex
+if($regex eq '()') { $regex = undef; }
+
+# Open INBOX
+my $mb = Mail::MboxParser->new(
+    $o{inbox},
+    decode     => 'ALL',
+);
+
+# Iterate through messages, and process
+while (my $msg = $mb->next_message) {
+
+    $msg->header->{subject} =~ m/^SSM:\s+(.*)$/;
+    my $host = $1;
+    $sb_pkg_of_concern{$host} = 'no'; 
+
+    my $file = "$o{htmldir}/$host.txt";
+    umask 0002;
+    open(FILE,">$file") or die("Couldn't open $file for writing");
+
+        my @body = split(/\n/, $msg->body($msg->find_body) );
+        foreach(@body) {
+            chomp;
+            print FILE "$_\n";
+
+            # Outstanding changes:
+            # -------------------------------
+            # - Packages to install:     3
+            # - Packages to re-install:  0
+            # - Packages to remove:      1
+            # - Packages to upgrade:     2
+            # - Other:                   3
+            # -------------------------------
+            # Total outstanding changes: 9
+            #
+            if( m/^TIMESTAMP:\s+(.*)/) {
+                $sb_date{$host} = $1; 
+            } elsif( m/^- Packages to install:\s+(\d+)/) {
+                $sb_pkgs_to_in{$host} = $1; 
+            } elsif( m/^- Packages to re-install:\s+(\d+)/) {
+                $sb_pkgs_to_ri{$host} = $1; 
+            } elsif( m/^- Packages to remove:\s+(\d+)/) {
+                $sb_pkgs_to_rm{$host} = $1; 
+            } elsif( m/^- Packages to upgrade:\s+(\d+)/) {
+                $sb_pkgs_to_up{$host} = $1; 
+            } elsif( m/^Total outstanding changes:\s+(\d+)/) {
+                $sb_total{$host} = $1; 
+            }
+
+            # Look for packages of concern
+            if( defined $regex ) {
+                if( m/$regex/o ) {
+                    $sb_pkg_of_concern{$host} = 'yes'; 
+                }
+            }
+        }
+    close(FILE);
+}
+
+# Write scoreboard
+$file = $scoreboardfile;
+umask 0002;
+open(FILE,">$file") or die("Couldn't open $file for writing");
+foreach my $host (sort keys %sb_total) {
+    print FILE "$host,$sb_total{$host},$sb_pkgs_to_in{$host},$sb_pkgs_to_ri{$host},$sb_pkgs_to_rm{$host},$sb_pkgs_to_up{$host},$sb_date{$host},$sb_pkg_of_concern{$host}\n";
+
+    if($sb_total{$host} == 0) {
+        push @clean, $host; 
+    } else {
+        push @dirty, $host;
+    }
+}
+close(FILE);
+
+my $systems_managed_count = scalar(@clean) + scalar(@dirty);
+
+# Create index.html
+push @index_file_contents, add_header($systems_managed_count);
+push @index_file_contents, add_dirty_table(@dirty);
+push @index_file_contents, qq(<BR>\n);
+push @index_file_contents, add_clean_table(@clean);
+push @index_file_contents, add_footer();
+
+# Print out index.html
+$file = $index_file;
+umask 0002;
+open(FILE,">$file") or die("Couldn't open $file for writing");
+    print FILE @index_file_contents;
+close(FILE);
+
+# Purge inbox if requested by truncation.
+if( defined $o{purgeinbox} ) {
+    $file = $o{inbox};
+    umask 0007;
+    open(FILE,">$file") or die("Couldn't open $file for writing");
+    close(FILE);
+}
+
+exit 0;
+
+
+########################################################################
+#
+#   Subroutines
+#
+
+sub add_dirty_table {
+
+    my @hosts = @_;
+
+    my $title = "Dirty (" . scalar(@hosts) . ")";
+    my $title_color = '#FF7F50';   # Coral
+    my @array;
+
+    push @array, qq(<TABLE style="border: 1px solid gray" width="70%" bgcolor="#F5F5F5" border="0" cellpadding="5" cellspacing="0">\n);
+    push @array, qq( <TR>\n);
+    push @array, qq(  <TH style="border: 1px solid gray" BGCOLOR="$title_color" ALIGN="left">$title</TH>\n);
+    push @array, qq(  <TD style="border: 1px solid gray" BGCOLOR="$title_color" ALIGN="center" FONT="small">Total</TD>\n);
+    push @array, qq(  <TD style="border: 1px solid gray" BGCOLOR="$title_color" ALIGN="center" FONT="small">Upgrade</TD>\n);
+    push @array, qq(  <TD style="border: 1px solid gray" BGCOLOR="$title_color" ALIGN="center" FONT="small">Install</TD>\n);
+    push @array, qq(  <TD style="border: 1px solid gray" BGCOLOR="$title_color" ALIGN="center" FONT="small">Remove</TD>\n);
+    push @array, qq(  <TD style="border: 1px solid gray" BGCOLOR="$title_color" ALIGN="center" FONT="small">Re-install</TD>\n);
+    push @array, qq(  <TD style="border: 1px solid gray" BGCOLOR="$title_color" ALIGN="center" FONT="small">Time Stamp</TD>\n);
+    push @array, qq( </TR>\n);
+
+    # Color reference: http://catless.ncl.ac.uk/Lindsay/swatch5.html
+    foreach my $host (@hosts) {
+        my $style = q(style="border: 1px solid gray; color: #000000; background-color: #F5F5F5");    # black on white smoke
+        if($sb_pkg_of_concern{$host} eq 'yes') {
+            $style = q(style="border: 1px solid gray; color: #ffffff; background-color: #FF0000");   # white on red
+        }
+        push @array, qq( <TR>);
+        push @array, qq(<TD $style WIDTH="33%"><A HREF="$host.txt">$host</A></TD>);
+        push @array, qq(<TD $style ALIGN="right">$sb_total{$host}</TD>);
+        push @array, qq(<TD $style ALIGN="right">$sb_pkgs_to_up{$host}</TD>);
+        push @array, qq(<TD $style ALIGN="right">$sb_pkgs_to_in{$host}</TD>);
+        push @array, qq(<TD $style ALIGN="right">$sb_pkgs_to_rm{$host}</TD>);
+        push @array, qq(<TD $style ALIGN="right">$sb_pkgs_to_ri{$host}</TD>);
+        push @array, qq(<TD $style >$sb_date{$host}</TD>);
+        push @array, qq( </TR>\n);
+    }
+
+    # Close it up
+    push @array, qq(</TABLE>\n);
+
+    return @array;
+}
+
+
+sub add_clean_table {
+
+    my @hosts = @_;
+
+    my $title = "Clean (" . scalar(@hosts) . ")";
+    my $title_color = '#7FFF00';   # Chartreuse
+    my @array;
+
+    push @array, qq(<TABLE style="border: 1px solid gray" width="70%" bgcolor="#F5F5F5" border="0" cellpadding="5" cellspacing="0">\n);
+    push @array, qq( <TR><TH style="border: 1px solid gray" BGCOLOR="$title_color" ALIGN="left" COLSPAN="2">$title</TH></TR>\n);
+
+    foreach my $host (@hosts) {
+        push @array, qq( <TR>);
+        push @array, qq(<TD style="border: 1px solid gray"  WIDTH="33%"><A HREF="$host.txt">$host</A></TD>);
+        push @array, qq(<TD style="border: 1px solid gray" >$sb_date{$host}</TD>);
+        push @array, qq( </TR>\n);
+    }
+
+    # Close it up
+    push @array, qq(</TABLE>\n);
+
+    return @array;
+}
+
+
+sub add_header {
+
+    my $systems_managed_count = shift;
+
+    
+    my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time);
+    $year += 1900;
+    $mon  = sprintf("%02d", $mon + 1);
+    print "mon: $mon\n" if(defined $o{debug});
+    $mday = sprintf("%02d", $mday);
+    $hour = sprintf("%02d", $hour);
+    $min = sprintf("%02d", $min);
+    my $datestamp = "$year.$mon.$mday - $hour:$min";
+    print "datestamp: $datestamp\n" if(defined $o{debug});
+
+    my $title = 'System State Manager - Status Page';
+    my $a = <<EOF;
+<HTML>
+<HEAD>
+  <META HTTP-EQUIV="REFRESH" CONTENT="60">
+  <TITLE>$title</TITLE>
+</HEAD>
+<BODY TEXT="#000000" BGCOLOR="#FFFFFF" LINK="#0000E0" VLINK="#8A1A49" ALINK="#ff0000">
+  <FONT FACE="Arial">
+   <H2>$title</H2>
+   <I>$systems_managed_count systems managed, $datestamp</I>
+   <br>
+   <br>
+EOF
+
+    return $a;
+}
+
+sub add_footer {
+
+    my $a = <<'EOF';
+  </FONT>
+</BODY>
+</HTML>
+EOF
+
+    return $a;
+}
+
+sub validate_options {
+
+    if($o{'help'})    { usage()   and exit(0); }
+    if($o{'version'}) { version() and exit(0); }
+
+    unless($o{htmldir}) { 
+        usage();
+        print "\n";
+        print "Try the following:\n";
+        print "\n";
+        print "  --html-dir HTMLDIR\n";
+        print "\n";
+        exit(1);
+    }
+
+    return 1;
+}
+
+
+sub usage {
+    my $progname = basename($0);
+    version();
+    print <<EOF;
+SYNOPSIS
+    $progname [OPTIONS...] --html-dir HTMLDIR
+
+DESCRIPTION
+    $progname 
+
+OPTIONS (options can be presented in any order and may be abbreviated)
+ --help             
+    Display this output.
+
+ --version          
+    Display version and copyright information.
+
+ --html-dir HTMLDIR
+    The name of the directory in which to publish the status report.
+
+ --inbox INBOX
+    The name of the INBOX file, in mbox format, to be parsed for SSM log
+    emails.  Defaults to "\$HTMLDIR/INBOX".
+
+ --purge-inbox
+    Purge the INBOX file after processing.  Leaves INBOX as a zero
+    length file.
+
+
+Report bugs, and make suggestions to: 
+
+    Brian Elliott Finley <brian\@thefinleys.com>
+
+EOF
+
+    return 1;
+}

@@ -1,0 +1,123 @@
+#!/usr/bin/perl -w
+
+#
+#   $Id: ssm_add-file 225 2008-10-03 16:50:08Z finley $
+#
+
+# FILE=$1
+# DIRNAME=`dirname $FILE`
+# MD5SUM=`md5sum $FILE | awk '{print $1}'`
+# 
+# cat $FILE > ${DIRNAME}/${MD5SUM}
+# 
+# echo
+# echo "[file]"
+# echo "name = /${DIRNAME}"
+# echo "type = regular"
+# echo "md5sum = ${MD5SUM}"
+# if [ -e ${DIRNAME}/:info ]; then
+#     cat ${DIRNAME}/:info \
+#     | sed 's/^perms:/mode =/' \
+#     | sed 's/^owner:/owner =/' \
+#     | sed 's/^group:/group =/'
+#     echo "type = regular"
+#     echo
+# fi
+
+use strict;
+use Getopt::Long;
+use File::Basename;
+
+use lib "/usr/lib/ssm";
+use SystemStateManager;
+
+our %o;
+
+GetOptions( 
+    "help"                      => \$o{help},
+    "version"                   => \$o{version},
+    "yes"                       => \$o{yes},
+    "ou-path=s"                 => \$o{ou_path},
+    "file=s"                    => \$o{file_to_add},
+    "comment=s"                 => \$o{comment},
+    "debug"                     => \$o{debug},
+) or usage() and exit(1);
+
+validate_options();
+main();
+
+################################################################################
+#
+#   Subroutines
+#
+sub main {
+
+    add_file_to_repo(@ARGV);
+
+    return 1;
+}
+
+sub validate_options {
+
+    if($o{'help'})    { usage()   and exit(0); }
+    if($o{'version'}) { version() and exit(0); }
+
+    if( !$o{ou_path} or !$o{file_to_add} or !$o{comment} ) {
+        usage();
+        print "\n";
+        print "All three of --ou-path, --comment, and --file must be specified.\n";  
+        print "\n";
+        exit(1);
+    }
+
+    return 1;
+}
+
+
+sub usage {
+    my $progname = basename($0);
+    version();
+    print <<EOF;
+SYNOPSIS
+    $progname [OPTIONS...] --ou-path OU_PATH --file FILE CHUNK [CHUNK...]
+
+DESCRIPTION
+    Takes one or more file CHUNKs and adds the resultant FILE to the
+    System State Manager file repository for organizational unit "OU".
+
+OPTIONS (options can be presented in any order and may be abbreviated)
+ --help             
+    Display this output.
+
+ --version          
+    Display version and copyright information.
+
+ --yes
+    Answer yes to all questions.
+
+ --ou-path OU_PATH
+    Where OU_PATH is the absolute path to the base directory for the
+    organizational unit that will own this file.
+
+ --comment "COMMENT"
+    Where "COMMENT" is a very short sentence describing the resultant
+    file.
+
+ --file FILE
+    Where FILE is the absolute name that this file should have when
+    installed on a client.
+
+ --debug
+    Show each command as it is being run.
+
+
+Report bugs, and make suggestions to: 
+
+    Brian Elliott Finley <brian\@thefinleys.com>
+
+EOF
+
+    return 1;
+}
+
+

@@ -1,0 +1,14 @@
+#
+#   $Id: CREDITS 35 2006-05-08 21:27:57Z finley $
+#
+
+N: Brian Elliott Finley
+E: brian@thefinleys.com
+D: creator
+D: upstream maintainer
+
+N: Jim Pirzyk
+E: pirzyk@uiuc.edu
+D: author of Unix::Mknod
+D: Unix::Mknod documentation fixes that allowed us to use his code
+
