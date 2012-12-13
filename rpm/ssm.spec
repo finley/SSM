@@ -1,6 +1,6 @@
 Name:         ssm
 Summary:      Manage the state of specific files and packages on a system.
-Version:      0.4.42
+Version:      0.4.43
 Release:      1
 BuildArch:    noarch
 Group:        System Environment/Applications
@@ -71,6 +71,13 @@ rm -f $RPM_BUILD_ROOT/%{_prefix}/sbin/ssm_web-report    # This requires deps uns
 #   sh echo -n "* " ; date +'%a %b %d %Y - brian@thefinleys.com'
 #
 %changelog -n ssm
+* Thu Dec 13 2012 - brian@thefinleys.com
+- v0.4.43
+- Improve do_you_want_me_to() to only present relative options based on
+  the activity in question (Ie.: pkg sync vs. file sync).
+- Improve yum dependency resolution to process STDERR as well as STDOUT
+  from yum commands.
+- Simplify options and modify help verbiage.
 * Thu Dec 13 2012 - brian@thefinleys.com
 - v0.4.42
 - Fix regex to match and upgrade ssm if appropriate.
