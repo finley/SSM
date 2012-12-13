@@ -156,7 +156,7 @@ sub get_pkgs_that_pkg_manager_says_to_upgrade {
     #
     open(OUTPUT,"$cmd|");
         while(<OUTPUT>) {
-            if( m/^(\S+)\s+(\S+)\s+updates/ ) {
+            if( m/^(\S+)\s+\d\S+-\d(\s+|\S+)\s+\S+/ ) {
                 #ssm_print ">>   $1\n" if( $main::o{debug} );
                 $hash{$1} = 1;
             }
