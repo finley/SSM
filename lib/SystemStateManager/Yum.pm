@@ -271,7 +271,7 @@ sub get_pkg_dependencies {
     print FILE "transaction solve\n";
     print FILE "exit\n";
     close(FILE);
-    my $cmd = "yum shell $file";
+    my $cmd = "yum shell $file 2>&1";
     ssm_print ">>   $cmd\n" if( $main::o{debug} );
 
     open(OUTPUT,"$cmd|") or die;

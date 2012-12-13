@@ -1181,20 +1181,31 @@ sub run_cmd {
 sub do_you_want_me_to {
 
     my $msg = shift;
+    my $prompts = shift;
 
-    my $explanation;
-    if( ! defined $main::o{answer_implications_explained} ) {
+    if(defined $prompts) { 
+        my $explanation;
+        if( ! defined $main::o{answer_implications_explained} ) {
 
-        $explanation .= qq/\n/;
-        $explanation .= qq/           N -> "No.  Don't do anything." (This is the default -- if you just hit <Enter>)."\n/;
-        $explanation .= qq/           y -> "Yes.  Execute all actions stated under 'Need to:' above."\n/;
-        $explanation .= qq/           d -> "Show me a diff, then ask me again."\n/;
-        $explanation .= qq/           a -> "Add this file to the upstream_repo."\n/;
-        $explanation .= qq/\n/;
+            $explanation .= qq/\n/;
+            if($prompts =~ m/n/) {
+                $explanation .= qq/           N -> "No.  Don't do anything." (This is the default -- if you just hit <Enter>)."\n/;
+                }
+            if($prompts =~ m/y/) {
+                $explanation .= qq/           y -> "Yes.  Execute all actions stated under 'Need to:' above."\n/;
+                }
+            if($prompts =~ m/d/) {
+                $explanation .= qq/           d -> "Show me a diff, then ask me again."\n/;
+                }
+            if($prompts =~ m/a/) {
+                $explanation .= qq/           a -> "Add this file to the upstream_repo."\n/;
+                }
+            $explanation .= qq/\n/;
 
-        $msg = $explanation . $msg;
+            $msg = $explanation . $msg;
 
-        $main::o{answer_implications_explained} = 'yes';
+            $main::o{answer_implications_explained} = 'yes';
+        }
     }
 
     ssm_print $msg if(defined $msg);
@@ -1303,7 +1314,7 @@ sub do_softlink {
             if( do_you_want_me_to() eq 'yes' ) { 
                 $fix_it = 1;
             } else {
-                ssm_print "         Ok, skipping this step.\n";
+                ssm_print "         Ok, skipping this step.\n\n";
                 $ERROR_LEVEL++;
                 if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
                 sleep 1;
@@ -1403,7 +1414,7 @@ sub do_special_file {
             if( do_you_want_me_to() eq 'yes' ) { 
                 $fix_it = 1;
             } else {
-                ssm_print "         Ok, skipping this step.\n";
+                ssm_print "         Ok, skipping this step.\n\n";
                 $ERROR_LEVEL++;
                 if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
                 sleep 1;
@@ -1641,7 +1652,7 @@ sub do_unwanted_file {
             if( do_you_want_me_to() eq 'yes' ) { 
                 $fix_it = 1;
             } else {
-                ssm_print "         Ok, skipping this step.\n";
+                ssm_print "         Ok, skipping this step.\n\n";
                 $ERROR_LEVEL++;
                 if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
                 sleep 1;
@@ -1720,7 +1731,7 @@ sub do_chown_and_chmod {
             if( $answer eq 'yes' ) { 
                 $fix_it = 1;
             } else {
-                ssm_print "         Ok, skipping this step.\n";
+                ssm_print "         Ok, skipping this step.\n\n";
                 $ERROR_LEVEL++;
                 if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
                 sleep 1;
@@ -1809,7 +1820,7 @@ sub do_directory {
             if( $answer eq 'yes' ) { 
                 $fix_it = 1;
             } else {
-                ssm_print "         Ok, skipping this step.\n";
+                ssm_print "         Ok, skipping this step.\n\n";
                 $ERROR_LEVEL++;
                 if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
                 sleep 1;
@@ -1927,7 +1938,7 @@ sub do_generated_file {
             if( $answer eq 'yes' ) { 
                 $fix_it = 1;
             } else {
-                ssm_print "         Ok, skipping this step.\n";
+                ssm_print "         Ok, skipping this step.\n\n";
                 $ERROR_LEVEL++;
                 if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
                 sleep 1;
@@ -2033,7 +2044,7 @@ sub do_regular_file {
             } elsif( $answer eq 'add' ) { 
                 _add_file( $file );
             } else {
-                ssm_print "         Ok, skipping this step.\n";
+                ssm_print "         Ok, skipping this step.\n\n";
                 $ERROR_LEVEL++;
                 if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
                 sleep 1;
@@ -2345,7 +2356,7 @@ sub do_hardlink {
             if( do_you_want_me_to() eq 'yes' ) { 
                 $fix_it = 1;
             } else {
-                ssm_print "         Ok, skipping this step.\n";
+                ssm_print "         Ok, skipping this step.\n\n";
                 $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
                 sleep 1;
             }
@@ -2977,7 +2988,7 @@ sub sync_state_remove_packages {
             if( do_you_want_me_to() eq 'yes' ) { 
                 $do_remove = 1;
             } else {
-                ssm_print "  Ok, skipping this step.\n";
+                ssm_print "  Ok, skipping this step.\n\n";
                 sleep 1;
             }
         }
@@ -3083,7 +3094,7 @@ sub sync_state_upgrade_packages {
             if( do_you_want_me_to() eq 'yes' ) { 
                 $do_upgrade = 1;
             } else {
-                ssm_print "  Ok, skipping this step.\n";
+                ssm_print "  Ok, skipping this step.\n\n";
                 sleep 1;
             }
         }
@@ -3188,7 +3199,7 @@ sub sync_state_install_packages {
             if( do_you_want_me_to() eq 'yes' ) { 
                 $do_install = 1;
             } else {
-                ssm_print "  Ok, skipping this step.\n";
+                ssm_print "  Ok, skipping this step.\n\n";
                 sleep 1;
             }
         }
@@ -3229,7 +3240,7 @@ sub sync_state_reinstall_packages {
             if( do_you_want_me_to() eq 'yes' ) { 
                 $do_reinstall = 1;
             } else {
-                ssm_print "  Ok, skipping this step.\n";
+                ssm_print "  Ok, skipping this step.\n\n";
                 sleep 1;
             }
         }
