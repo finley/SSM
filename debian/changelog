@@ -1,3 +1,9 @@
+ssm (0.4.42-1ubuntu1) precise; urgency=low
+
+  * Fix regex to match and upgrade ssm if appropriate.
+
+ -- Brian Elliott Finley <brian@thefinleys.com>  Thu, 13 Dec 2012 11:54:43 -0600
+
 ssm (0.4.41-1ubuntu1) precise; urgency=low
 
   * Add support for ssh:// for upstream repos
