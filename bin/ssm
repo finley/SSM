@@ -1,10 +1,7 @@
 #!/usr/bin/perl -w
 
 #
-# $Id: ssm 362 2010-07-28 17:26:13Z finley $
-#  vi:set filetype=perl:
-#
-# Copyright (C) 2006 Brian Elliott Finley
+# Copyright (C) 2006-2012 Brian Elliott Finley <brian@thefinleys.com>
 #
 
 use strict;
@@ -20,17 +17,17 @@ our %o;
 store_invocation_command();
 
 GetOptions( 
-    "help"                      => \$o{help},
-    "version"                   => \$o{version},
-    "state-definition-file=s"   => \$o{definition_file},
-    "sync-state"                => \$o{sync_state},
-    "yes"                       => \$o{yes},
-    "no"                        => \$o{answer_no},
-    "debug"                     => \$o{debug},
-    "only-packages"             => \$o{only_packages},
-    "only-files"                => \$o{only_files},
-    "only-this-file=s@"         => \$o{only_this_file},
-    "analyze-config"            => \$o{analyze_config},
+    "help"                              => \$o{help},
+    "version"                           => \$o{version},
+    "config|state-definition-file=s"    => \$o{definition_file},
+    "sync|sync-state"                   => \$o{sync_state},
+    "yes"                               => \$o{yes},
+    "no"                                => \$o{answer_no},
+    "debug"                             => \$o{debug},
+    "only-packages"                     => \$o{only_packages},
+    "only-files"                        => \$o{only_files},
+    "only-this-file=s@"                 => \$o{only_this_file},
+    "analyze-config"                    => \$o{analyze_config},
 ) or usage() and exit(1);
 
 my $error_level = 0;
@@ -118,7 +115,7 @@ sub validate_options {
         print "\n";
         print "Try one of the following:\n";
         print "\n";
-        print "  --sync-state\n";
+        print "  --sync\n";
         print "  --analyze-config\n";
         print "\n";
         exit(1);
@@ -126,8 +123,8 @@ sub validate_options {
 
     if($o{sync_state} and $o{analyze_config}) { 
         print "\n";
-        print "INFO:    The --analyze-config option implies --sync-state.  In this case,\n";
-        print "         the --sync-state option is unnecessary.  Proceeding anyway...\n";
+        print "INFO:    The --analyze-config option implies --sync.  In this case,\n";
+        print "         the --sync option is unnecessary.  Proceeding anyway...\n";
         print "\n";
         sleep 1;
     }
@@ -199,28 +196,30 @@ OPTIONS (options can be presented in any order and may be abbreviated)
  --version          
     Display version and copyright information.
 
- --sync-state
+ --sync
     Bring this machine's state in sync with it's state definition file.
 
  --only-packages
-    Only sync packages.  Disregard files.
+    Only sync packages.  Don't sync files.
 
  --only-files
-    Only sync files.  Disregard packages.
+    Only sync files.  Don't sync packages.
 
  --only-this-file FILE [--only-this-file FILE...]
-    Only sync this particular file.  Disregard packages.
+    Only sync this particular file.  Don't sync packages.
 
- --state-definition-file URI
-    Where URI is the location of the state definition file you want to use
-    with this client.  The URI can be in one of the following forms:
+ --config URL
+    Where URL is the location of the configuration file (state
+    definition file) you want to use with this client.  The URL can be
+    in one of the following forms, and the configuration files can be
+    named anything you like:
 
-         http://server.example.com/my_OU/myhostname.example.com
-        https://server.example.com/my_OU/i686-smp-desktops.definition
-          ftp://server.example.com/my_OU/fabrication-floor-appliances
+         http://server.example.com/ssm_repo/myhost.example.com
+        https://server.example.com/ssm_repo/computenodes.conf
+          ftp://server.example.com/ssm_repo/fabrication-floor-appliances
          file:///etc/ssm/localhost
 
-    Defaults to the URI specified in /etc/ssm/client.conf.
+    Defaults to the URL specified in /etc/ssm/client.conf.
 
  --yes
     Answer "yes" to all questions.
@@ -240,7 +239,7 @@ OPTIONS (options can be presented in any order and may be abbreviated)
 
  --analyze-config
     Output details about where config elements are defined, and what
-    their priorities are.  Implies the options --sync-state and --no.
+    their priorities are.  Implies the options --sync and --no.
 
 Report bugs, and make suggestions to: 
 
@@ -262,3 +261,5 @@ sub store_invocation_command {
 
     return 1;
 }
+
+#  vi:set filetype=perl:
