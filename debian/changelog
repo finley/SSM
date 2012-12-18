@@ -1,3 +1,10 @@
+ssm (0.4.45-1ubuntu1) precise; urgency=low
+
+  * Tweak to do_you_want_me_to()
+  * Renaming of things to match name
+
+ -- Brian Elliott Finley <brian@thefinleys.com>  Tue, 18 Dec 2012 15:28:53 -0600
+
 ssm (0.4.44-1ubuntu1) precise; urgency=low
 
   * Further improve do_you_want_me_to() for simpler user interaction.

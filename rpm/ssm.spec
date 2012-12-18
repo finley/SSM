@@ -1,6 +1,6 @@
 Name:         ssm
 Summary:      Manage the state of specific files and packages on a system.
-Version:      0.4.44
+Version:      0.4.45
 Release:      1
 BuildArch:    noarch
 Group:        System Environment/Applications
@@ -59,7 +59,6 @@ rm -f $RPM_BUILD_ROOT/%{_prefix}/sbin/ssm_web-report    # This requires deps uns
 %{_prefix}/sbin/
 %{_prefix}/share/doc/ssm-%{version}/examples/one-of-each.conf
 %{_prefix}/share/doc/ssm-%{version}/examples/tmp/one-regular-file.txt/27abe7c7e2423eddec0839a2d0633e37
-%{_prefix}/share/doc/ssm-%{version}/ChangeLog
 %{_prefix}/share/doc/ssm-%{version}/COPYING
 %{_prefix}/share/doc/ssm-%{version}/CREDITS
 %{_prefix}/share/doc/ssm-%{version}/README
@@ -70,7 +69,12 @@ rm -f $RPM_BUILD_ROOT/%{_prefix}/sbin/ssm_web-report    # This requires deps uns
 #   sh echo -n "* " ; date +'%a %b %d %Y - brian@thefinleys.com'
 #
 %changelog -n ssm
-* Thu Dec 17 2012 - brian@thefinleys.com
+* Tue Dec 18 2012 - brian@thefinleys.com
+- v0.4.45
+- Tweak to do_you_want_me_to()
+- Renaming of things to match name
+* Mon Dec 17 2012 - brian@thefinleys.com
+- v0.4.44
 - Further improve do_you_want_me_to() for simpler user interaction.
 - Re-arranged README file(s).
 * Thu Dec 13 2012 - brian@thefinleys.com
