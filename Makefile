@@ -64,6 +64,8 @@ install:  all
 	install -m 644 $(TOPDIR)/ChangeLog  	${docdir}
 	install -m 644 $(TOPDIR)/CREDITS  	${docdir}
 	install -m 644 $(TOPDIR)/COPYING  	${docdir}
+	install -m 644 $(TOPDIR)/README  	${docdir}
+	cd ${docdir} && /bin/ln -sf README ${docdir}/examples/one-of-each.conf
 	find ${docdir} -type d -exec chmod 0775 '{}' \;
 	find ${docdir} -type f -exec chmod 0664 '{}' \;
 
@@ -103,6 +105,9 @@ rpms:  tarball
 	# Turn it into a gz archive instead of just tar to avoid confusion about canonical archive -BEF-
 	bzcat $(TOPDIR)/tmp/${package}-$(VERSION).tar.bz2 | gzip > $(TOPDIR)/tmp/${package}-$(VERSION).tar.gz 
 	sudo rpmbuild -ta $(TOPDIR)/tmp/${package}-$(VERSION).tar.gz
+
+.PHONY: deb
+deb:  debs
 
 .PHONY: debs
 debs:  tarball
