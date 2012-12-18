@@ -9,7 +9,7 @@ use Getopt::Long;
 use File::Basename;
 
 use lib "/usr/lib/ssm";
-use SystemStateManager;
+use SimpleStateManager;
 
 our %o;
 

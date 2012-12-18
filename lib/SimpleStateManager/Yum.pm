@@ -1,11 +1,11 @@
 #  
 #   Copyright (C) 2006-2008 Brian Elliott Finley
 #
-#   $Id: SystemStateManager.pm 234 2008-10-16 02:06:06Z finley $
+#   $Id: SimpleStateManager.pm 234 2008-10-16 02:06:06Z finley $
 #    vi: set filetype=perl tw=0:
 # 
 
-package SystemStateManager::Yum;
+package SimpleStateManager::Yum;
 
 use Exporter;
 @ISA = qw(Exporter);
@@ -23,14 +23,14 @@ use Exporter;
             );
 
 use strict;
-use SystemStateManager qw(ssm_print run_cmd choose_tmp_file);
+use SimpleStateManager qw(ssm_print run_cmd choose_tmp_file);
 
 
 ################################################################################
 #
 #   This package provides the following functions:
 #
-#       % egrep '^sub ' lib/SystemStateManager/Yum.pm | perl -pi -e 's/^sub /#   /; s/ {//;' | sort
+#       % egrep '^sub ' lib/SimpleStateManager/Yum.pm | perl -pi -e 's/^sub /#   /; s/ {//;' | sort
 #
 #   get_pkg_dependencies
 #   get_pkg_reverse_dependencies

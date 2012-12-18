@@ -26,12 +26,12 @@ TOPDIR := $(CURDIR)
 
 
 .PHONY: all
-all:  $(TOPDIR)/tmp/lib/SystemStateManager.pm
+all:  $(TOPDIR)/tmp/lib/SimpleStateManager.pm
 
-$(TOPDIR)/tmp/lib/SystemStateManager.pm:  Makefile VERSION $(TOPDIR)/lib/SystemStateManager.pm
+$(TOPDIR)/tmp/lib/SimpleStateManager.pm:  Makefile VERSION $(TOPDIR)/lib/SimpleStateManager.pm
 	mkdir -p $(TOPDIR)/tmp/lib
-	cp $(TOPDIR)/lib/SystemStateManager.pm $(TOPDIR)/tmp/lib/SystemStateManager.pm
-	perl -pi -e 's/___VERSION___/${VERSION}/g' $(TOPDIR)/tmp/lib/SystemStateManager.pm
+	cp $(TOPDIR)/lib/SimpleStateManager.pm $(TOPDIR)/tmp/lib/SimpleStateManager.pm
+	perl -pi -e 's/___VERSION___/${VERSION}/g' $(TOPDIR)/tmp/lib/SimpleStateManager.pm
 
 .PHONY: install
 install:  all
@@ -51,17 +51,16 @@ install:  all
 		read i)
 	
 	test -d ${libdir} || install -d -m 755 ${libdir}
-	install -m 644 $(TOPDIR)/tmp/lib/SystemStateManager.pm ${libdir}/SystemStateManager.pm
+	install -m 644 $(TOPDIR)/tmp/lib/SimpleStateManager.pm ${libdir}/SimpleStateManager.pm
 	
-	test -d ${libdir}/SystemStateManager/ || install -d -m 755 ${libdir}/SystemStateManager/
-	install -m 644 $(TOPDIR)/lib/SystemStateManager/Aptitude.pm ${libdir}/SystemStateManager/
-	install -m 644 $(TOPDIR)/lib/SystemStateManager/Dpkg.pm 	${libdir}/SystemStateManager/
-	install -m 644 $(TOPDIR)/lib/SystemStateManager/Yum.pm  	${libdir}/SystemStateManager/
-	install -m 644 $(TOPDIR)/lib/SystemStateManager/None.pm  	${libdir}/SystemStateManager/
+	test -d ${libdir}/SimpleStateManager/ || install -d -m 755 ${libdir}/SimpleStateManager/
+	install -m 644 $(TOPDIR)/lib/SimpleStateManager/Aptitude.pm ${libdir}/SimpleStateManager/
+	install -m 644 $(TOPDIR)/lib/SimpleStateManager/Dpkg.pm 	${libdir}/SimpleStateManager/
+	install -m 644 $(TOPDIR)/lib/SimpleStateManager/Yum.pm  	${libdir}/SimpleStateManager/
+	install -m 644 $(TOPDIR)/lib/SimpleStateManager/None.pm  	${libdir}/SimpleStateManager/
 	
 	test -d ${docdir} || install -d -m 755 ${docdir}
 	rsync -av --exclude '.*' usr/share/doc/ ${docdir}
-	install -m 644 $(TOPDIR)/ChangeLog  	${docdir}
 	install -m 644 $(TOPDIR)/CREDITS  	${docdir}
 	install -m 644 $(TOPDIR)/COPYING  	${docdir}
 	install -m 644 $(TOPDIR)/README  	${docdir}

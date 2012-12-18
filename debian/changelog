@@ -202,7 +202,7 @@ ssm (0.4.24-1) jaunty; urgency=low
 
 ssm (0.4.23-1) intrepid; urgency=low
 
-  * SystemStateManager.pm: Fix bug found by Gene Rackow where diff_file()
+  * SimpleStateManager.pm: Fix bug found by Gene Rackow where diff_file()
     didn't clean up tmp_file.
   * Add support for 'aptitude': Aptitude.pm
   * Remove info/examples on package versions
@@ -214,9 +214,9 @@ ssm (0.4.22-1) intrepid; urgency=low
 
   * ssm_web-report: improve coloration
   * Yum.pm: use ssm.noarch instead of ssm for upgrade_ssm() function
-  * SystemStateManager.pm: Test variables from def files for existence before
+  * SimpleStateManager.pm: Test variables from def files for existence before
     applying regex tests to them
-  * SystemStateManager.pm: read_definition_file() now returns $ERROR_LEVEL
+  * SimpleStateManager.pm: read_definition_file() now returns $ERROR_LEVEL
     instead of undef
   * ssm_web-report: fix bug in critical_packages regex
   * ssm_web-report: improve layout; add page timestamp
@@ -225,7 +225,7 @@ ssm (0.4.22-1) intrepid; urgency=low
 
 ssm (0.4.21-1) intrepid; urgency=low
 
-  * SystemStateManager.pm: change format of date stamp
+  * SimpleStateManager.pm: change format of date stamp
   * ssm_web-report: s/Unclean/Dirty
   * ssm_web-report: Take command line options.
   * ssm_web-report: Allow read from specified INBOX, not just STDIN.
@@ -243,10 +243,10 @@ ssm (0.4.20-1) intrepid; urgency=low
 
 ssm (0.4.19-1) intrepid; urgency=low
 
-  * SystemStateManager.pm: add email_log_file()
-  * SystemStateManager.pm: close logfile before mailing
+  * SimpleStateManager.pm: add email_log_file()
+  * SimpleStateManager.pm: close logfile before mailing
   * Ensure uniqueness of entries in package deps lists
-  * SystemStateManager.pm: display packages to upgrade/remove/install with --no
+  * SimpleStateManager.pm: display packages to upgrade/remove/install with --no
 
  -- Brian Elliott Finley <brian@thefinleys.com>  Tue, 18 Nov 2008 12:21:29 -0600
 
@@ -496,18 +496,18 @@ ssm (0.3.0-0ubuntu1) dapper; urgency=low
 
     2007-04-27 18:59  finley
     
-        * lib/SystemStateManager.pm: Gracefully handle commit of file in new
+        * lib/SimpleStateManager.pm: Gracefully handle commit of file in new
           path
 
     2007-04-27 18:28  finley
 
-        * debian/changelog, lib/SystemStateManager.pm,
+        * debian/changelog, lib/SimpleStateManager.pm,
           usr/share/doc/examples/one-of-each.conf: Genericize svn_uri; include
           it in definition file.
 
     2007-04-23 21:29  finley
 
-        * lib/SystemStateManager.pm: Add 'a' option for adding a file to the
+        * lib/SimpleStateManager.pm: Add 'a' option for adding a file to the
           repo.
 
     2007-04-06 20:16  finley
@@ -520,7 +520,7 @@ ssm (0.3.0-0ubuntu1) dapper; urgency=low
 
     2007-03-15 17:14  finley
 
-    	* lib/SystemStateManager.pm: * Fix the following bugs when using on
+    	* lib/SimpleStateManager.pm: * Fix the following bugs when using on
     	  non-dpkg systems:
     	  * Odd number of elements in hash assignment
     	  * Use of uninitialized value in list assignment
@@ -531,7 +531,7 @@ ssm (0.3.0-0ubuntu1) dapper; urgency=low
 ssm (0.2.1-0ubuntu1) dapper; urgency=low
 
   * 2007-03-07 20:41  finley
-    * lib/SystemStateManager.pm: * Handle packages "provided" by packages in
+    * lib/SimpleStateManager.pm: * Handle packages "provided" by packages in
       state definition
     * Better output when running pre and post-script commands
 
@@ -540,13 +540,13 @@ ssm (0.2.1-0ubuntu1) dapper; urgency=low
 ssm (0.2.0-0ubuntu1) dapper; urgency=low
 
     * 2007-02-15 22:01  finley
-        * [r163] TODO, bin/ssm, lib/SystemStateManager.pm:
+        * [r163] TODO, bin/ssm, lib/SimpleStateManager.pm:
             * ADDED: In /etc/ssm/client.conf, if "definition_file" value ends
               with a slash (/), auto append `hostname -f`
             * ADDED: Print "Number of errors: N" at end of run.
 
     * 2007-02-15 20:21  finley
-        * [r162] TODO, lib/SystemStateManager.pm:
+        * [r162] TODO, lib/SimpleStateManager.pm:
             * FIXED BUG: Still says it's going to create a directory for a
               file whos directory doesn't exist.
             * ADDED: automatically add a file's directory to it's dependency

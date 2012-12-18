@@ -11,7 +11,7 @@ Source:       http://download.systemimager.org/pub/ssm/ssm-%{version}.tar.bz2
 BuildRoot:    %{_tmppath}/%{name}-%{version}-build
 
 %description
-System State Manager (ssm) allows you to define a desired state for
+Simple State Manager (ssm) allows you to define a desired state for
 one or more machines.  This state can include:
 * a complete list of packages to be installed (optional)
 * version information for some or all packages (optional)
@@ -54,8 +54,8 @@ rm -f $RPM_BUILD_ROOT/%{_prefix}/sbin/ssm_web-report    # This requires deps uns
 %files
 %defattr(-,root,root)
 %config(noreplace) /etc/ssm/client.conf
-%{_prefix}/lib/ssm/SystemStateManager.pm
-%{_prefix}/lib/ssm/SystemStateManager/
+%{_prefix}/lib/ssm/SimpleStateManager.pm
+%{_prefix}/lib/ssm/SimpleStateManager/
 %{_prefix}/sbin/
 %{_prefix}/share/doc/ssm-%{version}/examples/one-of-each.conf
 %{_prefix}/share/doc/ssm-%{version}/examples/tmp/one-regular-file.txt/27abe7c7e2423eddec0839a2d0633e37
@@ -185,7 +185,7 @@ rm -f $RPM_BUILD_ROOT/%{_prefix}/sbin/ssm_web-report    # This requires deps uns
 - ssm: added --only-this-file option
 - ssm_web-report: auto-refresh generated html page
 * Wed Apr 01 2009 - brian@thefinleys.com
-- SystemStateManager.pm: Fix bug found by Gene Rackow where diff_file()
+- SimpleStateManager.pm: Fix bug found by Gene Rackow where diff_file()
   didn't clean up tmp_file.
 - Add support for 'aptitude': Aptitude.pm
 - Remove info/examples on package versions
@@ -193,9 +193,9 @@ rm -f $RPM_BUILD_ROOT/%{_prefix}/sbin/ssm_web-report    # This requires deps uns
 * Thu Dec 18 2008 - brian@thefinleys.com
 - ssm_web-report: improve coloration
 - Yum.pm: use ssm.noarch instead of ssm for upgrade_ssm() function
-- SystemStateManager.pm: Test variables from def files for existence
+- SimpleStateManager.pm: Test variables from def files for existence
   before applying regex tests to them
-- SystemStateManager.pm: read_definition_file() now returns $ERROR_LEVEL
+- SimpleStateManager.pm: read_definition_file() now returns $ERROR_LEVEL
   instead of undef
 - ssm_web-report: fix bug in critical_packages regex
 - ssm_web-report: improve layout; add page timestamp
@@ -204,7 +204,7 @@ rm -f $RPM_BUILD_ROOT/%{_prefix}/sbin/ssm_web-report    # This requires deps uns
   causes rpm to require a package that is unsatisfiable on CentOS or Red
   Hat.
 * Wed Dec 03 2008 - brian@thefinleys.com
-- SystemStateManager.pm: change format of date stamp
+- SimpleStateManager.pm: change format of date stamp
 - ssm_web-report: s/Unclean/Dirty
 - ssm_web-report: Take command line options.
 - ssm_web-report: Allow read from specified INBOX, not just STDIN.
@@ -217,10 +217,10 @@ rm -f $RPM_BUILD_ROOT/%{_prefix}/sbin/ssm_web-report    # This requires deps uns
   report.
 * Tue Nov 18 2008 - brian@thefinleys.com
 - new release. 0.4.19
-- SystemStateManager.pm: add email_log_file()
-- SystemStateManager.pm: close logfile before mailing
+- SimpleStateManager.pm: add email_log_file()
+- SimpleStateManager.pm: close logfile before mailing
 - Ensure uniqueness of entries in package deps lists
-- SystemStateManager.pm: display packages to upgrade/remove/install with
+- SimpleStateManager.pm: display packages to upgrade/remove/install with
   --no
 * Fri Nov 07 2008 - brian@thefinleys.com
 - new release. 0.4.18

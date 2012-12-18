@@ -29,7 +29,7 @@ use Getopt::Long;
 use File::Basename;
 
 use lib "/usr/lib/ssm";
-use SystemStateManager;
+use SimpleStateManager;
 
 our %o;
 
@@ -83,7 +83,7 @@ SYNOPSIS
 
 DESCRIPTION
     Takes one or more file CHUNKs and adds the resultant FILE to the
-    System State Manager file repository for organizational unit "OU".
+    Simple State Manager file repository for organizational unit "OU".
 
 OPTIONS (options can be presented in any order and may be abbreviated)
  --help             

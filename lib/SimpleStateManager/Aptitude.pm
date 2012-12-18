@@ -1,11 +1,11 @@
 #  
 #   Copyright (C) 2006-2008 Brian Elliott Finley
 #
-#   $Id: SystemStateManager.pm 234 2008-10-16 02:06:06Z finley $
+#   $Id: SimpleStateManager.pm 234 2008-10-16 02:06:06Z finley $
 #    vi: set filetype=perl tw=0:
 # 
 
-package SystemStateManager::Dpkg;
+package SimpleStateManager::Aptitude;
 
 use Exporter;
 @ISA = qw(Exporter);
@@ -25,14 +25,14 @@ use Exporter;
             );
 
 use strict;
-use SystemStateManager qw(ssm_print run_cmd);
+use SimpleStateManager qw(ssm_print run_cmd);
 
 
 ################################################################################
 #
 #   This package provides the following functions:
 #
-#       % egrep '^sub ' lib/SystemStateManager/Dpkg.pm | perl -pi -e 's/^sub /#   /; s/ {//;' | sort
+#       % egrep '^sub ' lib/SimpleStateManager/Aptitude.pm | perl -pi -e 's/^sub /#   /; s/ {//;' | sort
 #
 #   get_pkg_dependencies
 #   get_pkg_provides
@@ -41,6 +41,11 @@ use SystemStateManager qw(ssm_print run_cmd);
 #   get_pkgs_provided_by_pkgs_from_state_definition
 #   get_pkgs_that_pkg_manager_says_to_upgrade
 #   get_running_kernel_pkg_name
+#   install_pkgs
+#   reinstall_pkgs
+#   remove_pkgs
+#   upgrade_pkgs
+#   upgrade_ssm
 #
 ################################################################################
 
@@ -84,15 +89,15 @@ sub reinstall_pkgs {
     my $cmd;
     if(defined $package_list) {
         ssm_print "Downloading packages...\n";
-        $cmd = 'DEBIAN_FRONTEND=noninteractive apt-get -q=2 --force-yes -y --reinstall --download-only install' . $package_list;
+        $cmd = 'aptitude -y --download-only reinstall ' . $package_list;
         run_cmd($cmd);
 
         ssm_print "Re-installing packages...\n";
-        $cmd = 'DEBIAN_FRONTEND=noninteractive apt-get -q=2 --force-yes -y --reinstall install' . $package_list;
+        $cmd = 'aptitude -y reinstall ' . $package_list;
         run_cmd($cmd);
 
         # Remove any packages lying around in the cache.  Again.
-        $cmd = 'apt-get clean';
+        $cmd = 'aptitude clean';
         run_cmd($cmd);
     }
 
@@ -123,15 +128,15 @@ sub install_pkgs {
         my $cmd;
 
         ssm_print "FIXING:  Packages -> Downloading.\n";
-        $cmd = 'DEBIAN_FRONTEND=noninteractive apt-get -q=2 --force-yes -y --download-only install';
+        $cmd = 'aptitude -y --download-only install' . $pkgs;
         run_cmd($cmd);
 
         ssm_print "FIXING:  Packages -> Installing.\n";
-        $cmd = 'DEBIAN_FRONTEND=noninteractive apt-get -q=2 --force-yes -y install' . $pkgs;
+        $cmd = 'aptitude -y install' . $pkgs;
         run_cmd($cmd);
 
         # Remove any packages lying around in the cache.  Again.
-        $cmd = 'apt-get clean';
+        $cmd = 'aptitude clean';
         run_cmd($cmd);
     }
 
@@ -152,7 +157,7 @@ sub remove_pkgs {
 
     if(defined $cmd) {
         ssm_print "FIXING:  Packages -> Removing.\n";
-        $cmd = 'DEBIAN_FRONTEND=noninteractive apt-get -q=2 --force-yes -y remove' . $cmd;
+        $cmd = 'aptitude -y remove' . $cmd;
         run_cmd($cmd);
     }
 
@@ -211,7 +216,7 @@ sub get_pkgs_that_pkg_manager_says_to_upgrade {
     #
     # Get the latest updates
     ssm_print "OK:      Packages -> Updating availability information.\n";
-    $cmd = 'apt-get -q=2 update';
+    $cmd = 'aptitude update -q=2';
     #
     # Run even if --no so that we don't get 'Unable to locate package X'
     # errors. -BEF-
@@ -219,7 +224,7 @@ sub get_pkgs_that_pkg_manager_says_to_upgrade {
 
     #
     # Get a list of packages that would be upgraded
-    $cmd = 'DEBIAN_FRONTEND=noninteractive apt-get -s dist-upgrade';
+    $cmd = q(aptitude search --display-format "%p" '~U');
     ssm_print ">> $cmd\n" if( $main::o{debug} );
 
     #
@@ -228,8 +233,10 @@ sub get_pkgs_that_pkg_manager_says_to_upgrade {
     #
     open(OUTPUT,"$cmd|");
         while(<OUTPUT>) {
-            if( m/^Inst\s(\S+)\s+/ ) {
+            chomp;
+            if( m/^(\S+)/ ) {
                 $hash{$1} = 1;
+                ssm_print ">>> $1\n" if $main::o{debug};
             }
         }
     close(OUTPUT);
@@ -267,7 +274,6 @@ sub get_pkg_dependencies {
     my %dependencies;
     foreach(@array) {
         chomp;
-        print "   $_\n" if($main::o{debug});
         s/^\s+//;
         
         ## If there's an alternate dependency "this | that", this only 
@@ -393,6 +399,7 @@ sub get_pkg_provides {
 
     return %provides;
 }
+
 
 sub get_running_kernel_pkg_name {
 

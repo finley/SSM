@@ -10,7 +10,7 @@ Architecture: all
 Depends: unix-mknod | libunix-mknod-perl, libwww-perl, wget, colordiff | diff, libmailtools-perl, wget
 Suggests: libmail-mboxparser-perl, fetchmail
 Description: Manage the state of specific files and packages on a system.
- System State Manager (ssm) allows you to define a desired state for
+ Simple State Manager (ssm) allows you to define a desired state for
  one or more machines.  This state can include:
  * a complete list of packages to be installed (optional)
  * version information for some or all packages (optional)

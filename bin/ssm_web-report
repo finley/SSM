@@ -10,7 +10,7 @@ use Getopt::Long;
 use File::Basename;
 
 use lib "/usr/lib/ssm";
-use SystemStateManager;
+use SimpleStateManager;
 
 our %o;
 
@@ -274,7 +274,7 @@ sub add_header {
     my $datestamp = "$year.$mon.$mday - $hour:$min";
     print "datestamp: $datestamp\n" if(defined $o{debug});
 
-    my $title = 'System State Manager - Status Page';
+    my $title = 'Simple State Manager - Status Page';
     my $a = <<EOF;
 <HTML>
 <HEAD>

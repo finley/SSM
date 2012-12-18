@@ -1,7 +1,6 @@
 #  
 #   Copyright (C) 2006-2012 Brian Elliott Finley
 #
-#   $Id: SystemStateManager.pm 378 2010-09-20 15:23:03Z finley $
 #    vi: set filetype=perl tw=0:
 # 
 
@@ -30,7 +29,7 @@
 #   - Add support for ssh:// for upstream repos
 
 
-package SystemStateManager;
+package SimpleStateManager;
 
 use Exporter;
 @ISA = qw(Exporter);
@@ -67,7 +66,7 @@ use Mail::Send;
 #
 #   This package provides the following functions:
 #
-#       % egrep '^sub ' lib/SystemStateManager.pm | perl -pi -e 's/^sub /#   /; s/ {//;' | sort
+#       % egrep '^sub ' lib/SimpleStateManager.pm | perl -pi -e 's/^sub /#   /; s/ {//;' | sort
 #
 #   _add_file
 #   _backup
@@ -845,24 +844,24 @@ sub sync_state {
     $CHANGES_MADE = 0;
 
     if( $main::o{pkg_manager} eq "dpkg" ) {
-        require SystemStateManager::Dpkg;
-        SystemStateManager::Dpkg->import();
+        require SimpleStateManager::Dpkg;
+        SimpleStateManager::Dpkg->import();
     }
     elsif( $main::o{pkg_manager} eq "aptitude" ) {
-        require SystemStateManager::Aptitude;
-        SystemStateManager::Aptitude->import();
+        require SimpleStateManager::Aptitude;
+        SimpleStateManager::Aptitude->import();
     }
     elsif( $main::o{pkg_manager} eq "yum" ) {
-        require SystemStateManager::Yum;
-        SystemStateManager::Yum->import();
+        require SimpleStateManager::Yum;
+        SimpleStateManager::Yum->import();
     }
     elsif( $main::o{pkg_manager} eq "none" ) {
-        require SystemStateManager::None;
-        SystemStateManager::None->import();
+        require SimpleStateManager::None;
+        SimpleStateManager::None->import();
     }
     elsif( ! defined $main::o{pkg_manager} ) {
-        require SystemStateManager::None;
-        SystemStateManager::None->import();
+        require SimpleStateManager::None;
+        SimpleStateManager::None->import();
     }
 
     upgrade_ssm() unless($main::o{answer_no});
@@ -1004,7 +1003,7 @@ sub sync_state {
     $ERROR_LEVEL += $OUTSTANDING_PACKAGES_TO_UPGRADE;
 
     if( $main::o{debug} ) { 
-        ssm_print "lib/SystemStateManager.pm:sync_state() returning:\n";
+        ssm_print "lib/SimpleStateManager.pm:sync_state() returning:\n";
         ssm_print "  \$ERROR_LEVEL:  $ERROR_LEVEL\n";
         ssm_print "  \$CHANGES_MADE: $CHANGES_MADE\n";
         ssm_print "\n";
@@ -1117,7 +1116,7 @@ sub version {
     my $progname = basename($0);
     my $VERSION = '___VERSION___';
     print <<EOF;
-$progname (part of System State Manager) v$VERSION
+$progname (part of Simple State Manager) v$VERSION
     
 EOF
 }
@@ -1186,8 +1185,11 @@ sub do_you_want_me_to {
     if(! defined $prompts) {
         $prompts = 'yn';
     }
+    if(! defined $msg) {
+        $msg = "         Shall I do this? [N/y]: ";
+    }
 
-    my $explanation;
+    my $explanation = "\n";
 
     if($prompts =~ m/n/ and ! defined $main::o{answer_implications_explained_n}) {
         $explanation .= qq/           N -> "No.  Don't do anything." (This is the default -- if you just hit <Enter>)."\n/;
@@ -1207,7 +1209,7 @@ sub do_you_want_me_to {
         }
     $explanation .= qq/\n/;
 
-    $msg = "\n" . $explanation . $msg;
+    $msg = $explanation . $msg;
 
     ssm_print $msg if(defined $msg);
 
@@ -1647,8 +1649,6 @@ sub do_unwanted_file {
             $fix_it = undef;
             $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
         } else {
-
-            ssm_print "         Shall I do this? [N/y]: ";
 
             if( do_you_want_me_to() eq 'yes' ) { 
                 $fix_it = 1;
