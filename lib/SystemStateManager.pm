@@ -1183,30 +1183,31 @@ sub do_you_want_me_to {
     my $msg = shift;
     my $prompts = shift;
 
-    if(defined $prompts) { 
-        my $explanation;
-        if( ! defined $main::o{answer_implications_explained} ) {
-
-            $explanation .= qq/\n/;
-            if($prompts =~ m/n/) {
-                $explanation .= qq/           N -> "No.  Don't do anything." (This is the default -- if you just hit <Enter>)."\n/;
-                }
-            if($prompts =~ m/y/) {
-                $explanation .= qq/           y -> "Yes.  Execute all actions stated under 'Need to:' above."\n/;
-                }
-            if($prompts =~ m/d/) {
-                $explanation .= qq/           d -> "Show me a diff, then ask me again."\n/;
-                }
-            if($prompts =~ m/a/) {
-                $explanation .= qq/           a -> "Add this file to the upstream_repo."\n/;
-                }
-            $explanation .= qq/\n/;
-
-            $msg = $explanation . $msg;
-
-            $main::o{answer_implications_explained} = 'yes';
-        }
+    if(! defined $prompts) {
+        $prompts = 'yn';
     }
+
+    my $explanation;
+
+    if($prompts =~ m/n/ and ! defined $main::o{answer_implications_explained_n}) {
+        $explanation .= qq/           N -> "No.  Don't do anything." (This is the default -- if you just hit <Enter>)."\n/;
+        $main::o{answer_implications_explained_n} = 'yes';
+        }
+    if($prompts =~ m/y/ and ! defined $main::o{answer_implications_explained_y}) {
+        $explanation .= qq/           y -> "Yes.  Execute all actions stated under 'Need to:' above."\n/;
+        $main::o{answer_implications_explained_y} = 'yes';
+        }
+    if($prompts =~ m/d/ and ! defined $main::o{answer_implications_explained_d}) {
+        $explanation .= qq/           d -> "Show me a diff, then ask me again."\n/;
+        $main::o{answer_implications_explained_d} = 'yes';
+        }
+    if($prompts =~ m/a/ and ! defined $main::o{answer_implications_explained_a}) {
+        $explanation .= qq/           a -> "Add this file to the upstream_repo."\n/;
+        $main::o{answer_implications_explained_a} = 'yes';
+        }
+    $explanation .= qq/\n/;
+
+    $msg = "\n" . $explanation . $msg;
 
     ssm_print $msg if(defined $msg);
 
@@ -1929,10 +1930,10 @@ sub do_generated_file {
         } else {
 
             my $msg = "         Shall I do this? [N/y/d]: ";
-            my $answer = do_you_want_me_to($msg);
+            my $answer = do_you_want_me_to($msg, 'ynd');
             while( $answer eq 'diff' ) {
                 diff_file($file, $tmp_file);
-                $answer = do_you_want_me_to($msg);
+                $answer = do_you_want_me_to($msg, 'ynd');
             }
 
             if( $answer eq 'yes' ) { 
@@ -2032,11 +2033,11 @@ sub do_regular_file {
             my $msg;
 
             $msg .= "         Shall I do this? [N/y/d/a]: ";
-            my $answer = do_you_want_me_to($msg);
+            my $answer = do_you_want_me_to($msg, 'ynda');
             while( $answer eq 'diff' ) {
 
                 diff_file($file);
-                $answer = do_you_want_me_to($msg);
+                $answer = do_you_want_me_to($msg, 'ynda');
             }
 
             if( $answer eq 'yes' ) { 
