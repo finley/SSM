@@ -1,3 +1,10 @@
+ssm (0.4.44-1ubuntu1) precise; urgency=low
+
+  * Further improve do_you_want_me_to() for simpler user interaction.
+  * Re-arranged README file(s).
+
+ -- Brian Elliott Finley <brian@thefinleys.com>  Mon, 17 Dec 2012 18:08:10 -0600
+
 ssm (0.4.43-1ubuntu1) precise; urgency=low
 
   * Improve do_you_want_me_to() to only present relative options based on
