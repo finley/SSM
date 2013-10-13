@@ -1,5 +1,6 @@
 # Simple State Manager
-**SSM** (Simple State Manager) is a tool that can be used to ensure consistent state across a large number of machines.  
+**SSM** (Simple State Manager) is a tool that can be used to ensure
+consistent configuration state across a large number of machines.  
 
 SSM includes the following features, among others:
 
