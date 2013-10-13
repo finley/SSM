@@ -175,6 +175,7 @@ my $OUTSTANDING_PACKAGES_TO_REINSTALL = 0;
 my $ERROR_LEVEL  = 0;
 my $CHANGES_MADE = 0;
 our $LOGFILE;
+my $repo_access_verified = 0;
 
 #
 ################################################################################
@@ -843,28 +844,31 @@ sub sync_state {
 
     $CHANGES_MADE = 0;
 
-    if( $main::o{pkg_manager} eq "dpkg" ) {
-        require SimpleStateManager::Dpkg;
-        SimpleStateManager::Dpkg->import();
-    }
-    elsif( $main::o{pkg_manager} eq "aptitude" ) {
-        require SimpleStateManager::Aptitude;
-        SimpleStateManager::Aptitude->import();
-    }
-    elsif( $main::o{pkg_manager} eq "yum" ) {
-        require SimpleStateManager::Yum;
-        SimpleStateManager::Yum->import();
-    }
-    elsif( $main::o{pkg_manager} eq "none" ) {
-        require SimpleStateManager::None;
-        SimpleStateManager::None->import();
-    }
-    elsif( ! defined $main::o{pkg_manager} ) {
-        require SimpleStateManager::None;
-        SimpleStateManager::None->import();
-    }
+    unless($main::o{only_files}) {
 
-    upgrade_ssm() unless($main::o{answer_no});
+        if( $main::o{pkg_manager} eq "dpkg" ) {
+            require SimpleStateManager::Dpkg;
+            SimpleStateManager::Dpkg->import();
+        }
+        elsif( $main::o{pkg_manager} eq "aptitude" ) {
+            require SimpleStateManager::Aptitude;
+            SimpleStateManager::Aptitude->import();
+        }
+        elsif( $main::o{pkg_manager} eq "yum" ) {
+            require SimpleStateManager::Yum;
+            SimpleStateManager::Yum->import();
+        }
+        elsif( $main::o{pkg_manager} eq "none" ) {
+            require SimpleStateManager::None;
+            SimpleStateManager::None->import();
+        }
+        elsif( ! defined $main::o{pkg_manager} ) {
+            require SimpleStateManager::None;
+            SimpleStateManager::None->import();
+        }
+
+        upgrade_ssm() unless($main::o{answer_no});
+    }
 
     #
     # Files
@@ -2095,7 +2099,7 @@ sub diff_file {
     my $url;
     if( !defined($tmp_file) ) {
         $url = qq($main::o{base_url}/$file/$MD5SUM{$file});
-        $tmp_file = get_file($url);
+        $tmp_file = get_file($url, 'warn_in_file');
         $unlink = 'yes';
     }
 
@@ -2211,6 +2215,8 @@ sub install_file {
 
 #
 # my $tmp_file = get_file($file);
+# my $tmp_file = get_file($file, 'warn_in_file');
+# my $tmp_file = get_file($file, 'error');  # this is the default
 #
 sub get_file {
 
@@ -2218,6 +2224,7 @@ sub get_file {
     # returns that temporary file name
 
     my $file = shift;
+    my $failure_behavior = shift;
 
     my $tmp_file = choose_tmp_file();
 
@@ -3327,31 +3334,33 @@ sub copy_file_to_upstream_repo {
         # Make sure the dir exists
         #
         $cmd = qq(ssh $repo_host mkdir -p -m 775 $path);
-        ssm_print qq(Make sure directory exists in repo:\n);
-        ssm_print qq(  $cmd\n);
+        #ssm_print qq(Make sure directory exists in repo:\n);
+        ssm_print qq(Let me verify your access to update the repo... ) if($repo_access_verified ne "yes");
+        #ssm_print qq(  $cmd\n);
         !system($cmd) or die("Couldn't run $cmd\n");
-        ssm_print qq(Success!\n);
-        ssm_print qq(\n);
+        ssm_print qq(Success!\n) if($repo_access_verified ne "yes");
+        $repo_access_verified = 'yes';
+        #ssm_print qq(\n);
 
         #
         # Copy up the contents
         #
-        $cmd = qq(scp $local_file $repo_host:$destination_file);
-        ssm_print qq(Copy new file up to repo:\n);
-        ssm_print qq(  $cmd\n);
+        $cmd = qq(scp $local_file $repo_host:$destination_file >/dev/null);
+        #ssm_print qq(Copy new file up to repo:\n);
+        #ssm_print qq(  $cmd\n);
         !system($cmd) or die("Couldn't run $cmd\n");
-        ssm_print qq(Success!\n);
-        ssm_print qq(\n);
+        #ssm_print qq(Success!\n);
+        #ssm_print qq(\n);
 
         #
         # Chmod to ensure client style access to repos
         #
         $cmd = qq(ssh $repo_host chmod 644 $destination_file);
-        ssm_print qq(Make sure perms allow access:\n);
-        ssm_print qq(  $cmd\n);
+        #ssm_print qq(Make sure perms allow access:\n);
+        #ssm_print qq(  $cmd\n);
         !system($cmd) or die("Couldn't run $cmd\n");
-        ssm_print qq(Success!\n);
-        ssm_print qq(\n);
+        #ssm_print qq(Success!\n);
+        #ssm_print qq(\n);
 
 
     }
