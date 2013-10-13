@@ -115,11 +115,11 @@ line below to see what you get (it's OK, it's safe):
 File definitions also support **dependencies**, **prescripts**, and **postscripts**.
 
 Dependencies can be files, directories, and/or packages.  Simply add a
-depends entry to a file definition.  In this case, our `nightly-fs-check`
-cron job requires that the `lvm2` package is installed, and that the
-`/usr/local/bin/snapshot` script is in place.  SSM won't auto-install
-`lvm2` or the `snapshot` script, but will simply skip over this definition
-and let you know what happened.
+"**depends**" entry to a file definition.  In this case, our
+`nightly-fs-check` cron job requires that the `lvm2` package is
+installed, and that the `/usr/local/bin/snapshot` script is in place.
+SSM won't auto-install `lvm2` or the `snapshot` script, but will simply
+skip over this definition and let you know what happened.
 
         [file]
         name       = /etc/cron.d/nightly-fs-check
