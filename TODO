@@ -8,6 +8,17 @@
 #   Do
 #
 
+- add option
+    --snapshot-init-scripts
+    --snapshot-packages
+
+* Add to file definitions:
+
+    options = 'nobackup'
+
+    (Ie.: /etc/modprobe.d/ files)
+    (/boot/efi/ stuff -- vfat)
+
 * Use 'u' instead of 'a' ->   for "Upload this file and use it instead
 * of hte one curretnly i the repo.
 
