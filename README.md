@@ -107,7 +107,7 @@ line below to see what you get (it's OK, it's safe):
         [file]
         name       = /etc/sysconfig/network-scripts/ifcfg-eth2
         type       = generated
-        generator  = HOSTNAME=$(hostname -s); IP=$(getent hosts $HOSTNAME | awk '{print $1}'); echo DEVICE=eth2; echo NM_CONTROLLED=no; echo ONBOOT=yes; echo IPADDR=$IP; echo NETMASK=255.255.255.0; echo BOOTPROTO=static; echo PEERDNS=no
+        generator  = HOSTNAME=$(hostname -s); IP=$(getent hosts $HOSTNAME | awk '{print $1}'); echo DEVICE=eth2; echo NM_CONTROLLED=no; echo ONBOOT=yes; echo IPADDR=$IP; echo NETMASK=255.255.255.0; echo BOOTPROTO=static; echo PEERDNS=no 
         owner      = root
         group      = root
         mode       = 0644
