@@ -6,7 +6,7 @@ SSM includes the following features, among others:
 
 * Designed to use a simple, easy to read configuration file
 * Config files support "bundles"
-**A bundle is just a reference to another config file that gets included
+    *A bundle is just a reference to another config file that gets included
 * Config files may be located on the managed system, or on a central web or ftp server.
 * Supports priorities
 ** A node specific file may have a higher priority than one in a common bundle
