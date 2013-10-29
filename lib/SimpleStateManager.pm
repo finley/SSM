@@ -1196,7 +1196,7 @@ sub do_you_want_me_to {
     my $explanation = "\n";
 
     if($prompts =~ m/n/ and ! defined $main::o{answer_implications_explained_n}) {
-        $explanation .= qq/           N -> "No.  Don't do anything." (This is the default -- if you just hit <Enter>)."\n/;
+        $explanation .= qq/           N -> "No.  Don't do anything." (The default if you just hit <Enter>)\n/;
         $main::o{answer_implications_explained_n} = 'yes';
         }
     if($prompts =~ m/y/ and ! defined $main::o{answer_implications_explained_y}) {
