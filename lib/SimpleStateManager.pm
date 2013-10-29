@@ -3334,23 +3334,18 @@ sub copy_file_to_upstream_repo {
         # Make sure the dir exists
         #
         $cmd = qq(ssh $repo_host mkdir -p -m 775 $path);
-        #ssm_print qq(Make sure directory exists in repo:\n);
         ssm_print qq(Let me verify your access to update the repo... ) if($repo_access_verified ne "yes");
-        #ssm_print qq(  $cmd\n);
+        if($main::o{debug}) { ssm_print qq(\n\$cmd: $cmd\n); }
         !system($cmd) or die("Couldn't run $cmd\n");
         ssm_print qq(Success!\n) if($repo_access_verified ne "yes");
         $repo_access_verified = 'yes';
-        #ssm_print qq(\n);
 
         #
         # Copy up the contents
         #
         $cmd = qq(scp $local_file $repo_host:$destination_file >/dev/null);
-        #ssm_print qq(Copy new file up to repo:\n);
-        #ssm_print qq(  $cmd\n);
+        if($main::o{debug}) { ssm_print qq(\n\$cmd: $cmd\n); }
         !system($cmd) or die("Couldn't run $cmd\n");
-        #ssm_print qq(Success!\n);
-        #ssm_print qq(\n);
 
         #
         # Chmod to ensure client style access to repos
