@@ -106,6 +106,7 @@ rpms:  tarball
 	bzcat $(TOPDIR)/tmp/${package}-$(VERSION).tar.bz2 | gzip > $(TOPDIR)/tmp/${package}-$(VERSION).tar.gz 
 	sudo rpmbuild -ta $(TOPDIR)/tmp/${package}-$(VERSION).tar.gz
 	cd $(TOPDIR)/tmp && ln -s ${package}-$(VERSION)-1.noarch.rpm ${package}-latest.noarch.rpm
+	cd $(TOPDIR)/tmp && ln -s ${package}-$(VERSION)-1.src.rpm ${package}-latest.src.rpm
 
 .PHONY: deb
 deb:  debs
