@@ -7,7 +7,7 @@ Standards-Version: 3.6.2
 
 Package: ssm
 Architecture: all
-Depends: unix-mknod | libunix-mknod-perl, libwww-perl, wget, colordiff | diff, libmailtools-perl, wget
+Depends: libunix-mknod-perl | unix-mknod, libwww-perl, wget, colordiff | diff, libmailtools-perl
 Suggests: libmail-mboxparser-perl, fetchmail
 Description: Manage the state of specific files and packages on a system.
  Simple State Manager (ssm) allows you to define a desired state for
