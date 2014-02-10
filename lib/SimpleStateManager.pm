@@ -846,7 +846,8 @@ sub sync_state {
 
     unless($main::o{only_files}) {
 
-        if( $main::o{pkg_manager} eq "dpkg" ) {
+        if( $main::o{pkg_manager} eq "dpkg" 
+         or $main::o{pkg_manager} eq "apt-get") {
             require SimpleStateManager::Dpkg;
             SimpleStateManager::Dpkg->import();
         }
