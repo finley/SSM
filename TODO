@@ -8,9 +8,17 @@
 #   Do
 #
 
+- global_option
+    - diff_program
+
+        e.g.: diff_program = vimdiff
+
+
 - add option
     --snapshot-init-scripts
     --snapshot-packages
+
+- Add ability to hit "a" to add packages to remove to the master list.
 
 * Add to file definitions:
 
