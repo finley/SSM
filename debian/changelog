@@ -1,3 +1,12 @@
+ssm (0.4.46-1ubuntu1) stable; urgency=low
+
+  * prefer libunix-mknod-perl over unix-mknod
+  * allow 'apt-get' as pkg mgr to invoke same behavior as 'dpkg'
+  * help output format
+  * Added ssm man page
+
+ -- Brian Elliott Finley <brian@thefinleys.com>  Sun, 09 Feb 2014 22:19:53 -0600
+
 ssm (0.4.45-1ubuntu1) precise; urgency=low
 
   * Tweak to do_you_want_me_to()
