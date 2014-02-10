@@ -1,6 +1,6 @@
 Name:         ssm
 Summary:      Manage the state of specific files and packages on a system.
-Version:      0.4.45
+Version:      0.4.46
 Release:      1
 BuildArch:    noarch
 Group:        System Environment/Applications
@@ -69,6 +69,8 @@ rm -f $RPM_BUILD_ROOT/%{_prefix}/sbin/ssm_web-report    # This requires deps uns
 #   sh echo -n "* " ; date +'%a %b %d %Y - brian@thefinleys.com'
 #
 %changelog -n ssm
+* Sun Feb 09 2014 - brian@thefinleys.com
+- v0.4.46
 * Tue Dec 18 2012 - brian@thefinleys.com
 - v0.4.45
 - Tweak to do_you_want_me_to()
