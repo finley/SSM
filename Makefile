@@ -69,7 +69,7 @@ install:  all
 	find ${docdir} -type f -exec chmod 0664 '{}' \;
 	
 	test -d ${mandir}/man8 || install -d -m 755 ${mandir}/man8
-	install -m 644 ssm.8.gz  ${mandir}/man8
+	install -m 644 ./usr/share/man/man8/ssm.8.gz  ${mandir}/man8
 	
 
 .PHONY: release
