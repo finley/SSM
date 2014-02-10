@@ -67,12 +67,9 @@ install:  all
 	cd ${docdir} && /bin/ln -sf README ${docdir}/examples/one-of-each.conf
 	find ${docdir} -type d -exec chmod 0775 '{}' \;
 	find ${docdir} -type f -exec chmod 0664 '{}' \;
-
-#	test -d ${mandir}/man1 || install -d -m 755 ${mandir}/man1
-#	install -m 644 wifi-radar.1 		${mandir}/man1
-#	
-#	test -d ${mandir}/man5 || install -d -m 755 ${mandir}/man5
-#	install -m 644 wifi-radar.conf.5 	${mandir}/man5
+	
+	test -d ${mandir}/man8 || install -d -m 755 ${mandir}/man8
+	install -m 644 ssm.8.gz  ${mandir}/man8
 	
 
 .PHONY: release
@@ -130,12 +127,15 @@ $(TOPDIR)/tmp/${package}-$(VERSION).tar.bz2:  clean
 	@echo "	* VERSION"
 	@echo "	* debian/changelog (can use 'dch -i')"
 	@echo "	* rpm/ssm.spec"
+	@echo "	* git tag <VERSION>"
 	@echo "If 'yes', then hit <Enter> to continue..."; \
 	read i
-	mkdir -p $(TOPDIR)/tmp/
-	rsync -a . $(TOPDIR)/tmp/${package}-$(VERSION)/
-	rm -fr $(TOPDIR)/tmp/${package}-$(VERSION)/.git
-	git log > $(TOPDIR)/tmp/${package}-$(VERSION)/CHANGE.LOG
+	mkdir -p    $(TOPDIR)/tmp/
+	git clone . $(TOPDIR)/tmp/${package}-$(VERSION)/
+	git   log > $(TOPDIR)/tmp/${package}-$(VERSION)/CHANGE.LOG
+	rm -fr      $(TOPDIR)/tmp/${package}-$(VERSION)/.git
+	mkdir -p    $(TOPDIR)/tmp/${package}-$(VERSION)/usr/share/man/man8/
+	PERL5LIB=./lib/ ./bin/ssm --help | txt2man | gzip > $(TOPDIR)/tmp/${package}-$(VERSION)/usr/share/man/man8/ssm.8.gz
 	find $(TOPDIR)/tmp/${package}-$(VERSION) -type f -exec chmod ug+r  {} \;
 	find $(TOPDIR)/tmp/${package}-$(VERSION) -type d -exec chmod ug+rx {} \;
 	cd $(TOPDIR)/tmp && tar -ch ${package}-$(VERSION) | bzip2 > ${package}-$(VERSION).tar.bz2
