@@ -189,61 +189,83 @@ SYNOPSIS
 DESCRIPTION
     $progname 
 
-OPTIONS (options can be presented in any order and may be abbreviated)
- --help             
-    Display this output.
+OPTIONS
 
- --version          
-    Display version and copyright information.
+    Options can be presented in any order and may be abbreviated to
+    shortest uniqueness.
+    
+    --help             
 
- --sync
-    Bring this machine's state in sync with it's state definition file.
+        Display this output.
+    
+    --version          
 
- --only-packages
-    Only sync packages.  Don't sync files.
+        Display version and copyright information.
+    
+    --sync
 
- --only-files
-    Only sync files.  Don't sync packages.
+        Bring this machine's state in sync with it's state definition
+        file.
+    
+    --only-packages
 
- --only-this-file FILE [--only-this-file FILE...]
-    Only sync this particular file.  Don't sync packages.
+        Only sync packages.  Don't sync files.
+    
+    --only-files
 
- --config URL
-    Where URL is the location of the configuration file (state
-    definition file) you want to use with this client.  The URL can be
-    in one of the following forms, and the configuration files can be
-    named anything you like:
+        Only sync files.  Don't sync packages.
+    
+    --only-this-file FILE [--only-this-file FILE...]
 
-         http://server.example.com/ssm_repo/myhost.example.com
-        https://server.example.com/ssm_repo/computenodes.conf
-          ftp://server.example.com/ssm_repo/fabrication-floor-appliances
-         file:///etc/ssm/localhost
+        Only sync this particular file.  Don't sync packages.
+    
+    --config URL
 
-    Defaults to the URL specified in /etc/ssm/client.conf.
+        Where URL is the location of the configuration file (state
+        definition file) you want to use with this client.  The URL can
+        be in one of the following forms, and the configuration files
+        can be named anything you like:
+    
+         https://server.example.com/ssm_repo/computenodes.conf
+          http://server.example.com/ssm_repo/myhost.example.com
+           ftp://server.example.com/ssm_repo/fabrication-floor-appliance
+          file:///etc/ssm/localhost
+    
+        Defaults to the URL specified in /etc/ssm/client.conf.
+    
+    --yes
 
- --yes
-    Answer "yes" to all questions.
+        Answer "yes" to all questions.
+    
+        Note: Does not install packages that are undefined, even if the
+        package manager wants to install them.  Must go interactive
+        (omit --yes) to be prompted for installation of undefined
+        packages.
+    
+    --no
 
-    Note: Does not install packages that are undefined, even if the 
-          package manager wants to install them.  Must go interactive
-          (omit --yes) to be prompted for installation of undefined 
-          packages.
+        Answer "no" to all questions.  Don't make any changes to the
+        system.  (Well, if a newer version is available, it will still
+        upgrade the 'ssm' package itself.)
+    
+    --debug
 
- --no
-    Answer "no" to all questions.  Don't make any changes to the system.
-    (Well, if a newer version is available, it will still upgrade the
-    'ssm' package itself.)
+        Show each command as it is being run.
+    
+    --analyze-config
 
- --debug
-    Show each command as it is being run.
+        Output details about where config elements are defined, and what
+        their priorities are.  Implies the options --sync and --no.
+    
+SEE ALSO
 
- --analyze-config
-    Output details about where config elements are defined, and what
-    their priorities are.  Implies the options --sync and --no.
+    https://github.com/finley/SSM/blob/master/README.md
 
-Report bugs, and make suggestions to: 
+BUGS
 
-    Brian Elliott Finley <brian\@thefinleys.com>
+    Report bugs and suggestions at: https://github.com/finley/SSM/issues
+
+    Or send email to: Brian Elliott Finley <brian\@thefinleys.com>
 
 EOF
 
