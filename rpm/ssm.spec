@@ -54,15 +54,8 @@ rm -f $RPM_BUILD_ROOT/%{_prefix}/sbin/ssm_web-report    # This requires deps uns
 %files
 %defattr(-,root,root)
 %config(noreplace) /etc/ssm/client.conf
-#%{_prefix}/lib/ssm/SimpleStateManager.pm
-#%{_prefix}/lib/ssm/SimpleStateManager/
 %{_prefix}/lib/
 %{_prefix}/sbin/
-#%{_prefix}/share/doc/ssm-%{version}/examples/one-of-each.conf
-#%{_prefix}/share/doc/ssm-%{version}/examples/tmp/one-regular-file.txt/27abe7c7e2423eddec0839a2d0633e37
-#%{_prefix}/share/doc/ssm-%{version}/COPYING
-#%{_prefix}/share/doc/ssm-%{version}/CREDITS
-#%{_prefix}/share/doc/ssm-%{version}/README
 %{_prefix}/share/
 
 
