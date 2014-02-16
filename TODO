@@ -1,18 +1,13 @@
-#
-#   $Id: TODO 371 2010-08-30 03:22:55Z finley $
-#
+- add option:
+    --add-file | --af /my/file.txt --af /my/otherfile.txt
 
+        Adds file to the base definition file.
 
-########################################################################
-#
-#   Do
-#
 
 - global_option
     - diff_program
 
         e.g.: diff_program = vimdiff
-
 
 - add option
     --snapshot-init-scripts
@@ -28,7 +23,7 @@
     (/boot/efi/ stuff -- vfat)
 
 * Use 'u' instead of 'a' ->   for "Upload this file and use it instead
-* of hte one curretnly i the repo.
+  of the one currently in the repo."
 
 * global option to allow for auto-resolution of dependencies
     auto_add_deps = yes/no
@@ -51,7 +46,8 @@
          Object.name{/etc/inet/hosts}
 
 *   add auth capability
-    * via certs?
+    - via certs?
+    - Not sure if this is necessary.
 
 *   New option:  --no-ssm-update (or --dont-upgrade-ssm)
         Or should we change the behavior of --only-this-file and
@@ -106,13 +102,6 @@
         [condition]
         name = test /boot/grub/grub.conf -nt /lib/modules/qlogic.update_drivers.buildstamp -o ! -f /lib/modules/qlogic.update_drivers.buildstamp 
         postscript = /usr/local/bin/qlogic.update_drivers && touch /lib/modules/qlogic.update_drivers.timestamp
-
-
-*   Change the name?  Ideas:
-        SUCM -> Simple Unix Configuration Manager
-        SCM  -> Simple Configuration Manager
-        LCM  -> Linux Configuration Manager
-        UCM  -> Unix Configuration Manager
 
 
 *   catch <ctrl>+<c> and clean-up
@@ -208,8 +197,10 @@
 
 
 *   postinstall for packages
+
 *   dont-ask-just-do-it option
         * when a file changes, don't prompt for input, and assume "yes".
+
 *   Should we remove items that are versioned from the list of packages
     to install?  are they not already in the re-install list if the 
     version doesn't match?
