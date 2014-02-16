@@ -32,6 +32,8 @@ $(TOPDIR)/tmp/lib/SimpleStateManager.pm:  Makefile VERSION $(TOPDIR)/lib/SimpleS
 	mkdir -p $(TOPDIR)/tmp/lib
 	cp $(TOPDIR)/lib/SimpleStateManager.pm $(TOPDIR)/tmp/lib/SimpleStateManager.pm
 	perl -pi -e 's/___VERSION___/${VERSION}/g' $(TOPDIR)/tmp/lib/SimpleStateManager.pm
+	mkdir -p $(TOPDIR)/tmp/${package}-$(VERSION)/usr/share/man/man8/
+	PERL5LIB=./lib/ ./bin/ssm --help | txt2man | gzip > $(TOPDIR)/tmp/${package}-$(VERSION)/usr/share/man/man8/ssm.8.gz
 
 .PHONY: install
 install:  all
@@ -69,7 +71,7 @@ install:  all
 	find ${docdir} -type f -exec chmod 0664 '{}' \;
 	
 	test -d ${mandir}/man8 || install -d -m 755 ${mandir}/man8
-	install -m 644 ./usr/share/man/man8/ssm.8.gz  ${mandir}/man8
+	install -m 644 $(TOPDIR)/tmp/${package}-$(VERSION)/usr/share/man/man8/ssm.8.gz ${mandir}/man8
 	
 
 .PHONY: release
@@ -134,8 +136,6 @@ $(TOPDIR)/tmp/${package}-$(VERSION).tar.bz2:  clean
 	git clone . $(TOPDIR)/tmp/${package}-$(VERSION)/
 	git   log > $(TOPDIR)/tmp/${package}-$(VERSION)/CHANGE.LOG
 	rm -fr      $(TOPDIR)/tmp/${package}-$(VERSION)/.git
-	mkdir -p    $(TOPDIR)/tmp/${package}-$(VERSION)/usr/share/man/man8/
-	PERL5LIB=./lib/ ./bin/ssm --help | txt2man | gzip > $(TOPDIR)/tmp/${package}-$(VERSION)/usr/share/man/man8/ssm.8.gz
 	find $(TOPDIR)/tmp/${package}-$(VERSION) -type f -exec chmod ug+r  {} \;
 	find $(TOPDIR)/tmp/${package}-$(VERSION) -type d -exec chmod ug+rx {} \;
 	cd $(TOPDIR)/tmp && tar -ch ${package}-$(VERSION) | bzip2 > ${package}-$(VERSION).tar.bz2
