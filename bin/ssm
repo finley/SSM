@@ -24,9 +24,9 @@ GetOptions(
     "yes"                               => \$o{yes},
     "no"                                => \$o{answer_no},
     "debug"                             => \$o{debug},
-    "only-packages"                     => \$o{only_packages},
-    "only-files"                        => \$o{only_files},
-    "only-this-file=s@"                 => \$o{only_this_file},
+    "only-packages|op"                  => \$o{only_packages},
+    "only-files|of"                     => \$o{only_files},
+    "only-this-file|otf=s@"             => \$o{only_this_file},
     "analyze-config"                    => \$o{analyze_config},
 ) or usage() and exit(1);
 
@@ -207,17 +207,20 @@ OPTIONS
         Bring this machine's state in sync with it's state definition
         file.
     
-    --only-packages
+    --op | --only-packages
 
         Only sync packages.  Don't sync files.
     
-    --only-files
+    --of | --only-files
 
         Only sync files.  Don't sync packages.
     
-    --only-this-file FILE [--only-this-file FILE...]
+    --otf | --only-this-file FILE [--only-this-file FILE...]
 
-        Only sync this particular file.  Don't sync packages.
+        Only sync this particular file.  Don't sync packages.  May be
+        used multiple times to specify multiple files.
+
+        Example:  --otf /etc/file1.txt --otf /etc/file2.txt
     
     --config URL
 
