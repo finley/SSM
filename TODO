@@ -25,6 +25,10 @@
 * Use 'u' instead of 'a' ->   for "Upload this file and use it instead
   of the one currently in the repo."
 
+    - Contemplation: not all repos are on a separate machine, and
+      therefore are not necessarily an upload.  Would 'u' be confusing
+      in that case?  What if we changed it to be the full word "add"?
+
 * global option to allow for auto-resolution of dependencies
     auto_add_deps = yes/no
 
