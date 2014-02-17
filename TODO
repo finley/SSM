@@ -1,8 +1,15 @@
-- add option:
-    --add-file | --af /my/file.txt --af /my/otherfile.txt
+- Handle this gracefully:
 
-        Adds file to the base definition file.
-
+    Not OK:  Regular file /usr/share/X11/xorg.conf.d/10-nvidia-brightness.conf
+             Need to:
+             - install /usr/share/X11/xorg.conf.d/10-nvidia-brightness.conf
+    
+    
+             Shall I do this? [N/y/d/a]: d
+    ERROR: /home/bfinley/src/ssm_repo.bob/usr/share/X11/xorg.conf.d/10-nvidia-brightness.conf/aef0893991e8103f87d32a0b76f638f doesn't exist...
+    
+    root@bob:~# 
+    
 
 - global_option
     - diff_program
