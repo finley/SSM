@@ -24,9 +24,10 @@ GetOptions(
     "yes"                               => \$o{yes},
     "no"                                => \$o{answer_no},
     "debug"                             => \$o{debug},
-    "only-packages|op"                  => \$o{only_packages},
-    "only-files|of"                     => \$o{only_files},
-    "only-this-file|otf=s@"             => \$o{only_this_file},
+    "op|only-packages"                  => \$o{only_packages},
+    "of|only-files"                     => \$o{only_files},
+    "otf|only-this-file=s@"             => \$o{only_this_file},
+    "af|add-file=s@"                    => \$o{add_file},
     "analyze-config"                    => \$o{analyze_config},
 ) or usage() and exit(1);
 
@@ -46,28 +47,74 @@ exit $error_level;
 #
 sub main {
 
-    # Iterate as long as changes are happening each go-round. -BEF-
-    until("$changes_made" eq "$prior_changes_made") {
-        $prior_changes_made = $changes_made;
-        ($error_level, $changes_made) = take_action();
+    if(@{$o{add_file}}) {
+
+        my $error_level = read_definition_file();
+        my $changes_made = 0;
+
+
+        ($error_level, $changes_made) = add_new_files();
+
         if( $main::o{debug} ) { 
-            ssm_print "ssm:main() receiving:\n";
+            ssm_print "ssm:take_action(), add_new_files results:\n";
             ssm_print "  \$error_level:  $error_level\n";
             ssm_print "  \$changes_made: $changes_made\n";
             ssm_print "\n";
         }
+        ssm_print "-------------------------------\n";
+        ssm_print "Added $changes_made files.\n";
+        ssm_print "Encountered $error_level errors.\n";
 
-        # If --no, then there's no point in looping.  Exit here. -BEF-
-        last if($o{answer_no});
+        ssm_print qq(\n);
+
+        email_log_file();
+
+        exit $error_level;
+
+    } 
+    elsif($o{sync_state}) {
+
+        # Iterate as long as changes are happening each go-round. -BEF-
+        until("$changes_made" eq "$prior_changes_made") {
+
+            #
+            # Need a better way to end the loop.  How 'bout if we simply
+            # track $total_changes_made.  When it's the same twice in a
+            # row, then we exit? XXX -BEF-
+            #
+        
+            $prior_changes_made = $changes_made;
+        
+            my $error_level = read_definition_file();
+            my $changes_made = 0;
+        
+            #
+            # Ok, let's go ahead and sync that state...
+            #
+            ($error_level, $changes_made) = sync_state();
+        
+            if( $main::o{debug} ) { 
+                ssm_print "ssm:sync_state results:\n";
+                ssm_print "  \$error_level:  $error_level\n";
+                ssm_print "  \$changes_made: $changes_made\n";
+                ssm_print "\n";
+            }
+
+            # If --no, then there's no point in looping.  Exit here. -BEF-
+            last if($o{answer_no});
+        }
     }
+
 
     ssm_print "-------------------------------\n";
     ssm_print "Total outstanding changes: $error_level\n";
+
     if($error_level > 0) {
         ssm_print qq(\n);
         ssm_print qq(         Please check the output above, and address anything that is\n);
         ssm_print qq(         "Not OK", then give it another whirl.\n);
     }
+
     ssm_print qq(\n);
 
     email_log_file();
@@ -78,20 +125,6 @@ sub main {
 
 sub take_action {
 
-    my $error_level = read_definition_file();
-    my $changes_made = 0;
-
-    if($o{sync_state}) {
-        ($error_level, $changes_made) = sync_state();
-        if( $main::o{debug} ) { 
-            ssm_print "ssm:take_action() receiving:\n";
-            ssm_print "  \$error_level:  $error_level\n";
-            ssm_print "  \$changes_made: $changes_made\n";
-            ssm_print "\n";
-        }
-
-    }
-    return ($error_level, $changes_made);
 }
 
 
@@ -110,12 +143,13 @@ sub validate_options {
         exit 1;
     }
 
-    unless($o{sync_state} or $o{analyze_config}) { 
+    unless($o{sync_state} or $o{analyze_config} or @{$o{add_file}}) { 
         usage();
         print "\n";
         print "Try one of the following:\n";
         print "\n";
         print "  --sync\n";
+        print "  --add-file\n";
         print "  --analyze-config\n";
         print "\n";
         exit(1);
@@ -152,6 +186,22 @@ sub validate_options {
         print "         the --only-files option is unnecessary.  Proceeding anyway...\n";
         print "\n";
         sleep 1;
+    }
+
+    if( defined(@{$o{add_file}}) and $o{sync_state}) { 
+        usage();
+        print "\n";
+        print "The --add-file and --sync options conflict.  Use one or the other.\n";
+        print "\n";
+        exit(1);
+    }
+
+    if( defined(@{$o{add_file}}) and $o{only_packages}) { 
+        usage();
+        print "\n";
+        print "The --add-file and --only-packages options conflict.  Use one or the other.\n";
+        print "\n";
+        exit(1);
     }
 
     if($o{yes} and $o{answer_no}) { 
@@ -207,21 +257,28 @@ OPTIONS
         Bring this machine's state in sync with it's state definition
         file.
     
-    --op | --only-packages
+    --op, --only-packages
 
         Only sync packages.  Don't sync files.
     
-    --of | --only-files
+    --of, --only-files
 
         Only sync files.  Don't sync packages.
     
-    --otf | --only-this-file FILE [--only-this-file FILE...]
+    --otf, --only-this-file FILE [--only-this-file FILE...]
 
         Only sync this particular file.  Don't sync packages.  May be
         used multiple times to specify multiple files.
 
         Example:  --otf /etc/file1.txt --otf /etc/file2.txt
     
+    --af, --add-file FILE [--add-file FILE...]
+
+        Adds file to the base definition file.  May be used multiple
+        times to specify multiple files.
+
+        Example:  --af /etc/file1.txt --af /etc/file2.txt
+
     --config URL
 
         Where URL is the location of the configuration file (state

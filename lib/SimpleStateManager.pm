@@ -43,6 +43,7 @@ use Exporter;
                 run_cmd
                 choose_tmp_file
                 email_log_file
+                add_new_files
             );
 
 use strict;
@@ -68,7 +69,7 @@ use Mail::Send;
 #
 #       % egrep '^sub ' lib/SimpleStateManager.pm | perl -pi -e 's/^sub /#   /; s/ {//;' | sort
 #
-#   _add_file
+#   _add_file_to_repo
 #   _backup
 #   check_depends
 #   choose_tmp_file
@@ -1197,19 +1198,20 @@ sub do_you_want_me_to {
     my $explanation = "\n";
 
     if($prompts =~ m/n/ and ! defined $main::o{answer_implications_explained_n}) {
-        $explanation .= qq/           N -> "No.  Don't do anything." (The default if you just hit <Enter>)\n/;
+        $explanation .= qq/           N -> No   -- Don't do anything.  [The default]\n/;
         $main::o{answer_implications_explained_n} = 'yes';
         }
     if($prompts =~ m/y/ and ! defined $main::o{answer_implications_explained_y}) {
-        $explanation .= qq/           y -> "Yes.  Execute all actions stated under 'Need to:' above."\n/;
+        $explanation .= qq/           y -> Yes  -- Execute all of the "Need to:" actions above.\n/;
         $main::o{answer_implications_explained_y} = 'yes';
         }
     if($prompts =~ m/d/ and ! defined $main::o{answer_implications_explained_d}) {
-        $explanation .= qq/           d -> "Show me a diff, then ask me again."\n/;
+        $explanation .= qq/           d -> Diff -- Show me a diff then ask me again.\n/;
         $main::o{answer_implications_explained_d} = 'yes';
         }
     if($prompts =~ m/a/ and ! defined $main::o{answer_implications_explained_a}) {
-        $explanation .= qq/           a -> "Add this file to the upstream_repo."\n/;
+        $explanation .= qq/           a -> Add  -- Add this local file to repo and activate it\n/;
+        $explanation .= qq/                        in the configuration.\n/;
         $main::o{answer_implications_explained_a} = 'yes';
         }
     $explanation .= qq/\n/;
@@ -2048,7 +2050,7 @@ sub do_regular_file {
             if( $answer eq 'yes' ) { 
                 $fix_it = 1;
             } elsif( $answer eq 'add' ) { 
-                _add_file( $file );
+                _add_file_to_repo( $file );
             } else {
                 ssm_print "         Ok, skipping this step.\n\n";
                 $ERROR_LEVEL++;
@@ -2533,6 +2535,15 @@ sub update_bundlefile_type_regular {
     my $group      = shift;
     my $mode       = shift;
 
+    if(! defined $BUNDLEFILE{$name}) {
+        #
+        # If this is a new file, that doesn't yet exist in the definition, then
+        # it won't be associated with a specific bundle file, so we default to
+        # using the definition file itself. -BEF-
+        #
+        $BUNDLEFILE{$name} = basename( $main::o{definition_file} );
+    }
+
     my $url  = "$main::o{base_url}/$BUNDLEFILE{$name}";
     my $file = get_file($url);
 
@@ -2573,19 +2584,33 @@ sub update_bundlefile_type_regular {
         push @newfile, $_;
     }
 
-    my $newfile = choose_tmp_file();
     if( $found_entry eq 'yes' ) {
 
         ssm_print qq(Updating entry for file "$name" in definition file "$BUNDLEFILE{$name}".\n);
 
-        my $file = $newfile;
-        open(FILE, ">$file") or die("Couldn't open $file for writing");
-        print FILE @newfile;
-        close(FILE);
+    } else {
+
+        ssm_print qq(Adding entry for file "$name" in definition file "$BUNDLEFILE{$name}".\n);
+
+        push @newfile,   "\n";
+        push @newfile,   "[file]\n";
+        push @newfile,   "name       = $name\n";
+        push @newfile,   "comment    = $comment\n";
+        push @newfile,   "type       = regular\n";
+        push @newfile,   "md5sum     = $md5sum\n";
+        push @newfile,   "owner      = $owner\n";
+        push @newfile,   "group      = $group\n";
+        push @newfile,   "mode       = $mode\n";
+        push @newfile,   "\n";
 
     }
 
-    return $newfile;
+    $file = choose_tmp_file();
+    open(FILE, ">$file") or die("Couldn't open $file for writing");
+    print FILE @newfile;
+    close(FILE);
+
+    return $file;
 }
 
 
@@ -2740,11 +2765,63 @@ sub _backup {
 }
 
 
-sub _add_file {
+sub add_new_files {
+
+    foreach my $file ( @{$main::o{add_file}} ) {
+
+        ssm_print "Adding: $file\n";
+
+        _add_file_to_repo($file);
+        $CHANGES_MADE++;
+    }
+
+    return ($ERROR_LEVEL, $CHANGES_MADE);
+}
+
+#
+#   Usage:  my $type = get_file_type($file);
+#
+#   Detects the following file types:
+#   - block
+#   - character
+#   - directory
+#   - fifo
+#   - hardlink  (detected as a regular file)
+#   - regular
+#   - softlink
+#
+sub get_file_type {
+    
+    my $file = shift;
+
+    if( ! -e $file ) { return 'non-existent'; } 
+
+    if( -d $file ) { return 'directory'; } 
+
+    if( -l $file ) { return 'softlink'; } 
+
+    my $st = stat($file);
+    if( S_ISFIFO($st_mode) ) {
+        return 'fifo';
+    }
+    elsif( S_ISBLK($st_mode) ) {
+        return 'block';
+    }
+    elsif( S_ISCHR($st_mode) ) {
+        return 'character';
+    }
+
+    # 
+    # What?  Still no match?  Must be a plain old regular file...
+    #
+    return 'regular';
+}
+
+
+sub _add_file_to_repo {
 
     my $file = shift;
 
-    ssm_print qq(\n);
     if(defined $main::o{upload_url}) {
 
         my $local_file;
@@ -2754,6 +2831,12 @@ sub _add_file {
         chomp $hostname;
         $main::o{comment} = "From $hostname on " . localtime();
         $main::o{file_to_add} = $file;
+
+        my $type = get_file_type($file);
+        if($type eq 'non-existent') {
+            $ERROR_LEVEL++;
+        }
+        ssm_print "TYPE: $type\n" if($main::o{debug});
 
         my $name   = $file;
         my $md5sum = get_md5sum($file);
@@ -2771,8 +2854,7 @@ sub _add_file {
         copy_file_to_upstream_repo($tmp_file, $repo_file);
         unlink $tmp_file;
 
-    }
-    else {
+    } else {
 
         _specify_an_upload_url();
 
@@ -3335,10 +3417,8 @@ sub copy_file_to_upstream_repo {
         # Make sure the dir exists
         #
         $cmd = qq(ssh $repo_host mkdir -p -m 775 $path);
-        ssm_print qq(Let me verify your access to update the repo... ) if($repo_access_verified ne "yes");
         if($main::o{debug}) { ssm_print qq(\n\$cmd: $cmd\n); }
         !system($cmd) or die("Couldn't run $cmd\n");
-        ssm_print qq(Success!\n) if($repo_access_verified ne "yes");
         $repo_access_verified = 'yes';
 
         #
@@ -3352,12 +3432,7 @@ sub copy_file_to_upstream_repo {
         # Chmod to ensure client style access to repos
         #
         $cmd = qq(ssh $repo_host chmod 644 $destination_file);
-        #ssm_print qq(Make sure perms allow access:\n);
-        #ssm_print qq(  $cmd\n);
         !system($cmd) or die("Couldn't run $cmd\n");
-        #ssm_print qq(Success!\n);
-        #ssm_print qq(\n);
-
 
     }
     #
