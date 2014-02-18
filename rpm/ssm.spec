@@ -1,6 +1,6 @@
 Name:         ssm
 Summary:      Manage the state of specific files and packages on a system.
-Version:      0.4.46
+Version:      0.4.47
 Release:      1
 BuildArch:    noarch
 Group:        System Environment/Applications
@@ -64,6 +64,11 @@ rm -f $RPM_BUILD_ROOT/%{_prefix}/sbin/ssm_web-report    # This requires deps uns
 #   sh echo -n "* " ; date +'%a %b %d %Y - brian@thefinleys.com'
 #
 %changelog -n ssm
+* Tue Feb 18 2014 - brian@thefinleys.com
+- v0.4.47
+- Added the --add-file FILE option.  Allows adding files to definition via the ssm command line.
+- Handle manpage creation better.
+- Improve verbiage on help output.
 * Sun Feb 09 2014 - brian@thefinleys.com
 - v0.4.46
 * Tue Dec 18 2012 - brian@thefinleys.com

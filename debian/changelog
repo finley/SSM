@@ -1,3 +1,11 @@
+ssm (0.4.47-1) UNRELEASED; urgency=low
+
+  * Added the --add-file FILE option.  Allows adding files to definition via the ssm command line.
+  * Handle manpage creation better.
+  * Improve verbiage on help output.
+
+ -- Brian Elliott Finley <brian@thefinleys.com>  Tue, 18 Feb 2014 17:22:17 -0600
+
 ssm (0.4.46-1ubuntu1) stable; urgency=low
 
   * prefer libunix-mknod-perl over unix-mknod
