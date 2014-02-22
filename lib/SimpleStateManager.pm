@@ -1222,16 +1222,24 @@ sub do_you_want_me_to {
 
     $_ = <STDIN>;
 
-    if( m/^(y|yes)/i ) {
+    if( $main::o{yes} ) { 
         return 'yes';
+
+    } elsif( m/^(y|yes)/i ) {
+        return 'yes';
+
     } elsif( m/^(d|diff)/i ) {
         return 'diff';
+
     } elsif( m/^(a|add)/i ) {
         return 'add';
+
     } elsif( m/^(n|no)/i ) {
         return 'no';
+
     } elsif( m/^(c|comment|comments)/i ) {
         return 'comments';
+
     }
 }
 
