@@ -1,3 +1,14 @@
+- Consider adding this:
+
+    within each [file] section, include the following:
+
+        variables = VAR1=value, VAR2=value, etc
+
+    that are added as local environmental variables that can be used in
+    the remainder of that file definition only, and temporarily
+    overwrite whatever is already in the environment
+
+
 - Handle this gracefully:
 
     Not OK:  Regular file /usr/share/X11/xorg.conf.d/10-nvidia-brightness.conf
