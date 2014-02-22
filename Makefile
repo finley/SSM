@@ -80,16 +80,17 @@ release:  tarball debs rpms
 	@echo "I'm about to upload the following files to:"
 	@echo "  ~/src/www.systemimager.org/pub/ssm/"
 	@echo "-----------------------------------------------------------------------"
-	@/bin/ls -1 $(TOPDIR)/tmp/latest.*
+	#@/bin/ls -1 $(TOPDIR)/tmp/latest.*
 	@/bin/ls -1 $(TOPDIR)/tmp/${package}[-_]$(VERSION)*.*
-	@/bin/ls -1 $(TOPDIR)/tmp/${package}[-_]latest*.*
+	#@/bin/ls -1 $(TOPDIR)/tmp/${package}[-_]latest*.*
 	@/bin/ls -1 ${rpmbuild}/RPMS/*/ssm-$(VERSION)-*.rpm 
 	@/bin/ls -1 ${rpmbuild}/SRPMS/ssm-$(VERSION)-*.rpm
 	@echo
 	@echo "Hit <Enter> to continue..."
 	@read i
 	#rsync -av --progress $(TOPDIR)/tmp/latest.* $(TOPDIR)/tmp/${package}[-_]$(VERSION)*.* ${rpmbuild}/RPMS/*/ssm-$(VERSION)-*.rpm ${rpmbuild}/SRPMS/ssm-$(VERSION)-*.rpm web.sourceforge.net:/home/project-web/systemimager/htdocs/pub/ssm/
-	rsync -av --progress $(TOPDIR)/tmp/latest.* $(TOPDIR)/tmp/${package}[-_]$(VERSION)*.* $(TOPDIR)/tmp/${package}[-_]latest*.* ${rpmbuild}/RPMS/*/ssm-$(VERSION)-*.rpm ${rpmbuild}/SRPMS/ssm-$(VERSION)-*.rpm ~/src/www.systemimager.org/pub/ssm/
+	#rsync -av --progress $(TOPDIR)/tmp/latest.* $(TOPDIR)/tmp/${package}[-_]$(VERSION)*.* $(TOPDIR)/tmp/${package}[-_]latest*.* ${rpmbuild}/RPMS/*/ssm-$(VERSION)-*.rpm ${rpmbuild}/SRPMS/ssm-$(VERSION)-*.rpm ~/src/www.systemimager.org/pub/ssm/
+	rsync -av --progress $(TOPDIR)/tmp/${package}[-_]$(VERSION)*.* ${rpmbuild}/RPMS/*/ssm-$(VERSION)-*.rpm ${rpmbuild}/SRPMS/ssm-$(VERSION)-*.rpm ~/src/www.systemimager.org/pub/ssm/
 	@echo
 	@echo "Now run:   cd ~/src/www.systemimager.org/ && make upload"
 	@echo
@@ -104,8 +105,8 @@ rpms:  tarball
 	# Turn it into a gz archive instead of just tar to avoid confusion about canonical archive -BEF-
 	bzcat $(TOPDIR)/tmp/${package}-$(VERSION).tar.bz2 | gzip > $(TOPDIR)/tmp/${package}-$(VERSION).tar.gz 
 	sudo rpmbuild -ta $(TOPDIR)/tmp/${package}-$(VERSION).tar.gz
-	cd $(TOPDIR)/tmp && ln -s ${package}-$(VERSION)-1.noarch.rpm ${package}-latest.noarch.rpm
-	cd $(TOPDIR)/tmp && ln -s ${package}-$(VERSION)-1.src.rpm ${package}-latest.src.rpm
+	#cd $(TOPDIR)/tmp && ln -s ${package}-$(VERSION)-1.noarch.rpm ${package}-latest.noarch.rpm
+	#cd $(TOPDIR)/tmp && ln -s ${package}-$(VERSION)-1.src.rpm ${package}-latest.src.rpm
 
 .PHONY: deb
 deb:  debs
@@ -114,15 +115,15 @@ deb:  debs
 debs:  tarball
 	cd $(TOPDIR)/tmp/${package}-$(VERSION) \
 		&& fakeroot dpkg-buildpackage -uc -us
-	cd $(TOPDIR)/tmp && ln -s ${package}_$(VERSION)-1ubuntu1_all.deb ${package}_latest_all.deb
+	#cd $(TOPDIR)/tmp && ln -s ${package}_$(VERSION)-1ubuntu1_all.deb ${package}_latest_all.deb
 
 .PHONY: tarball
 tarball:  $(TOPDIR)/tmp/${package}-$(VERSION).tar.bz2.sign
 $(TOPDIR)/tmp/${package}-$(VERSION).tar.bz2.sign: $(TOPDIR)/tmp/${package}-$(VERSION).tar.bz2
 	cd $(TOPDIR)/tmp && gpg --detach-sign -a --output ${package}-$(VERSION).tar.bz2.sign ${package}-$(VERSION).tar.bz2
 	cd $(TOPDIR)/tmp && gpg --verify ${package}-$(VERSION).tar.bz2.sign
-	cd $(TOPDIR)/tmp && ln -s ${package}-$(VERSION).tar.bz2 latest.tar.bz2
-	cd $(TOPDIR)/tmp && ln -s ${package}-$(VERSION).tar.bz2.sign latest.tar.bz2.sign
+	#cd $(TOPDIR)/tmp && ln -s ${package}-$(VERSION).tar.bz2 latest.tar.bz2
+	#cd $(TOPDIR)/tmp && ln -s ${package}-$(VERSION).tar.bz2.sign latest.tar.bz2.sign
 
 $(TOPDIR)/tmp/${package}-$(VERSION).tar.bz2:  clean
 	@echo "Did you update the version and changelog info in?:"
