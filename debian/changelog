@@ -1,4 +1,10 @@
-ssm (0.4.47-1) UNRELEASED; urgency=low
+ssm (0.4.48-1) testing; urgency=low
+
+  * Fix minor bug with --yes option introduced in 0.4.47 testing release.
+
+ -- Brian Elliott Finley <brian@thefinleys.com>  Tue, 22 Feb 2014 12:22:21 -0600
+
+ssm (0.4.47-1) testing; urgency=low
 
   * Added the --add-file FILE option.  Allows adding files to definition via the ssm command line.
   * Handle manpage creation better.
