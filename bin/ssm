@@ -47,7 +47,7 @@ exit $error_level;
 #
 sub main {
 
-    if(@{$o{add_file}}) {
+    if($o{add_file}) {
 
         my $error_level = read_definition_file();
         my $changes_made = 0;
@@ -143,7 +143,7 @@ sub validate_options {
         exit 1;
     }
 
-    unless($o{sync_state} or $o{analyze_config} or @{$o{add_file}}) { 
+    unless($o{sync_state} or $o{analyze_config} or $o{add_file}) { 
         usage();
         print "\n";
         print "Try one of the following:\n";
@@ -188,7 +188,7 @@ sub validate_options {
         sleep 1;
     }
 
-    if( defined(@{$o{add_file}}) and $o{sync_state}) { 
+    if( defined($o{add_file}) and $o{sync_state}) { 
         usage();
         print "\n";
         print "The --add-file and --sync options conflict.  Use one or the other.\n";
@@ -196,7 +196,7 @@ sub validate_options {
         exit(1);
     }
 
-    if( defined(@{$o{add_file}}) and $o{only_packages}) { 
+    if( defined($o{add_file}) and $o{only_packages}) { 
         usage();
         print "\n";
         print "The --add-file and --only-packages options conflict.  Use one or the other.\n";
