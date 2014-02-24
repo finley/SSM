@@ -1,6 +1,6 @@
 Name:         ssm
 Summary:      Manage the state of specific files and packages on a system.
-Version:      0.4.48
+Version:      0.4.49
 Release:      1
 BuildArch:    noarch
 Group:        System Environment/Applications
@@ -64,7 +64,9 @@ rm -f $RPM_BUILD_ROOT/%{_prefix}/sbin/ssm_web-report    # This requires deps uns
 #   sh echo -n "* " ; date +'%a %b %d %Y - brian@thefinleys.com'
 #
 %changelog -n ssm
-* Tue Feb 22 2014 - brian@thefinleys.com
+* Mon Feb 24 2014 - brian@thefinleys.com
+- Fix testing of command line argument that resulted in the following error message: "Can't use an undefined value as an ARRAY reference at /usr/sbin/ssm line 146."
+* Sat Feb 22 2014 - brian@thefinleys.com
 - Fix minor bug with --yes option introduced in 0.4.47 testing release.
 * Tue Feb 18 2014 - brian@thefinleys.com
 - v0.4.47 testing

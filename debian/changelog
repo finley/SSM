@@ -1,3 +1,11 @@
+ssm (0.4.49-1) stable; urgency=low
+
+  * Fix testing of command line argument that resulted in the following
+    error message: "Can't use an undefined value as an ARRAY reference
+    at /usr/sbin/ssm line 146."
+
+ -- Brian Elliott Finley <brian@thefinleys.com>  Mon, 24 Feb 2014 14:39:24 -0600
+
 ssm (0.4.48-1) testing; urgency=low
 
   * Fix minor bug with --yes option introduced in 0.4.47 testing release.
