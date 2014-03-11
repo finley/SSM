@@ -63,6 +63,7 @@ use Fcntl qw( S_IFBLK S_IFCHR );
 use Digest::MD5;
 use LWP::Simple;
 use Mail::Send;
+use Cwd 'abs_path';
 
 
 ################################################################################
@@ -2779,6 +2780,9 @@ sub add_new_files {
 
     foreach my $file ( @{$main::o{add_file}} ) {
 
+        my $abs_path = abs_path($file);
+        $file = $abs_path;
+
         ssm_print "Adding: $file\n";
 
         _add_file_to_repo($file);
@@ -2832,7 +2836,10 @@ sub _add_file_to_repo {
 
     my $file = shift;
 
-    use Cwd 'abs_path';
+    #
+    # Verify absolute path here even if it's been done elsewhere for other
+    # purposes.
+    #
     my $abs_path = abs_path($file);
     $file = $abs_path;
 
