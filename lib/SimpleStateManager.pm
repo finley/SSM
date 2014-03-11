@@ -27,6 +27,8 @@
 #     desired.  And if not -- eh, no big.  Just make regular backups, eh?
 # 2012.11.07 Brian Elliott Finley
 #   - Add support for ssh:// for upstream repos
+# 2014.03.11 Brian Elliott Finley
+#   - Future changes logged via git log
 
 
 package SimpleStateManager;
@@ -2829,6 +2831,10 @@ sub get_file_type {
 sub _add_file_to_repo {
 
     my $file = shift;
+
+    use Cwd 'abs_path';
+    my $abs_path = abs_path($file);
+    $file = $abs_path;
 
     if(defined $main::o{upload_url}) {
 
