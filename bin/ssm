@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 
 #
-# Copyright (C) 2006-2012 Brian Elliott Finley <brian@thefinleys.com>
+# Copyright (C) 2006-2014 Brian Elliott Finley <brian@thefinleys.com>
 #
 
 use strict;
@@ -52,11 +52,9 @@ sub main {
         my $error_level = read_definition_file();
         my $changes_made = 0;
 
-
         ($error_level, $changes_made) = add_new_files();
-
         if( $main::o{debug} ) { 
-            ssm_print "ssm:take_action(), add_new_files results:\n";
+            ssm_print "ssm:main(), add_new_files results:\n";
             ssm_print "  \$error_level:  $error_level\n";
             ssm_print "  \$changes_made: $changes_made\n";
             ssm_print "\n";
@@ -71,8 +69,7 @@ sub main {
 
         exit $error_level;
 
-    } 
-    elsif($o{sync_state}) {
+    } elsif($o{sync_state}) {
 
         # Iterate as long as changes are happening each go-round. -BEF-
         until("$changes_made" eq "$prior_changes_made") {
@@ -120,11 +117,6 @@ sub main {
     email_log_file();
 
     return 1;
-}
-
-
-sub take_action {
-
 }
 
 
@@ -189,11 +181,11 @@ sub validate_options {
     }
 
     if( defined($o{add_file}) and $o{sync_state}) { 
-        usage();
         print "\n";
-        print "The --add-file and --sync options conflict.  Use one or the other.\n";
+        print " The --add-file option overrides the --sync option.  Proceeding\n";
+        print " with --add-file.\n";
         print "\n";
-        exit(1);
+        $o{sync_state} = null;
     }
 
     if( defined($o{add_file}) and $o{only_packages}) { 
