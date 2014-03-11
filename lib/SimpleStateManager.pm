@@ -2597,11 +2597,11 @@ sub update_bundlefile_type_regular {
 
     if( $found_entry eq 'yes' ) {
 
-        ssm_print qq(Updating entry for file "$name" in definition file "$BUNDLEFILE{$name}".\n);
+        ssm_print qq(Updating entry for "$name" in definition file "$BUNDLEFILE{$name}".\n);
 
     } else {
 
-        ssm_print qq(Adding entry for file "$name" in definition file "$BUNDLEFILE{$name}".\n);
+        ssm_print qq(Adding entry for "$name" in definition file "$BUNDLEFILE{$name}".\n);
 
         push @newfile,   "\n";
         push @newfile,   "[file]\n";
