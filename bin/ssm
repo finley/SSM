@@ -185,7 +185,7 @@ sub validate_options {
         print " The --add-file option overrides the --sync option.  Proceeding\n";
         print " with --add-file.\n";
         print "\n";
-        $o{sync_state} = null;
+        undef $o{sync_state};
     }
 
     if( defined($o{add_file}) and $o{only_packages}) { 
