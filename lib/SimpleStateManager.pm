@@ -2597,11 +2597,11 @@ sub update_bundlefile_type_regular {
 
     if( $found_entry eq 'yes' ) {
 
-        ssm_print qq(Updating entry for "$name" in definition file "$BUNDLEFILE{$name}".\n);
+        ssm_print qq(Updating:  Entry for "$name" in definition file "$BUNDLEFILE{$name}".\n);
 
     } else {
 
-        ssm_print qq(Adding entry for "$name" in definition file "$BUNDLEFILE{$name}".\n);
+        ssm_print qq(Adding:  Entry for "$name" in definition file "$BUNDLEFILE{$name}".\n);
 
         push @newfile,   "\n";
         push @newfile,   "[file]\n";
@@ -2783,7 +2783,7 @@ sub add_new_files {
         my $abs_path = abs_path($file);
         $file = $abs_path;
 
-        ssm_print "Adding: $file\n";
+        ssm_print "Adding:  $file\n";
 
         _add_file_to_repo($file);
         $CHANGES_MADE++;
