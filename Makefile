@@ -42,7 +42,6 @@ install:  all
 	
 	test -d ${bindir} || install -d -m 755 ${bindir}
 	install -m 755 bin/ssm 					${bindir}
-	install -m 755 bin/ssm_add-file 		${bindir}
 	install -m 755 bin/ssm_web-report 		${bindir}
 	
 	@test ! -e ${bindir}/system-state-manager || \
