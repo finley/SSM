@@ -358,7 +358,6 @@ sub read_definition_file {
 
                 please_specify_a_package_manager();
 
-                exit 1;
             }
 
             #
@@ -372,29 +371,7 @@ sub read_definition_file {
 
                 please_specify_a_package_manager();
 
-                exit 1;
             }
-
-
-sub please_specify_a_package_manager {
-
-    ssm_print "\n";
-    ssm_print "ERROR: Invalid entry in definition file.  Please specify your package\n";
-    ssm_print "       management system with an entry like:\n";
-    ssm_print "\n";
-    ssm_print "          [global]\n";
-    ssm_print "          pkg_manager = aptitude\n";
-    ssm_print "       or pkg_manager = dpkg\n";
-    ssm_print "       or pkg_manager = yum\n";
-    ssm_print "       or pkg_manager = none\n";
-    ssm_print "\n";
-    ssm_print "   Note:  Use type 'none' for AIX, and other non-Linux Unix-like systems,\n";
-    ssm_print "          not-yet supported package managers, or if you simply don't want\n";
-    ssm_print "          to incorporate package management.\n";
-    ssm_print "\n";
-    
-    return 1;
-}
 
 
             ssm_print "OK:      Package manager -> $main::o{pkg_manager}\n" unless(@{$main::o{only_this_file}}); 
@@ -787,6 +764,18 @@ sub please_specify_a_package_manager {
 
     return $ERROR_LEVEL;
 }
+
+
+sub please_specify_a_package_manager {
+
+    ssm_print qq(WARNING: pkg_manager not defined in state definition config file.\n);
+    ssm_print qq(WARNING: Assuming "pkg_manager = none".\n);
+    ssm_print qq(WARNING: See /usr/share/doc/ssm/examples/state_definition_config_file.conf\n);
+    $main::o{pkg_manager} = 'none';
+
+    return 1;
+}
+
 
 # Print a pad of spaces of N length
 # print_pad(N);
