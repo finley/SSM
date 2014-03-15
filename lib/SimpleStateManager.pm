@@ -280,7 +280,7 @@ sub read_definition_file {
 
     ssm_print "\nState Definition File: $main::o{definition_file}\n" unless(@{$main::o{only_this_file}});
 
-    my $tmp_file = get_file($main::o{definition_file});
+    my $tmp_file = get_file($main::o{definition_file}, 'error');
 
     #
     # We assume base_url should be the same as the definition file url, sans
@@ -2100,10 +2100,16 @@ sub diff_file {
     my $unlink = 'no';
 
     my $url;
-    if( !defined($tmp_file) ) {
+    if( ! defined $tmp_file ) {
         $url = qq($main::o{base_url}/$file/$MD5SUM{$file});
-        $tmp_file = get_file($url, 'warn_in_file');
+        $tmp_file = get_file($url, 'warn');
         $unlink = 'yes';
+    }
+
+    if( ! defined $tmp_file ) {
+        # Hmm.  get_file must have failed
+        # Just drop the user back to their choices...
+        return 1;
     }
 
     my $diff;
@@ -2194,16 +2200,20 @@ sub install_file {
 
     ssm_print "FIXING:  Installing: $file\n";
 
-    do_prescript($file);
-
-    _backup($file);
-
     my $url;
-    if( !defined($tmp_file) ) {
+    if( ! defined $tmp_file ) {
         $url = qq($main::o{base_url}/$file/$MD5SUM{$file});
-        $tmp_file = get_file($url);
+        $tmp_file = get_file($url, 'warn');
     }
 
+    if( ! defined $tmp_file ) {
+        # Hmm.  get_file must have failed
+        # Just drop the user back to their choices...
+        return 1;
+    }
+
+    do_prescript($file);
+    _backup($file);
     remove_file($file);
     copy($tmp_file, $file) or die "Failed to copy($tmp_file, $file): $!";
     unlink $tmp_file;
@@ -2217,9 +2227,8 @@ sub install_file {
 
 
 #
-# my $tmp_file = get_file($file);
-# my $tmp_file = get_file($file, 'warn_in_file');
-# my $tmp_file = get_file($file, 'error');  # this is the default
+# my $tmp_file = get_file($file, 'warn');
+# my $tmp_file = get_file($file, 'error');  # the default
 #
 sub get_file {
 
@@ -2228,6 +2237,8 @@ sub get_file {
 
     my $file = shift;
     my $failure_behavior = shift;
+
+    $failure_behavior = 'error' if( ! defined $failure_behavior );
 
     my $tmp_file = choose_tmp_file();
 
@@ -2239,11 +2250,17 @@ sub get_file {
         $file =~ s#file://#/#;
         $file =~ s/(\s+|#).*//;
         if( ! -e $file ) {
-            ssm_print "ERROR: $file doesn't exist...\n";
-            ssm_print "\n";
-            exit 1;
+            if( $failure_behavior eq 'error' ) {
+                ssm_print "ERROR: $file doesn't exist...\n\n";
+                exit 1;
+            } else {
+                ssm_print "WARNING: $file doesn't exist...\n";
+                $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+                return undef;
+            }
+        } else {
+            copy($file, $tmp_file) or die "get_file(): Failed to copy($file, $tmp_file): $!";
         }
-        copy($file, $tmp_file) or die "get_file(): Failed to copy($file, $tmp_file): $!";
 
     } elsif(    ($file =~ m#^http://# ) 
              or ($file =~ m#^https://#) 
@@ -2252,7 +2269,20 @@ sub get_file {
 
         my $cmd = "wget -q $file -O $tmp_file";
         if($main::o{debug}) { ssm_print "$cmd\n"; }
-        !system($cmd) or die("Couldn't run $cmd");
+        unless( !system($cmd) ) {
+            #
+            # !system() should produce a positive result on success.  If we get
+            # here, we know it failed.
+            #
+            if( $failure_behavior eq 'error' ) {
+                ssm_print "ERROR: $file doesn't exist...\n\n";
+                exit 1;
+            } else {
+                ssm_print "WARNING: $file doesn't exist...\n";
+                $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+                return undef;
+            }
+        }
 
     } else {
 
@@ -2313,9 +2343,8 @@ sub do_hardlink {
 
         # Target ain't there
         ssm_print "WARNING: Hard link $file -> $TARGET{$file} (target doesn't exist).\n";
-        ssm_print "  Skipping this step.\n";
+        ssm_print "WARNING: Hard link $file -> Skipping this step.\n";
         $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-        sleep 1;
 
         return 1;
     } 
@@ -2545,7 +2574,7 @@ sub update_bundlefile_type_regular {
     }
 
     my $url  = "$main::o{base_url}/$BUNDLEFILE{$name}";
-    my $file = get_file($url);
+    my $file = get_file($url, 'error');
 
     open(FILE, "<$file") or die("Couldn't open $file for reading");
     push my @input, (<FILE>);
@@ -2737,7 +2766,7 @@ sub _include_bundle {
         $file = $main::o{base_url} . '/' . $file;
     }
 
-    my $tmp_file = get_file($file);
+    my $tmp_file = get_file($file, 'error');
 
     open(FILE,"<$tmp_file") or die "Couldn't open $tmp_file for reading: $!";
         push @array, (<FILE>);
