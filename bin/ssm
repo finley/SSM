@@ -311,7 +311,21 @@ OPTIONS
     
 SEE ALSO
 
-    https://github.com/finley/SSM/blob/master/README.md
+    For details on the /etc/ssm/client.conf file, which points a client
+    at it's state definition config file, just open it up and edit it.
+    It includes instructions right there in it's comments:
+
+        /etc/ssm/client.conf
+
+    For details on state definition config files, where all the really
+    fun stuff happens, please see:
+
+        /usr/share/doc/ssm/examples/state_definition_config_file.conf
+    
+    Also take a look at:
+
+        https://github.com/finley/SSM/blob/master/README.md
+
 
 BUGS
 
