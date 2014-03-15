@@ -1282,6 +1282,7 @@ sub do_softlink {
 
     if( ! -e $TARGET{$file} ) {
         ssm_print "WARNING: Soft link $file -> $TARGET{$file} (target doesn't exist).\n";
+        $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
         sleep 1;
     }
 
@@ -1325,8 +1326,7 @@ sub do_softlink {
                 $fix_it = 1;
             } else {
                 ssm_print "         Ok, skipping this step.\n\n";
-                $ERROR_LEVEL++;
-                if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+                $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
                 sleep 1;
             }
         }
@@ -1425,8 +1425,7 @@ sub do_special_file {
                 $fix_it = 1;
             } else {
                 ssm_print "         Ok, skipping this step.\n\n";
-                $ERROR_LEVEL++;
-                if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+                $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
                 sleep 1;
             }
         }
@@ -1661,8 +1660,7 @@ sub do_unwanted_file {
                 $fix_it = 1;
             } else {
                 ssm_print "         Ok, skipping this step.\n\n";
-                $ERROR_LEVEL++;
-                if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+                $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
                 sleep 1;
             }
         }
@@ -1740,8 +1738,7 @@ sub do_chown_and_chmod {
                 $fix_it = 1;
             } else {
                 ssm_print "         Ok, skipping this step.\n\n";
-                $ERROR_LEVEL++;
-                if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+                $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
                 sleep 1;
             }
         }
@@ -1829,8 +1826,7 @@ sub do_directory {
                 $fix_it = 1;
             } else {
                 ssm_print "         Ok, skipping this step.\n\n";
-                $ERROR_LEVEL++;
-                if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+                $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
                 sleep 1;
             }
         }
@@ -1947,8 +1943,7 @@ sub do_generated_file {
                 $fix_it = 1;
             } else {
                 ssm_print "         Ok, skipping this step.\n\n";
-                $ERROR_LEVEL++;
-                if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+                $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
                 sleep 1;
             }
         }
@@ -2053,8 +2048,7 @@ sub do_regular_file {
                 _add_file_to_repo( $file );
             } else {
                 ssm_print "         Ok, skipping this step.\n\n";
-                $ERROR_LEVEL++;
-                if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+                $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
                 sleep 1;
             }
         }
