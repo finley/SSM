@@ -1,6 +1,6 @@
 Name:         ssm
 Summary:      Manage the state of specific files and packages on a system.
-Version:      0.4.49
+Version:      0.4.50
 Release:      1
 BuildArch:    noarch
 Group:        System Environment/Applications
@@ -64,6 +64,24 @@ rm -f $RPM_BUILD_ROOT/%{_prefix}/sbin/ssm_web-report    # This requires deps uns
 #   sh echo -n "* " ; date +'%a %b %d %Y - brian@thefinleys.com'
 #
 %changelog -n ssm
+* Fri Mar 21 2014 - brian@thefinleys.com
+- normalize error reporting on debug
+- add 'warn' option to get_file().  in other words, don't fail if SSM
+  tries to download a file that ain't in the repo, but warn the user.
+- don't pause for one second if a hard link target doesn't exist
+- File add support improved and moved into the main ssm command.
+- no longer exit w/1 with no pkg_manager warning, and move the please_specify_a_package_manager subrouting to a less odd location
+- File add support improved and moved into the main ssm command.
+- Improved help output
+- moved the good bits back into examples
+- copyright date
+- minor output verbiage change
+- verify absolute path of file for user presentation as well as repo update.
+- undef sync_state if --af
+- Don't require root to build RPM
+- Copy RPMs to ./tmp dir and list
+- Have '--af' override '--sync' rather than fail.
+- Handle "ssm --af file" without user specified fully qualified path.
 * Mon Feb 24 2014 - brian@thefinleys.com
 - Fix testing of command line argument that resulted in the following error message: "Can't use an undefined value as an ARRAY reference at /usr/sbin/ssm line 146."
 * Sat Feb 22 2014 - brian@thefinleys.com
