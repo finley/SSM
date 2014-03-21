@@ -1,3 +1,56 @@
+- Make sure that outstanding changes output is accurate, and that
+  looping happens properly.
+
+*   Don't ever have SSM auto-upgrade itself, unless an
+    'auto-upgrade-ssm' setting is in place.
+
+*   New feature:  action-tag
+
+    Concept:  
+     * Ability to assign an "action-tag" to each file in a group of
+       associated files.  If one or more of those files is modified
+       during an SSM run (installed, chowned, etc.), then that file's
+       action-tag is activated.
+
+     * Ability to assign an "action-tag" to packages too.
+
+     * At the end of an SSM run, if an action-tag was activated,
+       then the action specified by that action-tag's stanza is
+       executed.
+
+    [file]
+    name        = /etc/iptables.d/chunks/monkey
+    type        = regular
+    mode        = 640
+    owner       = root
+    group       = root
+    action-tag  = iptables-restart
+
+    [file]
+    name        = /etc/iptables.d/chunks/soup
+    type        = regular
+    mode        = 640
+    owner       = root
+    group       = root
+    action-tag  = iptables-restart
+
+    [action-tag]
+    name        = iptables-restart
+    action      = /etc/init.d/iptables restart
+
+*   New feature:  test 
+
+    [test]
+    name = test FILE1 -nt FILE2
+    postscript = blah.sh
+    priority = 0
+
+    Ie.:
+        [condition]
+        name = test /boot/grub/grub.conf -nt /lib/modules/qlogic.update_drivers.buildstamp -o ! -f /lib/modules/qlogic.update_drivers.buildstamp 
+        postscript = /usr/local/bin/qlogic.update_drivers && touch /lib/modules/qlogic.update_drivers.timestamp
+
+
 - Consider adding this:
 
     within each [file] section, include the following:
@@ -8,19 +61,6 @@
     the remainder of that file definition only, and temporarily
     overwrite whatever is already in the environment
 
-
-- Handle this gracefully:
-
-    Not OK:  Regular file /usr/share/X11/xorg.conf.d/10-nvidia-brightness.conf
-             Need to:
-             - install /usr/share/X11/xorg.conf.d/10-nvidia-brightness.conf
-    
-    
-             Shall I do this? [N/y/d/a]: d
-    ERROR: /home/bfinley/src/ssm_repo.bob/usr/share/X11/xorg.conf.d/10-nvidia-brightness.conf/aef0893991e8103f87d32a0b76f638f doesn't exist...
-    
-    root@bob:~# 
-    
 
 - global_option
     - diff_program
@@ -71,60 +111,7 @@
     - via certs?
     - Not sure if this is necessary.
 
-*   New option:  --no-ssm-update (or --dont-upgrade-ssm)
-        Or should we change the behavior of --only-this-file and
-        --only-files to disable ssm_update checking? 
-    
 *   Fix logging so that screen output ain't so ugly w/pkg installs
-
-*   Use some kind of auth from client to server.
-
-*   New feature:  action-tag
-
-    Concept:  
-     * Ability to assign an "action-tag" to each file in a group of
-       associated files.  If one or more of those files is modified
-       during an SSM run (installed, chowned, etc.), then that file's
-       action-tag is activated.
-
-     * Ability to assign an "action-tag" to packages too.
-
-     * At the end of an SSM run, if an action-tag was activated,
-       then the action specified by that action-tag's stanza is
-       executed.
-
-    [file]
-    name        = /etc/iptables.d/chunks/monkey
-    type        = regular
-    mode        = 640
-    owner       = root
-    group       = root
-    action-tag  = iptables-restart
-
-    [file]
-    name        = /etc/iptables.d/chunks/soup
-    type        = regular
-    mode        = 640
-    owner       = root
-    group       = root
-    action-tag  = iptables-restart
-
-    [action-tag]
-    name        = iptables-restart
-    action      = /etc/init.d/iptables restart
-
-*   New feature:  test 
-
-    [test]
-    name = test FILE1 -nt FILE2
-    postscript = blah.sh
-    priority = 0
-
-    Ie.:
-        [condition]
-        name = test /boot/grub/grub.conf -nt /lib/modules/qlogic.update_drivers.buildstamp -o ! -f /lib/modules/qlogic.update_drivers.buildstamp 
-        postscript = /usr/local/bin/qlogic.update_drivers && touch /lib/modules/qlogic.update_drivers.timestamp
-
 
 *   catch <ctrl>+<c> and clean-up
 
@@ -152,26 +139,13 @@
     into alternate perl modules that will allow: a) printing of output,
     and b) interaction with program
 
-*   Handle this situation:
-
-    The following packages will be upgraded:
-      ssm 
-    1 packages upgraded, 0 newly installed, 0 to remove and 21 not upgraded.
-    Need to get 0B/69.5kB of archives. After unpacking 0B will be used.
-    WARNING: untrusted versions of the following packages will be installed!
-    
-    Untrusted packages could compromise your system's security.
-    You should only proceed with the installation if you are certain that
-    this is what you want to do.
-    
-      ssm 
-    
-    Do you want to ignore this warning and proceed anyway?
-        
 *   do we need to keep the re-install code if we're not doing versions
     of packages?
 
 *   For files, ability to say "no backup"?
+
+    Alternate option -- change "bu" to use ".RETIRED" instead of
+    "RETIRED".  Or better yet, ".bu_BACKUPS".
     
     For some directories, where contents are processed as includes or
     iterations by another script, having a RETIRED directory and it's
@@ -196,13 +170,6 @@
     #  OPTIONS="-o quiet=1 -o APT::Get::AllowUnauthenticated=true -o aptitude::Cmdline::ignore-trust-violations=yes"
 
 *   Consider allowing depends and pre/postscripts in [services] sections
-
-*   Maybe just do a "yum install ssm.$arch"?
-
-*   Add "actiongroup" (or similar name) package option 
-    * At the end of a run, after packages that are members of an 
-      actiongroup are installed, run the postscript associated with 
-      "actiongroup".
 
 *   Add "yum clean all" to Yum.pm
     * prolly early on
