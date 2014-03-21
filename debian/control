@@ -2,7 +2,7 @@ Source: ssm
 Section: admin
 Priority: optional
 Maintainer: Brian Elliott Finley <brian@thefinleys.com>
-Build-Depends: debhelper (>= 4.0.0)
+Build-Depends: debhelper (>= 4.0.0), txt2man, libwww-perl
 Standards-Version: 3.6.2
 
 Package: ssm
