@@ -1307,11 +1307,13 @@ sub do_softlink {
     unless( (defined $current_target) and ($current_target eq $TARGET{$file}) ) {
 
         ssm_print "Not OK:  Soft link $file -> $TARGET{$file}\n";
-        ssm_print "         Need to:\n";
-        ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
-        ssm_print "         - remove $file\n" if( -e $file );
-        ssm_print "         - create link\n";
-        ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
+        unless( $main::o{summary} ) {
+            ssm_print "         Need to:\n";
+            ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
+            ssm_print "         - remove $file\n" if( -e $file );
+            ssm_print "         - create link\n";
+            ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
+        }
 
         my $fix_it = undef;
 
@@ -1334,6 +1336,7 @@ sub do_softlink {
         if( defined($fix_it) and ! $main::o{answer_no} ) {
 
             $CHANGES_MADE++;
+            $main::outstanding{$file} = 'fixed';
             ssm_print "FIXING:  Soft link $file -> $TARGET{$file}\n";
 
             do_prescript($file);
@@ -1405,12 +1408,16 @@ sub do_special_file {
     my $fix_it = undef;
     if( defined($needs_fixing) ) {
 
+        $main::outstanding{$file} = 'b0rken';
+
         ssm_print "Not OK:  " . ucfirst($TYPE{$file}) . " file $file\n";
-        ssm_print "         Need to:\n";
-        ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
-        ssm_print "         - remove $file\n" if( -e $file );
-        ssm_print "         - create $file\n";
-        ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
+        unless( $main::o{summary} ) {
+            ssm_print "         Need to:\n";
+            ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
+            ssm_print "         - remove $file\n" if( -e $file );
+            ssm_print "         - create $file\n";
+            ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
+        }
 
         if($main::o{yes}) {
             $fix_it = 1;
@@ -1439,6 +1446,7 @@ sub do_special_file {
     if( defined($fix_it) and ! $main::o{answer_no} ) {
 
         $CHANGES_MADE++;
+        $main::outstanding{$file} = 'fixed';
         ssm_print "FIXING:  " . ucfirst($TYPE{$file}) . " file $file\n";
 
         do_prescript($file);
@@ -1630,23 +1638,31 @@ sub do_unwanted_file {
     # Should we actually fix it?
     my $fix_it = undef;
     unless(defined($needs_fixing)) {
+
         ssm_print "OK:      Unwanted $file doesn't exist\n";
 
     } else {
 
+        $main::outstanding{$file} = 'b0rken';
+
+
         if( -d $file ) {
             ssm_print "Not OK:  Unwanted directory exists: $file\n";
-            ssm_print "         Need to:\n";
-            ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
-            ssm_print "         - remove the contents of $file\n";
-            ssm_print "         - remove $file\n";
-            ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
+            unless( $main::o{summary} ) {
+                ssm_print "         Need to:\n";
+                ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
+                ssm_print "         - remove the contents of $file\n";
+                ssm_print "         - remove $file\n";
+                ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
+            }
         } else {
             ssm_print "Not OK:  Unwanted file exists: $file\n";
-            ssm_print "         Need to:\n";
-            ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
-            ssm_print "         - remove $file\n";
-            ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
+            unless( $main::o{summary} ) {
+                ssm_print "         Need to:\n";
+                ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
+                ssm_print "         - remove $file\n";
+                ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
+            }
         }
 
         if($main::o{yes}) {
@@ -1712,17 +1728,21 @@ sub do_chown_and_chmod {
     my $fix_it = undef;
     if( defined($needs_fixing) ) {
 
+        $main::outstanding{$file} = 'b0rken';
+
         ssm_print "Not OK:  Chown+Chmod target $file\n";
-        ssm_print "         Need to:\n";
-        ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
-        if( ! -e $file ) {
-            ssm_print "         - create as empty file\n";
-            ssm_print "         - set ownership and permissions\n";
-        } else {
-            ssm_print "         - fix ownership and permissions\n";
-            diff_ownership_and_permissions($file, 12);
+        unless( $main::o{summary} ) {
+            ssm_print "         Need to:\n";
+            ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
+            if( ! -e $file ) {
+                ssm_print "         - create as empty file\n";
+                ssm_print "         - set ownership and permissions\n";
+            } else {
+                ssm_print "         - fix ownership and permissions\n";
+                diff_ownership_and_permissions($file, 12);
+            }
+            ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
         }
-        ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
 
         if($main::o{yes}) {
             $fix_it = 1;
@@ -1750,6 +1770,7 @@ sub do_chown_and_chmod {
     # Take action
     if( defined($fix_it) and ! $main::o{answer_no} ) {
         $CHANGES_MADE++;
+        $main::outstanding{$file} = 'fixed';
         do_prescript($file);
         if( ! -e $file ) {
             # Ain't there -- create an empty file
@@ -1801,15 +1822,19 @@ sub do_directory {
     my $fix_it = undef;
     if( defined($needs_fixing) ) {
 
+        $main::outstanding{$file} = 'b0rken';
+
         ssm_print "Not OK:  Directory $file\n";
-        ssm_print "         Need to:\n";
-        if( defined($just_fix_uid_gid_and_mode) ) {
-            ssm_print "         - fix ownership and permissions\n";
-            diff_ownership_and_permissions($file, 12);
-        } else {
-            ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
-            ssm_print "         - create $file\n";
-            ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
+        unless( $main::o{summary} ) {
+            ssm_print "         Need to:\n";
+            if( defined($just_fix_uid_gid_and_mode) ) {
+                ssm_print "         - fix ownership and permissions\n";
+                diff_ownership_and_permissions($file, 12);
+            } else {
+                ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
+                ssm_print "         - create $file\n";
+                ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
+            }
         }
 
         if($main::o{yes}) {
@@ -1838,6 +1863,7 @@ sub do_directory {
     # Take action
     if( defined($fix_it) and ! $main::o{answer_no} ) {
         $CHANGES_MADE++;
+        $main::outstanding{$file} = 'fixed';
         if( defined($just_fix_uid_gid_and_mode) ) {
             set_ownership_and_permissions($file);
         } else {
@@ -1907,20 +1933,24 @@ sub do_generated_file {
     my $fix_it = undef;
     if( defined($needs_fixing) ) {
 
+        $main::outstanding{$file} = 'b0rken';
+
         ssm_print "Not OK:  Generated file $file\n";
-        ssm_print "         Need to:\n";
-        if( defined($just_fix_uid_gid_and_mode) ) {
-            ssm_print "         - fix ownership and permissions\n";
-            diff_ownership_and_permissions($file, 12);
-        } else {
-            ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
-            ssm_print "         - install $file\n";
-            if( -e $file and ! uid_gid_and_mode_match($file) ) {
-                # Also inform user about perms issue. -BEF-
+        unless( $main::o{summary} ) {
+            ssm_print "         Need to:\n";
+            if( defined($just_fix_uid_gid_and_mode) ) {
                 ssm_print "         - fix ownership and permissions\n";
                 diff_ownership_and_permissions($file, 12);
+            } else {
+                ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
+                ssm_print "         - install $file\n";
+                if( -e $file and ! uid_gid_and_mode_match($file) ) {
+                    # Also inform user about perms issue. -BEF-
+                    ssm_print "         - fix ownership and permissions\n";
+                    diff_ownership_and_permissions($file, 12);
+                }
+                ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
             }
-            ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
         }
 
         if($main::o{yes}) {
@@ -1955,6 +1985,7 @@ sub do_generated_file {
     # Take action
     if( defined($fix_it) and ! $main::o{answer_no} ) {
         $CHANGES_MADE++;
+        $main::outstanding{$file} = 'fixed';
         if( defined($just_fix_uid_gid_and_mode) ) {
             set_ownership_and_permissions($file);
         } else {
@@ -2007,20 +2038,24 @@ sub do_regular_file {
     my $fix_it = undef;
     if( defined($needs_fixing) ) {
 
+        $main::outstanding{$file} = 'b0rken';
+
         ssm_print "Not OK:  Regular file $file\n";
-        ssm_print "         Need to:\n";
-        if( defined($just_fix_uid_gid_and_mode) ) {
-            ssm_print "         - fix ownership and permissions:\n";
-            diff_ownership_and_permissions($file, 12);
-        } else {
-            ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
-            ssm_print "         - install $file\n";
-            if( -e $file and ! uid_gid_and_mode_match($file) ) {
-                # Also inform user about perms issue. -BEF-
-                ssm_print "         - fix ownership and permissions\n";
+        unless( $main::o{summary} ) {
+            ssm_print "         Need to:\n";
+            if( defined($just_fix_uid_gid_and_mode) ) {
+                ssm_print "         - fix ownership and permissions:\n";
                 diff_ownership_and_permissions($file, 12);
+            } else {
+                ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
+                ssm_print "         - install $file\n";
+                if( -e $file and ! uid_gid_and_mode_match($file) ) {
+                    # Also inform user about perms issue. -BEF-
+                    ssm_print "         - fix ownership and permissions\n";
+                    diff_ownership_and_permissions($file, 12);
+                }
+                ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
             }
-            ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
         }
 
         if($main::o{yes}) {
@@ -2060,6 +2095,7 @@ sub do_regular_file {
     # Take action
     if( defined($fix_it) and ! $main::o{answer_no} ) {
         $CHANGES_MADE++;
+        $main::outstanding{$file} = 'fixed';
         if( defined($just_fix_uid_gid_and_mode) ) {
             set_ownership_and_permissions($file);
         } else {
@@ -2087,6 +2123,11 @@ sub md5sum_match {
 
 
 sub diff_file {
+
+    if( $main::o{summary} ) {
+        # Don't do diffs in --summary mode
+        return 1;
+    }
 
     my $file     = shift;
     my $tmp_file = shift;
@@ -2371,12 +2412,16 @@ sub do_hardlink {
     my $fix_it = undef;
     if( defined($needs_fixing) ) {
 
+        $main::outstanding{$file} = 'b0rken';
+
         ssm_print "Not OK:  Hard link $file -> $TARGET{$file}\n";
-        ssm_print "         Need to:\n";
-        ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
-        ssm_print "         - remove $file\n" if( -e $file );
-        ssm_print "         - create link\n";
-        ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
+        unless( $main::o{summary} ) {
+            ssm_print "         Need to:\n";
+            ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
+            ssm_print "         - remove $file\n" if( -e $file );
+            ssm_print "         - create link\n";
+            ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
+        }
 
         if($main::o{yes}) {
             $fix_it = 1;
@@ -2404,6 +2449,7 @@ sub do_hardlink {
     if( defined($fix_it) and ! $main::o{answer_no} ) {
 
         $CHANGES_MADE++;
+        $main::outstanding{$file} = 'fixed';
         ssm_print "FIXING:  Hard link $file -> $TARGET{$file}\n";
 
         do_prescript($file);
@@ -2886,6 +2932,8 @@ sub _add_file_to_repo {
         ssm_print "copy_file_to_upstream_repo($tmp_file, $repo_file)\n" if($main::o{debug});
         copy_file_to_upstream_repo($tmp_file, $repo_file);
         unlink $tmp_file;
+
+        $main::outstanding{$file} = 'fixed';
 
     } else {
 
