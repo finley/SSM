@@ -9,6 +9,7 @@ License:      GPL
 URL:          http://download.systemimager.org/pub/ssm/
 Source:       http://download.systemimager.org/pub/ssm/ssm-%{version}.tar.bz2
 BuildRoot:    %{_tmppath}/%{name}-%{version}-build
+# buildrequires:    rpm-build, tar, make, rsync
 
 %description
 Simple State Manager (ssm) allows you to define a desired state for
@@ -54,9 +55,9 @@ rm -f $RPM_BUILD_ROOT/%{_prefix}/sbin/ssm_web-report    # This requires deps uns
 %files
 %defattr(-,root,root)
 %config(noreplace) /etc/ssm/client.conf
-%{_prefix}/lib/
-%{_prefix}/sbin/
-%{_prefix}/share/
+%{_prefix}/lib/*
+%{_prefix}/sbin/*
+%{_prefix}/share/*
 
 
 # Get date command:   
