@@ -148,12 +148,13 @@ sub validate_options {
         exit 1;
     }
 
-    unless($o{sync_state} or $o{analyze_config} or $o{add_file}) { 
+    unless($o{sync_state} or $o{analyze_config} or $o{add_file} or $o{summary}) { 
         usage();
         print "\n";
         print "Try one of the following:\n";
         print "\n";
         print "  --sync\n";
+        print "  --summary\n";
         print "  --add-file\n";
         print "  --analyze-config\n";
         print "\n";
