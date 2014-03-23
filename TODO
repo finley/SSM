@@ -1,6 +1,3 @@
-- Make sure that outstanding changes output is accurate, and that
-  looping happens properly.
-
 *   Don't ever have SSM auto-upgrade itself, unless an
     'auto-upgrade-ssm' setting is in place.
 
