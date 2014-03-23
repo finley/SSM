@@ -151,6 +151,7 @@ $(TOPDIR)/tmp/${package}-$(VERSION).tar.bz2:  clean
 .PHONY: clean
 clean:
 	rm -fr $(TOPDIR)/tmp/
+	rm -fr $(TOPDIR)/usr/share/man/
 
 .PHONY: distclean
 distclean: clean
