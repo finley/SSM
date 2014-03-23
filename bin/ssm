@@ -12,6 +12,7 @@ use lib "/usr/lib/ssm";
 use SimpleStateManager;
 
 our %o;
+our %outstanding;
 
 # Do this before GetOptions mucks up ARGV. -BEF-
 store_invocation_command();
@@ -21,6 +22,7 @@ GetOptions(
     "version"                           => \$o{version},
     "config|state-definition-file=s"    => \$o{definition_file},
     "sync|sync-state"                   => \$o{sync_state},
+    "summary"                           => \$o{summary},
     "yes"                               => \$o{yes},
     "no"                                => \$o{answer_no},
     "debug"                             => \$o{debug},
@@ -32,8 +34,7 @@ GetOptions(
 ) or usage() and exit(1);
 
 my $error_level = 0;
-my $changes_made = 0;
-my $prior_changes_made = 'monkey';
+my $changes_made = -1;
 
 validate_options();
 main();
@@ -47,16 +48,18 @@ exit $error_level;
 #
 sub main {
 
+    my $outstanding_change_count;
+
     if($o{add_file}) {
 
-        my $error_level = read_definition_file();
-        my $changes_made = 0;
+        read_definition_file();
 
         ($error_level, $changes_made) = add_new_files();
+
         if( $main::o{debug} ) { 
             ssm_print "ssm:main(), add_new_files results:\n";
-            ssm_print "  \$error_level:  $error_level\n";
-            ssm_print "  \$changes_made: $changes_made\n";
+            ssm_print "  \$changes_made:            $changes_made\n";
+            ssm_print "  \$error_level:             $error_level\n";
             ssm_print "\n";
         }
         ssm_print "-------------------------------\n";
@@ -69,32 +72,42 @@ sub main {
 
         exit $error_level;
 
+
     } elsif($o{sync_state}) {
 
-        # Iterate as long as changes are happening each go-round. -BEF-
-        until("$changes_made" eq "$prior_changes_made") {
+        my $outstanding_changes = 'monkey';
+        my $prior_outstanding_changes;
 
-            #
-            # Need a better way to end the loop.  How 'bout if we simply
-            # track $total_changes_made.  When it's the same twice in a
-            # row, then we exit? XXX -BEF-
-            #
-        
-            $prior_changes_made = $changes_made;
-        
-            my $error_level = read_definition_file();
-            my $changes_made = 0;
+        # Iterate as long as changes are happening each go-round. -BEF-
+        until( ($changes_made == 0) and ($outstanding_changes eq $prior_outstanding_changes) ) {
+
+            read_definition_file();
         
             #
             # Ok, let's go ahead and sync that state...
             #
+            $prior_outstanding_changes = $outstanding_changes;
+
             ($error_level, $changes_made) = sync_state();
+
+            $outstanding_changes = undef;
+            $outstanding_change_count = 0;
+
+            foreach (keys %outstanding) {
+                $outstanding_changes .= "  $outstanding{$_}  $_\n";
+                $outstanding_change_count++ if($outstanding{$_} eq 'b0rken');
+            }
         
             if( $main::o{debug} ) { 
                 ssm_print "ssm:sync_state results:\n";
-                ssm_print "  \$error_level:  $error_level\n";
-                ssm_print "  \$changes_made: $changes_made\n";
+                ssm_print "  \$changes_made:                $changes_made\n";
+                ssm_print "  \$error_level:                 $error_level\n";
+                ssm_print "  \$outstanding_changes:         $outstanding_change_count\n";
+                ssm_print "  -------------------------------------------\n";
+                ssm_print "$outstanding_changes";
+                ssm_print "  -------------------------------------------\n";
                 ssm_print "\n";
+                sleep 3;
             }
 
             # If --no, then there's no point in looping.  Exit here. -BEF-
@@ -104,7 +117,7 @@ sub main {
 
 
     ssm_print "-------------------------------\n";
-    ssm_print "Total outstanding changes: $error_level\n";
+    ssm_print "Total outstanding changes: $outstanding_change_count\n";
 
     if($error_level > 0) {
         ssm_print qq(\n);
@@ -212,7 +225,20 @@ sub validate_options {
         exit(1);
     }
 
+    if($o{yes} and $o{summary}) { 
+        usage();
+        print "\n";
+        print "The --yes and --summary (implies --no) options conflict.  Use one or the other.\n";
+        print "\n";
+        exit(1);
+    }
+
     if($o{analyze_config}) { 
+        $o{sync_state} = 1; 
+        $o{answer_no} = 1; 
+    }
+
+    if($o{summary}) { 
         $o{sync_state} = 1; 
         $o{answer_no} = 1; 
     }
@@ -300,6 +326,12 @@ OPTIONS
         system.  (Well, if a newer version is available, it will still
         upgrade the 'ssm' package itself.)
     
+    --summary
+
+        Implies "--no" and "--sync".  Does not include diff output on
+        files that are out of sync.  Only shows a one line summary for
+        each configuration element.
+
     --debug
 
         Show each command as it is being run.
