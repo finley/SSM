@@ -1,3 +1,11 @@
+ssm (0.4.51-1) stable; urgency=low
+
+  * Added "--summary" option.
+  * Drastically improve method for determining status of outstanding changes
+  * Don't use bare system directories to specify file locations for RPM creation (fedora20 don't likey)
+
+ -- Brian Elliott Finley <brian@thefinleys.com>  Sun, 23 Mar 2014 00:13:56 -0500
+
 ssm (0.4.50-1) stable; urgency=low
 
   * Switch to dpkg-source 3.0 (quilt) format

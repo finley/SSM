@@ -1,6 +1,6 @@
 Name:         ssm
 Summary:      Manage the state of specific files and packages on a system.
-Version:      0.4.50
+Version:      0.4.51
 Release:      1
 BuildArch:    noarch
 Group:        System Environment/Applications
@@ -65,6 +65,10 @@ rm -f $RPM_BUILD_ROOT/%{_prefix}/sbin/ssm_web-report    # This requires deps uns
 #   sh echo -n "* " ; date +'%a %b %d %Y - brian@thefinleys.com'
 #
 %changelog -n ssm
+* Sat Mar 22 2014 - brian@thefinleys.com
+- Added "--summary" option.
+- Drastically improve method for determining status of outstanding changes
+- Don't use bare system directories to specify file locations for RPM creation (fedora20 don't likey)
 * Fri Mar 21 2014 - brian@thefinleys.com
 - normalize error reporting on debug
 - add 'warn' option to get_file().  in other words, don't fail if SSM
