@@ -47,6 +47,7 @@ make
 mkdir -p $RPM_BUILD_ROOT
 make install DESTDIR=$RPM_BUILD_ROOT
 mv $RPM_BUILD_ROOT/%{_prefix}/share/doc/ssm $RPM_BUILD_ROOT/%{_prefix}/share/doc/ssm-%{version}
+perl -pi -e "s|share/doc/ssm|share/doc/ssm-%{version}|" $RPM_BUILD_ROOT/etc/ssm/client.conf
 rm -f $RPM_BUILD_ROOT/%{_prefix}/sbin/ssm_web-report    # This requires deps unsatisfiable -BEF-
 
 %clean
