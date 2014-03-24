@@ -120,9 +120,8 @@ deb:  debs
 
 .PHONY: debs
 debs:  tarball
-	cd $(TOPDIR)/tmp/${package}-$(VERSION) \
-		&& fakeroot dpkg-buildpackage -uc -us
-	
+	ln $(TOPDIR)/tmp/${package}-$(VERSION).tar.bz2 $(TOPDIR)/tmp/${package}_$(VERSION).orig.tar.bz2
+	cd $(TOPDIR)/tmp/${package}-$(VERSION) && debuild -us -uc
 	/bin/ls -1 $(TOPDIR)/tmp/${package}[-_]$(VERSION)*.*
 
 .PHONY: tarball
@@ -141,11 +140,11 @@ $(TOPDIR)/tmp/${package}-$(VERSION).tar.bz2:  clean
 	read i
 	mkdir -p    $(TOPDIR)/tmp/
 	git clone . $(TOPDIR)/tmp/${package}-$(VERSION)/
-	git   log > $(TOPDIR)/tmp/${package}-$(VERSION)/CHANGE.LOG
+	git log   > $(TOPDIR)/tmp/${package}-$(VERSION)/CHANGE.LOG
 	rm -fr      $(TOPDIR)/tmp/${package}-$(VERSION)/.git
-	find $(TOPDIR)/tmp/${package}-$(VERSION) -type f -exec chmod ug+r  {} \;
-	find $(TOPDIR)/tmp/${package}-$(VERSION) -type d -exec chmod ug+rx {} \;
-	cd $(TOPDIR)/tmp && tar -ch ${package}-$(VERSION) | bzip2 > ${package}-$(VERSION).tar.bz2
+	find  $(TOPDIR)/tmp/${package}-$(VERSION) -type f -exec chmod ug+r  {} \;
+	find  $(TOPDIR)/tmp/${package}-$(VERSION) -type d -exec chmod ug+rx {} \;
+	cd    $(TOPDIR)/tmp/ && tar -ch ${package}-$(VERSION) | bzip2 > ${package}-$(VERSION).tar.bz2
 	ls -l $(TOPDIR)/tmp/
 
 .PHONY: clean
