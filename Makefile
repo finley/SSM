@@ -69,7 +69,7 @@ install:  all
 	test -d ${docdir} || install -d -m 755 ${docdir}
 	rsync -av --exclude '.*' usr/share/doc/ ${docdir}
 	install -m 644 $(TOPDIR)/CREDITS  	${docdir}
-	install -m 644 $(TOPDIR)/COPYING  	${docdir}
+	#install -m 644 $(TOPDIR)/COPYING  	${docdir}	# lintian doesn't like this
 	install -m 644 $(TOPDIR)/README  	${docdir}
 	#	
 	test -d ${docdir}/examples/ || install -d -m 755 ${docdir}/examples/
