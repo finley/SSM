@@ -1,3 +1,9 @@
+ssm (0.4.53-1) stable; urgency=low
+
+  - don't double-ask shall i do this for soft links 
+
+ -- Brian Elliott Finley <brian@thefinleys.com>  Mon, 24 Mar 2014 15:41:11 -0500
+
 ssm (0.4.52-1) stable; urgency=low
 
   - Using new deb building procedure.
