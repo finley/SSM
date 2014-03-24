@@ -1,17 +1,20 @@
-*   Don't ever have SSM auto-upgrade itself, unless an
+-   Don't ever have SSM auto-upgrade itself, unless an
     'auto-upgrade-ssm' setting is in place.
 
-*   New feature:  action-tag
+-   Have upload_url default to ssh@ or file:// version of
+    'definition_file'
+
+-   New feature:  action-tag
 
     Concept:  
-     * Ability to assign an "action-tag" to each file in a group of
+     - Ability to assign an "action-tag" to each file in a group of
        associated files.  If one or more of those files is modified
        during an SSM run (installed, chowned, etc.), then that file's
        action-tag is activated.
 
-     * Ability to assign an "action-tag" to packages too.
+     - Ability to assign an "action-tag" to packages too.
 
-     * At the end of an SSM run, if an action-tag was activated,
+     - At the end of an SSM run, if an action-tag was activated,
        then the action specified by that action-tag's stanza is
        executed.
 
@@ -35,7 +38,7 @@
     name        = iptables-restart
     action      = /etc/init.d/iptables restart
 
-*   New feature:  test 
+-   New feature:  test 
 
     [test]
     name = test FILE1 -nt FILE2
