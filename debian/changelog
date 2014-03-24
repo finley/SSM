@@ -1,3 +1,11 @@
+ssm (0.4.52-1) stable; urgency=low
+
+  - Using new deb building procedure.
+  - Using new rpm building procedure.
+  - Fixed default links to example file.
+
+ -- Brian Elliott Finley <brian@thefinleys.com>  Mon, 24 Mar 2014 09:56:21 -0500
+
 ssm (0.4.51-1) stable; urgency=low
 
   - Added "--summary" option.

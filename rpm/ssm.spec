@@ -1,6 +1,6 @@
 Name:         ssm
 Summary:      Manage the state of specific files and packages on a system.
-Version:      0.4.51
+Version:      0.4.52
 Release:      1
 BuildArch:    noarch
 Group:        System Environment/Applications
@@ -66,6 +66,12 @@ rm -f $RPM_BUILD_ROOT/%{_prefix}/sbin/ssm_web-report    # This requires deps uns
 #   sh echo -n "* " ; date +'%a %b %d %Y - brian@thefinleys.com'
 #
 %changelog -n ssm
+
+* Mon Mar 24 2014 - brian@thefinleys.com
+- ssm (0.4.52-1) stable; urgency=low
+- Using new deb building procedure.
+- Using new rpm building procedure.
+- Fixed default links to example file.
 * Sat Mar 22 2014 - brian@thefinleys.com
 - Added "--summary" option.
 - Drastically improve method for determining status of outstanding changes
