@@ -1323,7 +1323,6 @@ sub do_softlink {
             $fix_it = undef;
             $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
         } else {
-            ssm_print "         Shall I do this? [N/y]: ";
             if( do_you_want_me_to() eq 'yes' ) { 
                 $fix_it = 1;
             } else {
