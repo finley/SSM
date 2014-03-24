@@ -12,7 +12,7 @@ Suggests: libmail-mboxparser-perl, fetchmail
 Description: Manage the state of specific files and packages on a system.
  Simple State Manager (ssm) allows you to define a desired state for
  one or more machines.  This state can include:
-  
+ .
  * a complete list of packages to be installed (optional)
  * version information for some or all packages (optional)
  * files that should be in place, and appropriate attributes (optional)
@@ -21,15 +21,15 @@ Description: Manage the state of specific files and packages on a system.
    - permissions and ownership
    - soft links and hard links
    - unwanted files and directories (that should be removed)
-  
+ .
  If an defined element of a system is not in the desired state, the
  ssm client can fix it, always prompting you before taking action.
  Prompting can be suppressed with a --yes option.
-  
+ .
  State information for a machine is kept in a state definition file,
  which can be stored in a location that the ssm client can access via
  http:, https:, ftp:, or on the local filesystem.  State definition 
  files are simple to create, and are easy to read and understand.
-  
+ .
  http://download.systemimager.org/pub/ssm/
 
