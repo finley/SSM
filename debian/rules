@@ -1,7 +1,18 @@
 #!/usr/bin/make -f
+
+#
+#   2014.03.23 Brian Elliott Finley <brian@thefinleys.com>
+#   - created, based on the excellent examples here:
+#     https://wiki.debian.org/IntroDebianPackaging
+#   
+
 %:
 	dh $@
 
 override_dh_auto_install:
 	$(MAKE) DESTDIR=$$(pwd)/debian/ssm prefix=/usr install
+
+override_dh_compress:
+	# We wanna keep this file uncompressed -BEF-
+	dh_compress --exclude=examples/state_definition_config_file.conf
 
