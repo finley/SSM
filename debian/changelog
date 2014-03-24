@@ -1,31 +1,33 @@
 ssm (0.4.51-1) stable; urgency=low
 
-  * Added "--summary" option.
-  * Drastically improve method for determining status of outstanding changes
-  * Don't use bare system directories to specify file locations for RPM creation (fedora20 don't likey)
+  - Added "--summary" option.
+  - Drastically improve method for determining status of outstanding changes
+  - Don't use bare system directories to specify file locations for RPM creation
+    (fedora20 don't likey)
 
  -- Brian Elliott Finley <brian@thefinleys.com>  Sun, 23 Mar 2014 00:13:56 -0500
 
 ssm (0.4.50-1) stable; urgency=low
 
-  * Switch to dpkg-source 3.0 (quilt) format
-  * normalize error reporting on debug
-  * add 'warn' option to get_file().  in other words, don't fail if SSM
-  * tries to download a file that ain't in the repo, but warn the user.
-  * don't pause for one second if a hard link target doesn't exist
-  * File add support improved and moved into the main ssm command.
-  * no longer exit w/1 with no pkg_manager warning, and move the please_specify_a_package_manager subrouting to a less odd location
-  * File add support improved and moved into the main ssm command.
-  * Improved help output
-  * moved the good bits back into examples
-  * copyright date
-  * minor output verbiage change
-  * verify absolute path of file for user presentation as well as repo update.
-  * undef sync_state if --af
-  * Don't require root to build RPM
-  * Copy RPMs to ./tmp dir and list
-  * Have '--af' override '--sync' rather than fail.
-  * Handle "ssm --af file" without user specified fully qualified path.
+  - Switch to dpkg-source 3.0 (quilt) format
+  - normalize error reporting on debug
+  - add 'warn' option to get_file().  in other words, don't fail if SSM
+  - tries to download a file that ain't in the repo, but warn the user.
+  - don't pause for one second if a hard link target doesn't exist
+  - File add support improved and moved into the main ssm command.
+  - no longer exit w/1 with no pkg_manager warning, and move the 
+    please_specify_a_package_manager subrouting to a less odd location
+  - File add support improved and moved into the main ssm command.
+  - Improved help output
+  - moved the good bits back into examples
+  - copyright date
+  - minor output verbiage change
+  - verify absolute path of file for user presentation as well as repo update.
+  - undef sync_state if --af
+  - Don't require root to build RPM
+  - Copy RPMs to ./tmp dir and list
+  - Have '--af' override '--sync' rather than fail.
+  - Handle "ssm --af file" without user specified fully qualified path.
 
  -- Brian Elliott Finley <brian@thefinleys.com>  Fri, 21 Mar 2014 16:02:19 -0500
 
@@ -45,9 +47,10 @@ ssm (0.4.48-1) testing; urgency=low
 
 ssm (0.4.47-1) testing; urgency=low
 
-  * Added the --add-file FILE option.  Allows adding files to definition via the ssm command line.
-  * Handle manpage creation better.
-  * Improve verbiage on help output.
+  - Added the --add-file FILE option.  Allows adding files to definition via the
+    ssm command line.
+  - Handle manpage creation better.
+  - Improve verbiage on help output.
 
  -- Brian Elliott Finley <brian@thefinleys.com>  Tue, 18 Feb 2014 17:22:17 -0600
 
@@ -511,8 +514,9 @@ ssm (0.4.5-1) gutsy; urgency=low
 
 ssm (0.4.4-1) gutsy; urgency=low
 
-  * New upstream version:
-    * Simplify code and fix bug in: Only check out the necessary part of the repo when adding a file to svn.
+  - New upstream version:
+  - Simplify code and fix bug in: Only check out the necessary part of the repo
+    when adding a file to svn.
 
  -- Brian Elliott Finley <brian@thefinleys.com>  Tue, 06 Nov 2007 20:21:02 -0600
 

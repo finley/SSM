@@ -3,11 +3,11 @@ Section: admin
 Priority: optional
 Maintainer: Brian Elliott Finley <brian@thefinleys.com>
 Build-Depends: debhelper (>= 9), txt2man, libwww-perl
-Standards-Version: 3.9.2
+Standards-Version: 3.9.3
 
 Package: ssm
 Architecture: all
-Depends: libunix-mknod-perl | unix-mknod, libwww-perl, wget, colordiff | diff, libmailtools-perl
+Depends: ${shlibs:Depends}, ${misc:Depends}, libunix-mknod-perl | unix-mknod, libwww-perl, wget, colordiff | diff, libmailtools-perl
 Suggests: libmail-mboxparser-perl, fetchmail
 Description: Manage the state of specific files and packages on a system.
  Simple State Manager (ssm) allows you to define a desired state for
