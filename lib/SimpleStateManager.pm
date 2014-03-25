@@ -1206,8 +1206,8 @@ sub do_you_want_me_to {
         $i_had_to_explain_something = 1;
         }
     if($prompts =~ m/a/ and ! defined $main::o{answer_implications_explained_a}) {
-        $explanation .= qq/           a -> Add  -- Add this local file to repo and activate it\n/;
-        $explanation .= qq/                        in the configuration.\n/;
+        $explanation .= qq/           a -> Add  -- Copy the local version of this file to your repo\n/;
+        $explanation .= qq/                        and update the configuration to use it.\n/;
         $main::o{answer_implications_explained_a} = 'yes';
         $i_had_to_explain_something = 1;
         }
@@ -1318,8 +1318,8 @@ sub do_softlink {
         unless( $main::o{summary} ) {
             ssm_print "         Need to:\n";
             ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
-            ssm_print "         - remove $file\n" if( -e $file );
-            ssm_print "         - create link\n";
+            ssm_print "         - remove pre-existing file $file\n" if( -e $file );
+            ssm_print "         - create soft link\n";
             ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
         }
 
@@ -1420,8 +1420,8 @@ sub do_special_file {
         unless( $main::o{summary} ) {
             ssm_print "         Need to:\n";
             ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
-            ssm_print "         - remove $file\n" if( -e $file );
-            ssm_print "         - create $file\n";
+            ssm_print "         - remove pre-existing file $file\n" if( -e $file );
+            ssm_print "         - create $TYPE{$file} special file\n";
             ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
         }
 
@@ -1737,7 +1737,7 @@ sub do_chown_and_chmod {
             ssm_print "         Need to:\n";
             ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
             if( ! -e $file ) {
-                ssm_print "         - create as empty file\n";
+                ssm_print "         - create empty file\n";
                 ssm_print "         - set ownership and permissions\n";
             } else {
                 ssm_print "         - fix ownership and permissions\n";
@@ -1833,7 +1833,7 @@ sub do_directory {
                 diff_ownership_and_permissions($file, 12);
             } else {
                 ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
-                ssm_print "         - create $file\n";
+                ssm_print "         - create directory\n";
                 ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
             }
         }
@@ -1943,7 +1943,7 @@ sub do_generated_file {
                 diff_ownership_and_permissions($file, 12);
             } else {
                 ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
-                ssm_print "         - install $file\n";
+                ssm_print "         - generate file\n";
                 if( -e $file and ! uid_gid_and_mode_match($file) ) {
                     # Also inform user about perms issue. -BEF-
                     ssm_print "         - fix ownership and permissions\n";
@@ -2047,7 +2047,7 @@ sub do_regular_file {
                 diff_ownership_and_permissions($file, 12);
             } else {
                 ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
-                ssm_print "         - install $file\n";
+                ssm_print "         - copy version from repo\n";
                 if( -e $file and ! uid_gid_and_mode_match($file) ) {
                     # Also inform user about perms issue. -BEF-
                     ssm_print "         - fix ownership and permissions\n";
@@ -2416,8 +2416,8 @@ sub do_hardlink {
         unless( $main::o{summary} ) {
             ssm_print "         Need to:\n";
             ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
-            ssm_print "         - remove $file\n" if( -e $file );
-            ssm_print "         - create link\n";
+            ssm_print "         - remove pre-existing file $file\n" if( -e $file );
+            ssm_print "         - create hard link\n";
             ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
         }
 
