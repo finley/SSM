@@ -1187,28 +1187,37 @@ sub do_you_want_me_to {
         $msg = "         Shall I do this? [N/y]: ";
     }
 
+    my $i_had_to_explain_something = undef;
     my $explanation = "\n";
 
     if($prompts =~ m/n/ and ! defined $main::o{answer_implications_explained_n}) {
         $explanation .= qq/           N -> No   -- Don't do anything.  [The default]\n/;
         $main::o{answer_implications_explained_n} = 'yes';
+        $i_had_to_explain_something = 1;
         }
     if($prompts =~ m/y/ and ! defined $main::o{answer_implications_explained_y}) {
         $explanation .= qq/           y -> Yes  -- Execute all of the "Need to:" actions above.\n/;
         $main::o{answer_implications_explained_y} = 'yes';
+        $i_had_to_explain_something = 1;
         }
     if($prompts =~ m/d/ and ! defined $main::o{answer_implications_explained_d}) {
         $explanation .= qq/           d -> Diff -- Show me a diff then ask me again.\n/;
         $main::o{answer_implications_explained_d} = 'yes';
+        $i_had_to_explain_something = 1;
         }
     if($prompts =~ m/a/ and ! defined $main::o{answer_implications_explained_a}) {
         $explanation .= qq/           a -> Add  -- Add this local file to repo and activate it\n/;
         $explanation .= qq/                        in the configuration.\n/;
         $main::o{answer_implications_explained_a} = 'yes';
+        $i_had_to_explain_something = 1;
         }
     $explanation .= qq/\n/;
 
-    $msg = $explanation . $msg;
+    if( $i_had_to_explain_something ) {
+        $msg = $explanation . $msg;
+    } else {
+        $msg = "\n" . $msg;
+    }
 
     ssm_print $msg if(defined $msg);
 
@@ -1283,7 +1292,6 @@ sub do_softlink {
     if( ! -e $TARGET{$file} ) {
         ssm_print "WARNING: Soft link $file -> $TARGET{$file} (target doesn't exist).\n";
         $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-        sleep 1;
     }
 
     my $current_target = readlink($file);
@@ -1328,7 +1336,6 @@ sub do_softlink {
             } else {
                 ssm_print "         Ok, skipping this step.\n\n";
                 $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-                sleep 1;
             }
         }
 
@@ -1336,7 +1343,7 @@ sub do_softlink {
 
             $CHANGES_MADE++;
             $main::outstanding{$file} = 'fixed';
-            ssm_print "FIXING:  Soft link $file -> $TARGET{$file}\n";
+            ssm_print "         FIXING:  Soft link $file -> $TARGET{$file}\n\n";
 
             do_prescript($file);
 
@@ -1425,14 +1432,11 @@ sub do_special_file {
             $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
         } else {
 
-            ssm_print "         Shall I do this? [N/y]: ";
-
             if( do_you_want_me_to() eq 'yes' ) { 
                 $fix_it = 1;
             } else {
                 ssm_print "         Ok, skipping this step.\n\n";
                 $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-                sleep 1;
             }
         }
 
@@ -1446,7 +1450,7 @@ sub do_special_file {
 
         $CHANGES_MADE++;
         $main::outstanding{$file} = 'fixed';
-        ssm_print "FIXING:  " . ucfirst($TYPE{$file}) . " file $file\n";
+        ssm_print "         FIXING:  " . ucfirst($TYPE{$file}) . " file $file\n\n";
 
         do_prescript($file);
 
@@ -1553,7 +1557,7 @@ sub set_ownership_and_permissions {
 
     my $file = shift;
 
-    ssm_print "FIXING:  Ownership and Perms: $file\n";
+    ssm_print "         FIXING:  Ownership and Perms: $file\n\n";
 
     chown $OWNER{$file}, $GROUP{$file}, $file;
     chmod oct($MODE{$file}), $file;
@@ -1676,7 +1680,6 @@ sub do_unwanted_file {
             } else {
                 ssm_print "         Ok, skipping this step.\n\n";
                 $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-                sleep 1;
             }
         }
     }
@@ -1686,7 +1689,7 @@ sub do_unwanted_file {
     if( defined($fix_it) ) {
 
         $CHANGES_MADE++;
-        ssm_print "FIXING:  Removing: $file\n";
+        ssm_print "         FIXING:  Removing: $file\n\n";
 
         do_prescript($file);
         remove_file($file);
@@ -1758,7 +1761,6 @@ sub do_chown_and_chmod {
             } else {
                 ssm_print "         Ok, skipping this step.\n\n";
                 $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-                sleep 1;
             }
         }
     } else {
@@ -1851,7 +1853,6 @@ sub do_directory {
             } else {
                 ssm_print "         Ok, skipping this step.\n\n";
                 $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-                sleep 1;
             }
         }
     } else {
@@ -1973,7 +1974,6 @@ sub do_generated_file {
             } else {
                 ssm_print "         Ok, skipping this step.\n\n";
                 $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-                sleep 1;
             }
         }
     } else {
@@ -2083,7 +2083,6 @@ sub do_regular_file {
             } else {
                 ssm_print "         Ok, skipping this step.\n\n";
                 $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-                sleep 1;
             }
         }
     } else {
@@ -2209,7 +2208,7 @@ sub create_directory {
 
     my $file = shift;
 
-    ssm_print "FIXING:  Creating: $file\n";
+    ssm_print "         FIXING:  Creating: $file\n\n";
 
     do_prescript($file);
 
@@ -2232,7 +2231,7 @@ sub install_file {
     my $file     = shift;
     my $tmp_file = shift;
 
-    ssm_print "FIXING:  Installing: $file\n";
+    ssm_print "         FIXING:  Installing: $file\n\n";
 
     my $url;
     if( ! defined $tmp_file ) {
@@ -2429,14 +2428,11 @@ sub do_hardlink {
             $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
         } else {
 
-            ssm_print "         Shall I do this? [N/y]: ";
-
             if( do_you_want_me_to() eq 'yes' ) { 
                 $fix_it = 1;
             } else {
                 ssm_print "         Ok, skipping this step.\n\n";
                 $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-                sleep 1;
             }
         }
     } else {
@@ -2449,7 +2445,7 @@ sub do_hardlink {
 
         $CHANGES_MADE++;
         $main::outstanding{$file} = 'fixed';
-        ssm_print "FIXING:  Hard link $file -> $TARGET{$file}\n";
+        ssm_print "         FIXING:  Hard link $file -> $TARGET{$file}\n\n";
 
         do_prescript($file);
 
