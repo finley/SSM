@@ -112,6 +112,10 @@ sub main {
 
             # If --no, then there's no point in looping.  Exit here. -BEF-
             last if($o{answer_no});
+
+            # The looping can go by so fast it's confusing if running
+            # interactively.
+            sleep 1 unless( $o{yes} );;
         }
     }
 

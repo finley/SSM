@@ -1183,6 +1183,7 @@ sub do_you_want_me_to {
     if(! defined $prompts) {
         $prompts = 'yn';
     }
+
     if(! defined $msg) {
         $msg = "         Shall I do this? [N/y]: ";
     }
@@ -1235,12 +1236,12 @@ sub do_you_want_me_to {
     } elsif( m/^(a|add)/i ) {
         return 'add';
 
-    } elsif( m/^(n|no)/i ) {
-        return 'no';
-
     } elsif( m/^(c|comment|comments)/i ) {
         return 'comments';
 
+    } elsif( m/^(n|no)/i or m/^$/ ) {
+        # either a no or an empty response (user just hit <Enter>)
+        return 'no';
     }
 }
 
@@ -1343,7 +1344,7 @@ sub do_softlink {
 
             $CHANGES_MADE++;
             $main::outstanding{$file} = 'fixed';
-            ssm_print "         FIXING:  Soft link $file -> $TARGET{$file}\n\n";
+            ssm_print "         FIXING:  Soft link $file -> $TARGET{$file}\n";
 
             do_prescript($file);
 
@@ -1450,7 +1451,7 @@ sub do_special_file {
 
         $CHANGES_MADE++;
         $main::outstanding{$file} = 'fixed';
-        ssm_print "         FIXING:  " . ucfirst($TYPE{$file}) . " file $file\n\n";
+        ssm_print "         FIXING:  " . ucfirst($TYPE{$file}) . " file $file\n";
 
         do_prescript($file);
 
@@ -1557,7 +1558,7 @@ sub set_ownership_and_permissions {
 
     my $file = shift;
 
-    ssm_print "         FIXING:  Ownership and Perms: $file\n\n";
+    ssm_print "         FIXING:  Ownership and Perms: $file\n";
 
     chown $OWNER{$file}, $GROUP{$file}, $file;
     chmod oct($MODE{$file}), $file;
@@ -1689,7 +1690,7 @@ sub do_unwanted_file {
     if( defined($fix_it) ) {
 
         $CHANGES_MADE++;
-        ssm_print "         FIXING:  Removing: $file\n\n";
+        ssm_print "         FIXING:  Removing: $file\n";
 
         do_prescript($file);
         remove_file($file);
@@ -2039,12 +2040,17 @@ sub do_regular_file {
 
         $main::outstanding{$file} = 'b0rken';
 
+        #
+        # Summarize what needs to be done
+        #
         ssm_print "Not OK:  Regular file $file\n";
+        my $action;
         unless( $main::o{summary} ) {
             ssm_print "         Need to:\n";
             if( defined($just_fix_uid_gid_and_mode) ) {
                 ssm_print "         - fix ownership and permissions:\n";
                 diff_ownership_and_permissions($file, 12);
+                $action = 'set_ownership_and_permissions';
             } else {
                 ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
                 ssm_print "         - copy version from repo\n";
@@ -2054,54 +2060,97 @@ sub do_regular_file {
                     diff_ownership_and_permissions($file, 12);
                 }
                 ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
+                $action = 'install_file';
             }
         }
 
+        #
+        # Decide what to do about it -- if anything
+        #
         if($main::o{yes}) {
+
             $fix_it = 1;
             diff_file($file);
+
         } elsif($main::o{answer_no}) {
+
             $fix_it = undef;
             diff_file($file);
             $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+
         } else {
 
-            my $msg;
-
-            $msg .= "         Shall I do this? [N/y/d/a]: ";
-            my $answer = do_you_want_me_to($msg, 'ynda');
-            while( $answer eq 'diff' ) {
-
-                diff_file($file);
-                $answer = do_you_want_me_to($msg, 'ynda');
+            my $return_code = 0;
+            until( $return_code == 1 ) {
+                my $msg   .= "         Shall I do this? [N/y/d/a]: ";
+                my $answer = do_you_want_me_to($msg, 'ynda');
+                last if( $answer eq 'n' );
+                $return_code = take_action( $file, $answer, $action );
             }
-
-            if( $answer eq 'yes' ) { 
-                $fix_it = 1;
-            } elsif( $answer eq 'add' ) { 
-                _add_file_to_repo( $file );
-            } else {
-                ssm_print "         Ok, skipping this step.\n\n";
-                $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-            }
+            ssm_print "\n";
         }
+            
     } else {
+
         ssm_print "OK:      Regular file $file\n";
     }
 
-    #
-    # Take action
-    if( defined($fix_it) and ! $main::o{answer_no} ) {
-        $CHANGES_MADE++;
+    return 1;
+}
+
+#
+#   Usage:  $return_code = take_action( 'filename', 'answer', 'action' );
+#           $return_code = take_action( $file, $answer, $action );
+#
+sub take_action {
+
+    my $file    = shift;
+    my $answer  = shift;
+    my $action  = shift;
+
+    if($main::o{debug}) { ssm_print "take_action( $file, $answer, $action )\n"; }
+
+    my $return_code;
+
+    if( $answer eq 'no' ) {
+        $return_code = 1;
+
+    } elsif( $answer eq 'diff' ) {
+        diff_file($file);
+        $return_code = 2;  # we did our diff, but don't want to exit the higher level loop yet
+
+    } elsif( $answer eq 'add' ) {
+        $return_code = _add_file_to_repo( $file );
         $main::outstanding{$file} = 'fixed';
-        if( defined($just_fix_uid_gid_and_mode) ) {
-            set_ownership_and_permissions($file);
+        $CHANGES_MADE++;
+
+    } elsif( $answer eq 'yes' ) {
+
+        my %actions = (
+            'install_file'                  => \&install_file,
+            'add_file_to_repo'              => \&add_file_to_repo,
+            'set_ownership_and_permissions' => \&set_ownership_and_permissions,
+        );
+
+        # Keep this function short and sweet by simply passing the name of the
+        # action as the subroutine to execute from the list of allowable
+        # subroutine actions listed above. -BEF-
+        if(defined $actions{$action}) {
+            if($main::o{debug}) { ssm_print "return_code = $actions{$action}($file);\n"; }
+            $return_code = $actions{$action}($file);
         } else {
-            install_file($file);
+            ssm_print "DEVELOPER PEBKAC ERROR: '$action' is not a valid action\n";
+            $return_code = 7;
         }
+        $main::outstanding{$file} = 'fixed';
+        $CHANGES_MADE++;
+
+    } else {
+            if($main::o{debug}) { ssm_print "PEBKAC ERROR: '$answer' is not a valid answer\n"; }
+            $return_code = 7;
     }
 
-    return 1;
+    return $return_code;
 }
 
 
@@ -2129,6 +2178,10 @@ sub diff_file {
 
     my $file     = shift;
     my $tmp_file = shift;
+
+    ssm_print "         DIFFING:  $file\n";
+
+    if($main::o{debug}) { ssm_print "diff_file($file)\n"; }
 
     my $unlink = 'no';
 
@@ -2208,7 +2261,9 @@ sub create_directory {
 
     my $file = shift;
 
-    ssm_print "         FIXING:  Creating: $file\n\n";
+    ssm_print "         FIXING:  Creating: $file\n";
+
+    if($main::o{debug}) { ssm_print "create_directory($file)\n"; }
 
     do_prescript($file);
 
@@ -2231,7 +2286,9 @@ sub install_file {
     my $file     = shift;
     my $tmp_file = shift;
 
-    ssm_print "         FIXING:  Installing: $file\n\n";
+    if($main::o{debug}) { ssm_print "install_file($file)\n"; }
+
+    ssm_print "         FIXING:  Installing: $file\n";
 
     my $url;
     if( ! defined $tmp_file ) {
@@ -2242,7 +2299,7 @@ sub install_file {
     if( ! defined $tmp_file ) {
         # Hmm.  get_file must have failed
         # Just drop the user back to their choices...
-        return 1;
+        return 2;
     }
 
     do_prescript($file);
@@ -2445,19 +2502,20 @@ sub do_hardlink {
 
         $CHANGES_MADE++;
         $main::outstanding{$file} = 'fixed';
-        ssm_print "         FIXING:  Hard link $file -> $TARGET{$file}\n\n";
+        ssm_print "         FIXING:  Hard link $file -> $TARGET{$file}\n";
 
         do_prescript($file);
 
         remove_file($file);
         link($TARGET{$file}, $file) or die "Couldn't link($TARGET{$file}, $file) $!";
+
         #
-        #XXX
         #   Should we accept and use owner, group, and mode info for hardlinks?
         #
         #   If perms and ownership are changed on a hardlink, they are 
         #   changed for the file itself, and this is reflected by all
         #   names (links) for the file.
+        #
 
         do_postscript($file);
     }
@@ -2937,7 +2995,7 @@ sub _add_file_to_repo {
         $ERROR_LEVEL++;
         if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
         ssm_print "\n";
-        exit $ERROR_LEVEL;
+        return 3;
     }
 
     return 1;
