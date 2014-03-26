@@ -509,8 +509,12 @@ sub read_definition_file {
 
             my $unsatisfied = check_depends($name);
             if($unsatisfied ne "1") {
-                ssm_print "Not OK:  Service $name -> Unmet dependencies:\n";
-                ssm_print "         $unsatisfied\n";
+                ssm_print "Not OK:  Service $name -> Unmet dependencies";
+                unless( $main::o{summary} ) {
+                    ssm_print ":\n";
+                    ssm_print "         $unsatisfied";
+                }
+                ssm_print "\n";
                 $ERROR_LEVEL++;
                 if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
 
@@ -878,8 +882,12 @@ sub sync_state {
 
         my $unsatisfied = check_depends($file);
         if($unsatisfied ne "1") {
-            ssm_print "Not OK:  File $file -> Unmet dependencies:\n";
-            ssm_print "         $unsatisfied\n";
+            ssm_print "Not OK:  File $file -> Unmet dependencies";
+            unless( $main::o{summary} ) {
+                ssm_print ":\n";
+                ssm_print "         $unsatisfied";
+            }
+            ssm_print "\n";
             $ERROR_LEVEL++;
             if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
         }
@@ -1710,12 +1718,16 @@ sub do_unwanted_file {
     # Take action
     if( defined($fix_it) ) {
 
-        $CHANGES_MADE++;
         ssm_print "         FIXING:  Removing: $file\n";
 
         do_prescript($file);
         remove_file($file);
         do_postscript($file);
+
+        ssm_print "\n";
+
+        $main::outstanding{$file} = 'fixed';
+        $CHANGES_MADE++;
     }
 
     return 1;
@@ -1888,13 +1900,16 @@ sub do_directory {
     #
     # Take action
     if( defined($fix_it) and ! $main::o{answer_no} ) {
-        $CHANGES_MADE++;
-        $main::outstanding{$file} = 'fixed';
         if( defined($just_fix_uid_gid_and_mode) ) {
             set_ownership_and_permissions($file);
         } else {
             create_directory($file);
         }
+
+        ssm_print "\n";
+
+        $main::outstanding{$file} = 'fixed';
+        $CHANGES_MADE++;
     }
 
     return 1;
@@ -2009,13 +2024,16 @@ sub do_generated_file {
     #
     # Take action
     if( defined($fix_it) and ! $main::o{answer_no} ) {
-        $CHANGES_MADE++;
-        $main::outstanding{$file} = 'fixed';
         if( defined($just_fix_uid_gid_and_mode) ) {
             set_ownership_and_permissions($file);
         } else {
             install_file($file, $tmp_file);
         }
+
+        ssm_print "\n";
+
+        $main::outstanding{$file} = 'fixed';
+        $CHANGES_MADE++;
     }
 
     return 1;
@@ -2261,7 +2279,7 @@ sub do_prescript {
 
     if($PRESCRIPT{$file}) {
         my $cmd = $PRESCRIPT{$file};
-        ssm_print qq(RUNNING: $cmd\n);
+        ssm_print qq(         RUNNING: $cmd\n);
         run_cmd($cmd);
     }
 
@@ -2274,7 +2292,7 @@ sub do_postscript {
 
     if($POSTSCRIPT{$file}) {
         my $cmd = $POSTSCRIPT{$file};
-        ssm_print qq(RUNNING: $cmd\n);
+        ssm_print qq(         RUNNING: $cmd\n);
         run_cmd($cmd);
     }
 
