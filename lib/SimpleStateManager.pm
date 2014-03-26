@@ -1290,10 +1290,18 @@ sub do_softlink {
     # Singularize double slashes in target names
     $TARGET{$file} =~ s#/+#/#g;
 
+    #
+    # In case it's a relative path name, move to the directory where the link
+    # will live before testing for target existence. -BEF-
+    #
+    my    $cwd     = getcwd();
+    my    $dirname = dirname( $file );
+    chdir $dirname;
     if( ! -e $TARGET{$file} ) {
         ssm_print "WARNING: Soft link $file -> $TARGET{$file} (target doesn't exist).\n";
         $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
     }
+    chdir $cwd;
 
     my $current_target = readlink($file);
 
@@ -1342,8 +1350,6 @@ sub do_softlink {
 
         if( defined($fix_it) and ! $main::o{answer_no} ) {
 
-            $CHANGES_MADE++;
-            $main::outstanding{$file} = 'fixed';
             ssm_print "         FIXING:  Soft link $file -> $TARGET{$file}\n";
 
             do_prescript($file);
@@ -1351,9 +1357,21 @@ sub do_softlink {
             remove_file($file);
             symlink($TARGET{$file}, $file) or die "Couldn't symlink($TARGET{$file}, $file) $!";
 
+            # 
+            # Should we actually do pre and post-scripts if a symlink target
+            # doesn't exist? -BEF-
+            # 
+
             do_postscript($file);
+
+            ssm_print "\n";
+
+            $main::outstanding{$file} = 'fixed';
+            $CHANGES_MADE++;
         }
+
     } else {
+
         ssm_print "OK:      Soft link $file -> $TARGET{$file}\n";
     }
 
@@ -1449,8 +1467,6 @@ sub do_special_file {
     # Take action
     if( defined($fix_it) and ! $main::o{answer_no} ) {
 
-        $CHANGES_MADE++;
-        $main::outstanding{$file} = 'fixed';
         ssm_print "         FIXING:  " . ucfirst($TYPE{$file}) . " file $file\n";
 
         do_prescript($file);
@@ -1480,6 +1496,11 @@ sub do_special_file {
         set_ownership_and_permissions($file);
 
         do_postscript($file);
+
+        ssm_print "\n";
+
+        $main::outstanding{$file} = 'fixed';
+        $CHANGES_MADE++;
     }
 
     return 1;
@@ -1771,8 +1792,7 @@ sub do_chown_and_chmod {
     #
     # Take action
     if( defined($fix_it) and ! $main::o{answer_no} ) {
-        $CHANGES_MADE++;
-        $main::outstanding{$file} = 'fixed';
+
         do_prescript($file);
         if( ! -e $file ) {
             # Ain't there -- create an empty file
@@ -1781,6 +1801,11 @@ sub do_chown_and_chmod {
         } 
         set_ownership_and_permissions($file);
         do_postscript($file);
+
+        $main::outstanding{$file} = 'fixed';
+        $CHANGES_MADE++;
+
+        ssm_print "\n";
     }
 
     return 1;
@@ -2500,8 +2525,6 @@ sub do_hardlink {
     # Take action
     if( defined($fix_it) and ! $main::o{answer_no} ) {
 
-        $CHANGES_MADE++;
-        $main::outstanding{$file} = 'fixed';
         ssm_print "         FIXING:  Hard link $file -> $TARGET{$file}\n";
 
         do_prescript($file);
@@ -2518,6 +2541,11 @@ sub do_hardlink {
         #
 
         do_postscript($file);
+
+        ssm_print "\n";
+        
+        $main::outstanding{$file} = 'fixed';
+        $CHANGES_MADE++;
     }
 
     return 1;
