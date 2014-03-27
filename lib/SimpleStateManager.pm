@@ -72,8 +72,8 @@ use Cwd 'abs_path';
 #
 #       % egrep '^sub ' lib/SimpleStateManager.pm | perl -pi -e 's/^sub /#   /; s/ {//;' | sort
 #
-#   _add_file_to_repo
-#   _backup
+#   add_file_to_repo
+#   backup
 #   check_depends
 #   choose_tmp_file
 #   close_log_file
@@ -2163,7 +2163,7 @@ sub take_action {
         $return_code = 2;  # we did our diff, but don't want to exit the higher level loop yet
 
     } elsif( $answer eq 'add' ) {
-        $return_code = _add_file_to_repo( $file );
+        $return_code = add_file_to_repo( $file );
         $main::outstanding{$file} = 'fixed';
         $CHANGES_MADE++;
 
@@ -2346,7 +2346,7 @@ sub install_file {
     }
 
     do_prescript($file);
-    _backup($file);
+    backup($file);
     remove_file($file);
     copy($tmp_file, $file) or die "Failed to copy($tmp_file, $file): $!";
     unlink $tmp_file;
@@ -2919,14 +2919,14 @@ sub _include_bundle {
     return @array;
 }
 
-sub _backup {
+sub backup {
 
     my $file = shift;
 
     if( ! -e "/usr/bin/bu" ) { return 1; }
     if( ! -e $file ) { return 1; }
 
-    my $cmd = "bu $file";
+    my $cmd = "/usr/bin/bu $file";
     !system($cmd) or die("FAILED: $cmd\n $!");
 
     return 1;
@@ -2942,7 +2942,7 @@ sub add_new_files {
 
         ssm_print "Adding:  $file\n";
 
-        _add_file_to_repo($file);
+        add_file_to_repo($file);
         $CHANGES_MADE++;
     }
 
@@ -2989,7 +2989,7 @@ sub get_file_type {
 }
 
 
-sub _add_file_to_repo {
+sub add_file_to_repo {
 
     my $file = shift;
 
