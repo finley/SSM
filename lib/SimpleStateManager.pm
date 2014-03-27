@@ -515,6 +515,7 @@ sub read_definition_file {
                     ssm_print "         $unsatisfied";
                 }
                 ssm_print "\n";
+                $main::outstanding{$name} = 'b0rken';
                 $ERROR_LEVEL++;
                 if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
 
@@ -888,6 +889,7 @@ sub sync_state {
                 ssm_print "         $unsatisfied";
             }
             ssm_print "\n";
+            $main::outstanding{$file} = 'b0rken';
             $ERROR_LEVEL++;
             if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
         }
@@ -1306,7 +1308,11 @@ sub do_softlink {
     my    $dirname = dirname( $file );
     chdir $dirname;
     if( ! -e $TARGET{$file} ) {
-        ssm_print "WARNING: Soft link $file -> $TARGET{$file} (target doesn't exist).\n";
+
+        unless( $main::o{summary} ) {
+            ssm_print "WARNING: Soft link $file -> $TARGET{$file} (target doesn't exist).\n";
+        }
+
         $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
     }
     chdir $cwd;
@@ -1330,6 +1336,8 @@ sub do_softlink {
     #       - create link
     #
     unless( (defined $current_target) and ($current_target eq $TARGET{$file}) ) {
+
+        $main::outstanding{$file} = 'b0rken';
 
         ssm_print "Not OK:  Soft link $file -> $TARGET{$file}\n";
         unless( $main::o{summary} ) {
@@ -1677,7 +1685,6 @@ sub do_unwanted_file {
     } else {
 
         $main::outstanding{$file} = 'b0rken';
-
 
         if( -d $file ) {
             ssm_print "Not OK:  Unwanted directory exists: $file\n";
