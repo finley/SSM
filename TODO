@@ -1,10 +1,37 @@
+- embed do_you_want_me_to() and looping into take_action(), so that
+  take_action() operations can be called as a one-liner
+
+- check for /tmp/*system-state-manager*tmp* files left behind
+
+- rename packages from ssm to simple-state-manager
+
+- contmplate multi-line generators
+
+    [file]
+    name       = /tmp/my-file.generated
+    type       = generated
+    generator  = <<EOF
+    this
+    that
+    the other all 
+    EOF
+    owner      = root
+    group      = root
+    mode       = 0644
+    depends    = /my/external-generator
+
+
+
 -   Don't ever have SSM auto-upgrade itself, unless an
     'auto-upgrade-ssm' setting is in place.
 
 -   Have upload_url default to ssh@ or file:// version of
     'definition_file'
 
--   New feature:  action-tag
+-   New feature:  action-tag (or maybe call "common-postscript"?)
+
+    Alternate Concept (depends_ok):  
+    - Simply have dependency on not just existence, but in an OK state
 
     Concept:  
      - Ability to assign an "action-tag" to each file in a group of
@@ -51,6 +78,27 @@
         postscript = /usr/local/bin/qlogic.update_drivers && touch /lib/modules/qlogic.update_drivers.timestamp
 
 
+- Consider changing --summary:
+
+    - if everything in a bundle is OK, just say OK for the bundle
+    - if things in a bundle are not OK, give details by bundle.
+
+    State Definition File: http://10.72.4.2/install/ssm_repo/xcat-master.conf
+    OK:     Package manager -> none
+    OK:     Bundle:  http://10.72.4.2/install/ssm_repo/xcat-master.conf
+    OK:     Bundle:  bundle.common
+    OK:     Bundle:  bundle.centos6.3_node
+    OK:     Bundle:  bundle.ofed-v2.0
+    OK:     Bundle:  bundle.single_10g_eth0
+            Not OK:  Bundle:  bundle.single_1g_eth2
+            Not OK:  file1
+            Not OK:  file2
+            OK:  file3
+    OK:     Bundle:  bundle.single_ipoib_ib0
+    [snip]
+
+
+
 - Consider adding this:
 
     within each [file] section, include the following:
@@ -61,6 +109,16 @@
     the remainder of that file definition only, and temporarily
     overwrite whatever is already in the environment
 
+-consider adding:
+
+    --only-this-bundle BUNDLE
+
+
+- contemplate adding an --export DEFINITION_FILE option
+
+    --export will create a distributable copy of your SSM repository
+    that _only_ includes the bits and pieces actually used by the
+    definition_file you specify.
 
 - global_option
     - diff_program
