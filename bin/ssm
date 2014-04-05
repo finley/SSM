@@ -24,7 +24,7 @@ GetOptions(
     "sync|sync-state"                   => \$o{sync_state},
     "summary"                           => \$o{summary},
     "yes"                               => \$o{yes},
-    "no"                                => \$o{answer_no},
+    "no"                                => \$o{no},
     "debug"                             => \$o{debug},
     "op|only-packages"                  => \$o{only_packages},
     "of|only-files"                     => \$o{only_files},
@@ -75,8 +75,8 @@ sub main {
 
     } elsif($o{sync_state}) {
 
-        my $outstanding_changes = 'monkey';
-        my $prior_outstanding_changes;
+        my $outstanding_changes = -1;
+        my $prior_outstanding_changes = -1;
 
         # Iterate as long as changes are happening each go-round. -BEF-
         until( ($changes_made == 0) and ($outstanding_changes eq $prior_outstanding_changes) ) {
@@ -90,7 +90,7 @@ sub main {
 
             ($error_level, $changes_made) = sync_state();
 
-            $outstanding_changes = undef;
+            $outstanding_changes = 0;
             $outstanding_change_count = 0;
 
             foreach (keys %outstanding) {
@@ -111,7 +111,7 @@ sub main {
             }
 
             # If --no, then there's no point in looping.  Exit here. -BEF-
-            last if($o{answer_no});
+            last if($o{no});
 
             # The looping can go by so fast it's confusing if running
             # interactively.
@@ -214,7 +214,7 @@ sub validate_options {
         exit(1);
     }
 
-    if($o{yes} and $o{answer_no}) { 
+    if($o{yes} and $o{no}) { 
         usage();
         print "\n";
         print "The --yes and --no options conflict.  Use one or the other.\n";
@@ -240,12 +240,12 @@ sub validate_options {
 
     if($o{analyze_config}) { 
         $o{sync_state} = 1; 
-        $o{answer_no} = 1; 
+        $o{no} = 1; 
     }
 
     if($o{summary}) { 
         $o{sync_state} = 1; 
-        $o{answer_no} = 1; 
+        $o{no} = 1; 
     }
 
     return 1;

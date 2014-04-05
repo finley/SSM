@@ -1,9 +1,7 @@
 #  
-#   Copyright (C) 2006-2012 Brian Elliott Finley
+#   Copyright (C) 2006-2014 Brian Elliott Finley
 #
 #    vi: set filetype=perl tw=0:
-# 
-
 #
 # 2008.09.12 Brian Elliott Finley
 #   * ssm_print function added -- print output to screen and logfile
@@ -169,6 +167,7 @@ my (
     %PRIORITY,    # priority level for files and/or packages
     %GENERATOR,   # script or command to run to generate a generated file
     %BUNDLEFILE,  # name of bundlefile where each file or package is defined
+    %TMPFILE,     # name of a temporary file associated with a file
 );
 
 my $OUTSTANDING_PACKAGES_TO_REMOVE    = 0;
@@ -866,7 +865,7 @@ sub sync_state {
             SimpleStateManager::None->import();
         }
 
-        upgrade_ssm() unless($main::o{answer_no});
+        upgrade_ssm() unless($main::o{no});
     }
 
     #
@@ -1168,9 +1167,9 @@ sub run_cmd {
 
         my $cmd               = shift;
         my $add_newline       = shift;
-        my $even_if_answer_no = shift;
+        my $even_if_no        = shift;
 
-        if( ! $main::o{answer_no} or defined($even_if_answer_no) ) { 
+        if( ! $main::o{no} or defined($even_if_no) ) { 
             ssm_print ">> $cmd\n" if( $main::o{debug} );
             open(INPUT,"$cmd|") or die("FAILED: $cmd\n $!");
             while(<INPUT>) {
@@ -1187,15 +1186,24 @@ sub run_cmd {
 
 sub do_you_want_me_to {
 
-    my $msg = shift;
     my $prompts = shift;
+    my $msg = shift;
 
     if(! defined $prompts) {
         $prompts = 'yn';
     }
 
     if(! defined $msg) {
-        $msg = "         Shall I do this? [N/y]: ";
+        $msg = "         Shall I do this? [N";
+        foreach my $prompt ( split(//,$prompts) ) {
+
+            next if( $prompt =~ m/N/i );             # If we were passed an N or n, skip it -- we auto-include one
+            $prompt = lc($prompt);      # Make each option lowercase
+
+            if($main::o{debug}) { ssm_print "do_you_want_me_to(): $prompt\n"; }
+            $msg .= "/$prompt";
+        }
+        $msg .= "]: ";
     }
 
     my $i_had_to_explain_something = undef;
@@ -1237,21 +1245,25 @@ sub do_you_want_me_to {
     if( $main::o{yes} ) { 
         return 'yes';
 
-    } elsif( m/^(y|yes)/i ) {
-        return 'yes';
+    } elsif( $main::o{no} ) { 
+        return 'no';
 
-    } elsif( m/^(d|diff)/i ) {
-        return 'diff';
-
-    } elsif( m/^(a|add)/i ) {
-        return 'add';
-
-    } elsif( m/^(c|comment|comments)/i ) {
-        return 'comments';
-
-    } elsif( m/^(n|no)/i or m/^$/ ) {
+    } elsif( m/^n$/i or m/^$/ ) {
         # either a no or an empty response (user just hit <Enter>)
         return 'no';
+
+    } elsif( m/^y$/i ) {
+        return 'yes';
+
+    } elsif( m/^d$/i ) {
+        return 'diff';
+
+    } elsif( m/^a$/i ) {
+        return 'add';
+
+    } elsif( m/^c$/i ) {
+        return 'comments';
+
     }
 }
 
@@ -1352,7 +1364,7 @@ sub do_softlink {
 
         if($main::o{yes}) {
             $fix_it = 1;
-        } elsif($main::o{answer_no}) {
+        } elsif($main::o{no}) {
             $fix_it = undef;
             $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
         } else {
@@ -1364,7 +1376,7 @@ sub do_softlink {
             }
         }
 
-        if( defined($fix_it) and ! $main::o{answer_no} ) {
+        if( defined($fix_it) and ! $main::o{no} ) {
 
             ssm_print "         FIXING:  Soft link $file -> $TARGET{$file}\n";
 
@@ -1462,7 +1474,7 @@ sub do_special_file {
 
         if($main::o{yes}) {
             $fix_it = 1;
-        } elsif($main::o{answer_no}) {
+        } elsif($main::o{no}) {
             $fix_it = undef;
             $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
         } else {
@@ -1481,7 +1493,7 @@ sub do_special_file {
 
     #
     # Take action
-    if( defined($fix_it) and ! $main::o{answer_no} ) {
+    if( defined($fix_it) and ! $main::o{no} ) {
 
         ssm_print "         FIXING:  " . ucfirst($TYPE{$file}) . " file $file\n";
 
@@ -1619,11 +1631,13 @@ sub do_contents_unwanted {
     }
 
     if( ! -e $dir ) {
-        ssm_print "WARNING: Contents-unwanted directory $dir doesn't exist\n";
+        ssm_print "Not OK: Contents-unwanted directory $dir doesn't exist\n";
+        $main::outstanding{$dir} = 'b0rken';
         return 1;
     }
     elsif( ! -d $dir ) {
-        ssm_print "WARNING: Contents-unwanted directory $dir is not a directory\n";
+        ssm_print "Not OK: Contents-unwanted directory $dir is not a directory\n";
+        $main::outstanding{$dir} = 'b0rken';
         return 1;
     }
 
@@ -1707,7 +1721,7 @@ sub do_unwanted_file {
 
         if($main::o{yes}) {
             $fix_it = 1;
-        } elsif($main::o{answer_no}) {
+        } elsif($main::o{no}) {
             $fix_it = undef;
             $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
         } else {
@@ -1789,13 +1803,12 @@ sub do_chown_and_chmod {
 
         if($main::o{yes}) {
             $fix_it = 1;
-        } elsif($main::o{answer_no}) {
+        } elsif($main::o{no}) {
             $fix_it = undef;
             $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
         } else {
 
-            my $msg = "         Shall I do this? [N/y]: ";
-            my $answer = do_you_want_me_to($msg);
+            my $answer = do_you_want_me_to();
 
             if( $answer eq 'yes' ) { 
                 $fix_it = 1;
@@ -1810,7 +1823,7 @@ sub do_chown_and_chmod {
 
     #
     # Take action
-    if( defined($fix_it) and ! $main::o{answer_no} ) {
+    if( defined($fix_it) and ! $main::o{no} ) {
 
         do_prescript($file);
         if( ! -e $file ) {
@@ -1849,7 +1862,7 @@ sub do_directory {
     #
     # Does it need fixing?
     my $needs_fixing = undef;
-    my $just_fix_uid_gid_and_mode = undef;
+    my $set_ownership_and_permissions = undef;
     if( ! -e $file ) {
         # Ain't there
         $needs_fixing = 1;
@@ -1860,7 +1873,7 @@ sub do_directory {
     } 
     elsif( ! uid_gid_and_mode_match($file) ) {
         $needs_fixing = 1;
-        $just_fix_uid_gid_and_mode = 1;
+        $set_ownership_and_permissions = 1;
     } 
 
     #
@@ -1873,7 +1886,7 @@ sub do_directory {
         ssm_print "Not OK:  Directory $file\n";
         unless( $main::o{summary} ) {
             ssm_print "         Need to:\n";
-            if( defined($just_fix_uid_gid_and_mode) ) {
+            if( defined($set_ownership_and_permissions) ) {
                 ssm_print "         - fix ownership and permissions\n";
                 diff_ownership_and_permissions($file, 12);
             } else {
@@ -1885,13 +1898,12 @@ sub do_directory {
 
         if($main::o{yes}) {
             $fix_it = 1;
-        } elsif($main::o{answer_no}) {
+        } elsif($main::o{no}) {
             $fix_it = undef;
             $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
         } else {
 
-            my $msg = "         Shall I do this? [N/y]: ";
-            my $answer = do_you_want_me_to($msg);
+            my $answer = do_you_want_me_to();
 
             if( $answer eq 'yes' ) { 
                 $fix_it = 1;
@@ -1906,8 +1918,8 @@ sub do_directory {
 
     #
     # Take action
-    if( defined($fix_it) and ! $main::o{answer_no} ) {
-        if( defined($just_fix_uid_gid_and_mode) ) {
+    if( defined($fix_it) and ! $main::o{no} ) {
+        if( defined($set_ownership_and_permissions) ) {
             set_ownership_and_permissions($file);
         } else {
             create_directory($file);
@@ -1941,8 +1953,8 @@ sub do_generated_file {
 
     # Generate file and get it's md5sum -- now considered to be the 
     # appropriate md5sum for $file.
-    my $tmp_file = choose_tmp_file();
-    open(TMP, "+>$tmp_file") or die "Couldn't open tmp file $!";
+    $TMPFILE{$file} = choose_tmp_file();
+    open(TMP, "+>$TMPFILE{$file}") or die "Couldn't open tmp file $!";
 
         open(INPUT,"$GENERATOR{$file}|") or die("Couldn't run $GENERATOR{$file} $!");
         print TMP (<INPUT>);
@@ -1953,11 +1965,10 @@ sub do_generated_file {
 
     close(TMP);
 
-
     #
     # Does it need fixing?
     my $needs_fixing = undef;
-    my $just_fix_uid_gid_and_mode = undef;
+    my $set_ownership_and_permissions = undef;
     if( ! -e $file ) {
         # Ain't there
         $needs_fixing = 1;
@@ -1973,7 +1984,7 @@ sub do_generated_file {
     }
     elsif( ! uid_gid_and_mode_match($file) ) {
         $needs_fixing = 1;
-        $just_fix_uid_gid_and_mode = 1;
+        $set_ownership_and_permissions = 1;
     } 
 
     #
@@ -1984,12 +1995,16 @@ sub do_generated_file {
         $main::outstanding{$file} = 'b0rken';
 
         ssm_print "Not OK:  Generated file $file\n";
+
+        my $action;
         unless( $main::o{summary} ) {
             ssm_print "         Need to:\n";
-            if( defined($just_fix_uid_gid_and_mode) ) {
+            if( defined($set_ownership_and_permissions) ) {
+                $action = 'set_ownership_and_permissions';
                 ssm_print "         - fix ownership and permissions\n";
                 diff_ownership_and_permissions($file, 12);
             } else {
+                $action = 'install_file';
                 ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
                 ssm_print "         - generate file\n";
                 if( -e $file and ! uid_gid_and_mode_match($file) ) {
@@ -2003,45 +2018,32 @@ sub do_generated_file {
 
         if($main::o{yes}) {
             $fix_it = 1;
-            diff_file($file, $tmp_file);
-        } elsif($main::o{answer_no}) {
+            diff_file($file, $TMPFILE{$file});
+
+        } elsif($main::o{no}) {
             $fix_it = undef;
-            diff_file($file, $tmp_file);
+            diff_file($file, $TMPFILE{$file});
             $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+
         } else {
 
-            my $msg = "         Shall I do this? [N/y/d]: ";
-            my $answer = do_you_want_me_to($msg, 'ynd');
-            while( $answer eq 'diff' ) {
-                diff_file($file, $tmp_file);
-                $answer = do_you_want_me_to($msg, 'ynd');
-            }
-
-            if( $answer eq 'yes' ) { 
-                $fix_it = 1;
-            } else {
-                ssm_print "         Ok, skipping this step.\n\n";
-                $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-            }
+            take_action( $file, $action, 'ynd' );
         }
+
     } else {
         ssm_print "OK:      Generated file $file\n";
     }
 
-    #
-    # Take action
-    if( defined($fix_it) and ! $main::o{answer_no} ) {
-        if( defined($just_fix_uid_gid_and_mode) ) {
-            set_ownership_and_permissions($file);
-        } else {
-            install_file($file, $tmp_file);
-        }
+    #        set_ownership_and_permissions($file);
+    #    } else {
+    #        install_file($file, $TMPFILE{$file});
+    #    }
 
-        ssm_print "\n";
+    #    ssm_print "\n";
 
-        $main::outstanding{$file} = 'fixed';
-        $CHANGES_MADE++;
-    }
+    #    $main::outstanding{$file} = 'fixed';
+    #    $CHANGES_MADE++;
+    #}
 
     return 1;
 }
@@ -2066,7 +2068,7 @@ sub do_regular_file {
     #
     # Does it need fixing?
     my $needs_fixing = undef;
-    my $just_fix_uid_gid_and_mode = undef;
+    my $set_ownership_and_permissions = undef;
     if( ! -e $file ) {
         # Ain't there
         $needs_fixing = 1;
@@ -2080,12 +2082,11 @@ sub do_regular_file {
     }
     elsif( ! uid_gid_and_mode_match($file) ) {
         $needs_fixing = 1;
-        $just_fix_uid_gid_and_mode = 1;
+        $set_ownership_and_permissions = 1;
     } 
 
     #
     # Should we actually fix it?
-    my $fix_it = undef;
     if( defined($needs_fixing) ) {
 
         $main::outstanding{$file} = 'b0rken';
@@ -2094,14 +2095,21 @@ sub do_regular_file {
         # Summarize what needs to be done
         #
         ssm_print "Not OK:  Regular file $file\n";
+
         my $action;
-        unless( $main::o{summary} ) {
-            ssm_print "         Need to:\n";
-            if( defined($just_fix_uid_gid_and_mode) ) {
+        ssm_print "         Need to:\n" unless( $main::o{summary} );
+        if( defined($set_ownership_and_permissions) ) {
+
+            $action = 'set_ownership_and_permissions';
+            unless( $main::o{summary} ) {
                 ssm_print "         - fix ownership and permissions:\n";
                 diff_ownership_and_permissions($file, 12);
-                $action = 'set_ownership_and_permissions';
-            } else {
+            }
+
+        } else {
+
+            $action = 'install_file';
+            unless( $main::o{summary} ) {
                 ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
                 ssm_print "         - copy version from repo\n";
                 if( -e $file and ! uid_gid_and_mode_match($file) ) {
@@ -2110,34 +2118,25 @@ sub do_regular_file {
                     diff_ownership_and_permissions($file, 12);
                 }
                 ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
-                $action = 'install_file';
             }
         }
 
         #
         # Decide what to do about it -- if anything
         #
+        my $fix_it = undef;
         if($main::o{yes}) {
-
             $fix_it = 1;
             diff_file($file);
 
-        } elsif($main::o{answer_no}) {
-
+        } elsif($main::o{no}) {
             $fix_it = undef;
             diff_file($file);
             $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
 
         } else {
 
-            my $return_code = 0;
-            until( $return_code == 1 ) {
-                my $msg   .= "         Shall I do this? [N/y/d/a]: ";
-                my $answer = do_you_want_me_to($msg, 'ynda');
-                last if( $answer eq 'n' );
-                $return_code = take_action( $file, $answer, $action );
-            }
-            ssm_print "\n";
+            take_action( $file, $action, 'ynda' );
         }
             
     } else {
@@ -2149,56 +2148,76 @@ sub do_regular_file {
 }
 
 #
-#   Usage:  $return_code = take_action( 'filename', 'answer', 'action' );
-#           $return_code = take_action( $file, $answer, $action );
+#   Usage:  $return_code = take_action( $file, $action );
+#   Usage:  $return_code = take_action( $file, $action, [$prompts,] [$msg] );
 #
 sub take_action {
 
+    #
+    # test for --yes and --no and --summary right here
+    #
+
     my $file    = shift;
-    my $answer  = shift;
     my $action  = shift;
+    my $prompts = shift;
+    my $msg     = shift;
 
-    if($main::o{debug}) { ssm_print "take_action( $file, $answer, $action )\n"; }
+    my $return_code = 0;
 
-    my $return_code;
-
-    if( $answer eq 'no' ) {
-        $return_code = 1;
-
-    } elsif( $answer eq 'diff' ) {
-        diff_file($file);
-        $return_code = 2;  # we did our diff, but don't want to exit the higher level loop yet
-
-    } elsif( $answer eq 'add' ) {
-        $return_code = add_file_to_repo( $file );
-        $main::outstanding{$file} = 'fixed';
-        $CHANGES_MADE++;
-
-    } elsif( $answer eq 'yes' ) {
-
-        my %actions = (
-            'install_file'                  => \&install_file,
-            'add_file_to_repo'              => \&add_file_to_repo,
-            'set_ownership_and_permissions' => \&set_ownership_and_permissions,
-        );
-
-        # Keep this function short and sweet by simply passing the name of the
-        # action as the subroutine to execute from the list of allowable
-        # subroutine actions listed above. -BEF-
-        if(defined $actions{$action}) {
-            if($main::o{debug}) { ssm_print "return_code = $actions{$action}($file);\n"; }
-            $return_code = $actions{$action}($file);
-        } else {
-            ssm_print "DEVELOPER PEBKAC ERROR: '$action' is not a valid action\n";
-            $return_code = 7;
-        }
-        $main::outstanding{$file} = 'fixed';
-        $CHANGES_MADE++;
-
-    } else {
-            if($main::o{debug}) { ssm_print "PEBKAC ERROR: '$answer' is not a valid answer\n"; }
-            $return_code = 7;
+    if($main::o{debug}) { 
+        ssm_print "take_action( $file, $action"; 
+        ssm_print ", $prompts"  if(defined $prompts);
+        ssm_print ", $msg"      if(defined $msg);
+        ssm_print " )\n"; 
     }
+
+    until( $return_code == 1 ) {
+
+        my $answer = do_you_want_me_to($prompts);
+
+        if( $answer eq 'no' ) {
+            $return_code = 1;
+
+        } elsif( $answer eq 'diff' ) {
+            diff_file($file);
+            $return_code = 2;  # we did our diff, but don't want to exit the higher level loop yet
+
+        } elsif( $answer eq 'add' ) {
+            $return_code = add_file_to_repo( $file );
+            $main::outstanding{$file} = 'fixed';
+            $CHANGES_MADE++;
+
+        } elsif( $answer eq 'yes' ) {
+
+            my %actions = (
+                'install_file'                  => \&install_file,
+                'add_file_to_repo'              => \&add_file_to_repo,
+                'set_ownership_and_permissions' => \&set_ownership_and_permissions,
+            );
+
+            # Keep this function short and sweet by simply passing the name of the
+            # action as the subroutine to execute from the list of allowable
+            # subroutine actions listed above. -BEF-
+            if(defined $actions{$action}) {
+                if($main::o{debug}) { ssm_print "return_code = $actions{$action}($file);\n"; }
+                $return_code = $actions{$action}($file);
+
+            } else {
+                ssm_print "DEVELOPER PEBKAC ERROR: '$action' is not a valid action\n";
+                $return_code = 7;
+
+            }
+            $main::outstanding{$file} = 'fixed';
+            $CHANGES_MADE++;
+
+        } else {
+                if($main::o{debug}) { ssm_print "PEBKAC ERROR: '$answer' is not a valid answer\n"; }
+                $return_code = 7;
+        }
+
+    }
+
+    ssm_print "\n";
 
     return $return_code;
 }
@@ -2249,7 +2268,7 @@ sub diff_file {
     }
 
     my $diff;
-    if( $main::o{answer_no} or $main::o{yes}) {
+    if( $main::o{no} or $main::o{yes}) {
         # Never use colordiff if non-interactive
         foreach( "diff") {
             $diff = _which($_);
@@ -2342,8 +2361,21 @@ sub install_file {
 
     my $url;
     if( ! defined $tmp_file ) {
-        $url = qq($main::o{base_url}/$file/$MD5SUM{$file});
-        $tmp_file = get_file($url, 'warn');
+
+        #
+        # Apparently we weren't passed a tmp file -- good, that's the recommended method.
+        #
+
+        # If we have a pre-defined tmp file associated with this file, then use it.
+        if( defined $TMPFILE{$file} ) {
+
+            $tmp_file = $TMPFILE{$file};
+
+        } else {
+
+            $url = qq($main::o{base_url}/$file/$MD5SUM{$file});
+            $tmp_file = get_file($url, 'warn');
+        }
     }
 
     if( ! defined $tmp_file ) {
@@ -2447,6 +2479,7 @@ sub choose_tmp_file {
 
     my $count = 0;
     my $file = "/tmp/system-state-manager_tmp_file";
+    #XXX add these to an array that gets unlinked at the end
 
     while( -e "$file.$count" ) {
         $count++;
@@ -2454,7 +2487,7 @@ sub choose_tmp_file {
     $file = "$file.$count";
 
     umask 0077;
-    open(FILE,">$file") or die "Couldn't open $file for writing $!";
+    open(FILE,">$file") or die "Couldn't open $file for writing";
         print FILE "I am a little tmp file created by System State Manager.\n";
     close(FILE);
     
@@ -2530,7 +2563,7 @@ sub do_hardlink {
 
         if($main::o{yes}) {
             $fix_it = 1;
-        } elsif($main::o{answer_no}) {
+        } elsif($main::o{no}) {
             $fix_it = undef;
             $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
         } else {
@@ -2548,7 +2581,7 @@ sub do_hardlink {
 
     #
     # Take action
-    if( defined($fix_it) and ! $main::o{answer_no} ) {
+    if( defined($fix_it) and ! $main::o{no} ) {
 
         ssm_print "         FIXING:  Hard link $file -> $TARGET{$file}\n";
 
@@ -3257,7 +3290,7 @@ sub sync_state_remove_packages {
             sleep 1;
         } elsif($main::o{yes}) {
             $do_remove = 1;
-        } elsif($main::o{answer_no}) {
+        } elsif($main::o{no}) {
             $do_remove = undef;
             ssm_print "WARNING: Packages -> Not removing due to --no option.\n";
             sleep 1;
@@ -3363,7 +3396,7 @@ sub sync_state_upgrade_packages {
         $OUTSTANDING_PACKAGES_TO_UPGRADE = scalar(@pkgs_to_be_upgraded);
         if($main::o{yes}) {
             $do_upgrade = 1;
-        } elsif($main::o{answer_no}) {
+        } elsif($main::o{no}) {
             $do_upgrade = undef;
             ssm_print "WARNING: Packages -> Not upgrading due to --no option.\n";
             sleep 1;
@@ -3468,7 +3501,7 @@ sub sync_state_install_packages {
         $OUTSTANDING_PACKAGES_TO_INSTALL = scalar(@pkgs_to_be_installed);
         if($main::o{yes}) {
             $do_install = 1;
-        } elsif($main::o{answer_no}) {
+        } elsif($main::o{no}) {
             $do_install = undef;
             ssm_print "WARNING: Packages -> Not installing due to --no option.\n";
             sleep 1;
@@ -3509,7 +3542,7 @@ sub sync_state_reinstall_packages {
         $OUTSTANDING_PACKAGES_TO_REINSTALL = scalar(@pkgs_to_be_reinstalled);
         if($main::o{yes}) {
             $do_reinstall = 1;
-        } elsif($main::o{answer_no}) {
+        } elsif($main::o{no}) {
             $do_reinstall = undef;
             ssm_print "WARNING: Packages -> Not re-installing due to --no option.\n";
             sleep 1;
