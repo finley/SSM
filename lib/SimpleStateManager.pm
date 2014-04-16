@@ -2256,9 +2256,15 @@ sub diff_file {
 
     my $url;
     if( ! defined $tmp_file ) {
-        $url = qq($main::o{base_url}/$file/$MD5SUM{$file});
-        $tmp_file = get_file($url, 'warn');
-        $unlink = 'yes';
+        if( defined $TMPFILE{$file} ) {
+            # generated files will have one of these
+            $tmp_file = $TMPFILE{$file};
+
+        } else {
+            $url = qq($main::o{base_url}/$file/$MD5SUM{$file});
+            $tmp_file = get_file($url, 'warn');
+            $unlink = 'yes';
+        }
     }
 
     if( ! defined $tmp_file ) {

@@ -1,5 +1,3 @@
-- don't try to pull from repo for diff if generated file
-
 - embed do_you_want_me_to() and looping into take_action(), so that
   take_action() operations can be called as a one-liner
 
