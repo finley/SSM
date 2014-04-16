@@ -39,7 +39,7 @@ my $changes_made = -1;
 validate_options();
 main();
 
-exit $error_level;
+exit 0;
 
 
 ################################################################################
