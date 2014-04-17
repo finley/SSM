@@ -2034,16 +2034,7 @@ sub do_generated_file {
         ssm_print "OK:      Generated file $file\n";
     }
 
-    #        set_ownership_and_permissions($file);
-    #    } else {
-    #        install_file($file, $TMPFILE{$file});
-    #    }
-
-    #    ssm_print "\n";
-
-    #    $main::outstanding{$file} = 'fixed';
-    #    $CHANGES_MADE++;
-    #}
+    unlink $TMPFILE{$file};
 
     return 1;
 }
