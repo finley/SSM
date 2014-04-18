@@ -9,7 +9,7 @@ SHELL = /bin/sh
 # These settings are what I would expect for most modern Linux distros, 
 # and are what work for me unmodified on Ubuntu. -BEF-
 # 
-package		= ssm
+package		= simple-state-manager
 prefix		= /usr
 exec_prefix = ${prefix}
 bindir 		= ${DESTDIR}${exec_prefix}/sbin
@@ -41,8 +41,7 @@ install:  all
 	test -e ${sysconfdir}/client.conf || install -m 644 etc/client.conf	${sysconfdir}
 	
 	test -d ${bindir} || install -d -m 755 ${bindir}
-	install -m 755 bin/ssm 					${bindir}
-	install -m 755 bin/ssm_web-report 		${bindir}
+	install -m 755 bin/* 					${bindir}
 	
 	@test ! -e ${bindir}/system-state-manager || \
 		(echo; echo; \
@@ -110,8 +109,8 @@ rpms:  tarball
 	# Turn it into a gz archive instead of just tar to avoid confusion about canonical archive -BEF-
 	bzcat $(TOPDIR)/tmp/${package}-$(VERSION).tar.bz2 | gzip > $(TOPDIR)/tmp/${package}-$(VERSION).tar.gz 
 	rpmbuild -ta $(TOPDIR)/tmp/${package}-$(VERSION).tar.gz
-	/bin/cp -i ${rpmbuild}/RPMS/*/ssm-$(VERSION)-*.rpm $(TOPDIR)/tmp/
-	/bin/cp -i ${rpmbuild}/SRPMS/ssm-$(VERSION)-*.rpm	$(TOPDIR)/tmp/
+	/bin/cp -i ${rpmbuild}/RPMS/*/${package}-$(VERSION)-*.rpm $(TOPDIR)/tmp/
+	/bin/cp -i ${rpmbuild}/SRPMS/${package}-$(VERSION)-*.rpm	$(TOPDIR)/tmp/
 	
 	/bin/ls -1 $(TOPDIR)/tmp/${package}[-_]$(VERSION)*.*
 
@@ -134,7 +133,7 @@ $(TOPDIR)/tmp/${package}-$(VERSION).tar.bz2:  clean
 	@echo "Did you update the version and changelog info in?:"
 	@echo "	* VERSION"
 	@echo "	* debian/changelog (can use 'dch -i')"
-	@echo "	* rpm/ssm.spec"
+	@echo "	* rpm/${package}.spec"
 	@echo "	* git tag <VERSION>"
 	@echo "If 'yes', then hit <Enter> to continue..."; \
 	read i
@@ -142,6 +141,7 @@ $(TOPDIR)/tmp/${package}-$(VERSION).tar.bz2:  clean
 	git clone . $(TOPDIR)/tmp/${package}-$(VERSION)/
 	git log   > $(TOPDIR)/tmp/${package}-$(VERSION)/CHANGE.LOG
 	rm -fr      $(TOPDIR)/tmp/${package}-$(VERSION)/.git
+	rm -f       $(TOPDIR)/tmp/${package}-$(VERSION)/bin/ssm_web-report
 	find  $(TOPDIR)/tmp/${package}-$(VERSION) -type f -exec chmod ug+r  {} \;
 	find  $(TOPDIR)/tmp/${package}-$(VERSION) -type d -exec chmod ug+rx {} \;
 	cd    $(TOPDIR)/tmp/ && tar -ch ${package}-$(VERSION) | bzip2 > ${package}-$(VERSION).tar.bz2
@@ -157,5 +157,5 @@ distclean: clean
 	rm -f  $(TOPDIR)/configure-stamp
 	rm -f  $(TOPDIR)/build-stamp
 	rm -f  $(TOPDIR)/debian/files
-	rm -fr $(TOPDIR)/debian/ssm/
+	rm -fr $(TOPDIR)/debian/${package}/
 
