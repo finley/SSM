@@ -1,4 +1,4 @@
-Name:         ssm
+Name:         simple-state-manager
 Summary:      Manage the state of specific files and packages on a system.
 Version:      0.4.53
 Release:      1
@@ -7,7 +7,7 @@ Group:        System Environment/Applications
 Requires:     perl-libwww-perl, perl-MailTools, Unix-Mknod, wget
 License:      GPLv2
 URL:          http://download.systemimager.org/pub/ssm/
-Source:       http://download.systemimager.org/pub/ssm/ssm-%{version}.tar.bz2
+Source:       http://download.systemimager.org/pub/ssm/%{name}-%{version}.tar.bz2
 BuildRoot:    %{_tmppath}/%{name}-%{version}-build
 # buildrequires:    rpm-build, tar, make, rsync
 
@@ -36,7 +36,7 @@ http://download.systemimager.org/pub/ssm/
 
 
 %prep
-%setup -n ssm-%{version}
+%setup -n %{name}-%{version}
 
 
 %build
@@ -46,9 +46,8 @@ make
 [ "$RPM_BUILD_ROOT" != "/" ] && [ -d $RPM_BUILD_ROOT ] && rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT
 make install DESTDIR=$RPM_BUILD_ROOT
-mv $RPM_BUILD_ROOT/%{_prefix}/share/doc/ssm $RPM_BUILD_ROOT/%{_prefix}/share/doc/ssm-%{version}
-perl -pi -e "s|share/doc/ssm|share/doc/ssm-%{version}|" $RPM_BUILD_ROOT/etc/ssm/client.conf
-rm -f $RPM_BUILD_ROOT/%{_prefix}/sbin/ssm_web-report    # This requires deps unsatisfiable -BEF-
+mv $RPM_BUILD_ROOT/%{_prefix}/share/doc/%{name} $RPM_BUILD_ROOT/%{_prefix}/share/doc/%{name}-%{version}
+perl -pi -e "s|share/doc/%{name}|share/doc/%{name}-%{version}|" $RPM_BUILD_ROOT/etc/ssm/client.conf
 
 %clean
 [ "$RPM_BUILD_ROOT" != "/" ] && [ -d $RPM_BUILD_ROOT ] && rm -rf $RPM_BUILD_ROOT
@@ -65,7 +64,7 @@ rm -f $RPM_BUILD_ROOT/%{_prefix}/sbin/ssm_web-report    # This requires deps uns
 #
 #   sh echo -n "* " ; date +'%a %b %d %Y - brian@thefinleys.com'
 #
-%changelog -n ssm
+%changelog -n %{name}
 * Mon Mar 24 2014 - brian@thefinleys.com
 - ssm (0.4.53-1) stable; urgency=low
 - don't double-ask shall i do this for soft links 
