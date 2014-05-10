@@ -2283,7 +2283,7 @@ sub diff_file {
     ssm_print "           and the file in the repository (+):\n";
     ssm_print "           <<<------------------------------------------------------>>>\n\n";
 
-    my $cmd = "$diff -urN $file $tmp_file";
+    my $cmd = "$diff -y $file $tmp_file";
     run_cmd($cmd, undef, 1);
 
     ssm_print "\n";
