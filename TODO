@@ -1,3 +1,83 @@
+- consider:
+    - changing /etc/ssm to /etc/simple-state-manager
+    - have program look for /etc/ssm/client.conf if /etc/simple-state-manager/client.conf doesn't exist
+
+- add "--export TARGET_DIRECTORY"
+
+    Export the identified configuration to the target repo directory:
+        - may be cumulative by exporting from multiple config files into
+          the target directory.
+        - exports the main config file and all bundle files it
+          references, maintaining their relative location in the repo
+          (if they're in directories).
+        - exports each file defined by the config, but _only_ the
+          currently referenced version.
+        - has the net effect of producing a trimmed repo that is ready
+          for distribution to others or point-in-time archival.
+
+- add support for variables
+
+    Declaring:
+
+        [global_variables]
+        VAR.varname = value
+
+        [file]
+        VAR.varname = value
+        VAR.varname2 = $(cmd to achieve var)
+
+
+    Evaluating:
+
+        #
+        # Read in global vars from conf file
+        $VARIABLES{global}{VAR1.variable} = "value1";
+        $VARIABLES{global}{VAR2.variable} = "value2";
+        $VARIABLES{global}{VAR3.variable} = "value3";
+
+        #
+        # Read in per-file vars from conf file
+        $VARIABLES{/my/file1}{VAR1.variable} = "value1";
+        $VARIABLES{/my/file1}{VAR2.variable} = "value2";
+        $VARIABLES{/my/file2}{VAR3.variable} = "value3";
+
+        #
+        # After reading in conf file, generate global variables regex
+        my $regex;
+        foreach ( keys %{$VARIABLES{global}} ) {
+            $regex .= "$_|";
+        }
+        $regex =~ s/|$//;
+        $regex =~ s/\./[.]/g;
+        $main::o{vars_global_regex} = $regex;
+
+        #
+        # Then generate per-file regexes
+        my $regex;
+        foreach ( keys %{$VARIABLES{$file}} ) {
+            $regex .= "$_|";
+        }
+        $regex =~ s/|$//;
+        $regex =~ s/\./[.]/g;
+
+        $regex{$FILE} = "$global_regex|$regex";
+
+
+        # etc...
+
+
+
+
+        #
+        # After reading in each file entry, generate per-file regex
+
+        # 
+        if m/$REGEX{$file}/
+
+
+- consider adding a "make version" target:
+    - update version number in spec file, dch -i, git tag, etc.
+
 - consider adding an "--files-root DIRECTORY" option.
     
     Implies --only-files.  If the user want's both files and packages,
@@ -65,7 +145,7 @@
     name        = iptables-restart
     action      = /etc/init.d/iptables restart
 
--   New feature:  test 
+- New feature:  test 
 
     [test]
     name = test FILE1 -nt FILE2
@@ -76,6 +156,16 @@
         [condition]
         name = test /boot/grub/grub.conf -nt /lib/modules/qlogic.update_drivers.buildstamp -o ! -f /lib/modules/qlogic.update_drivers.buildstamp 
         postscript = /usr/local/bin/qlogic.update_drivers && touch /lib/modules/qlogic.update_drivers.timestamp
+
+
+- Test feature alternate:
+
+    in every file section type, similar to "postscript", add the
+    following feature:
+
+        iftrue = condition test
+
+    Only offer to take action if the condition tests true.
 
 
 - Consider changing --summary:
