@@ -66,13 +66,14 @@ install:  all
 	# Docs
 	#
 	test -d ${docdir} || install -d -m 755 ${docdir}
+	#	
 	rsync -av --exclude '.*' usr/share/doc/ ${docdir}
+	#	
 	install -m 644 $(TOPDIR)/CREDITS  	${docdir}
-	#install -m 644 $(TOPDIR)/COPYING  	${docdir}	# lintian doesn't like this
 	install -m 644 $(TOPDIR)/README  	${docdir}
 	#	
-	test -d ${docdir}/examples/ || install -d -m 755 ${docdir}/examples/
-	install -m 644 $(TOPDIR)/README 	${docdir}/examples/one-of-each.conf
+	cat $(TOPDIR)/usr/share/doc/examples/safe_to_run_example_config_file.conf \
+		| perl -pi -e 's/^/#/' > ${docdir}/examples/starter_config_file.conf
 	#	
 	find ${docdir} -type d -exec chmod 0775 '{}' \;
 	find ${docdir} -type f -exec chmod 0664 '{}' \;
