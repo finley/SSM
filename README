@@ -4,6 +4,6 @@ Please look at the following for more information:
 
     - "man ssm"
     - /etc/ssm/client.conf
-    - /usr/share/doc/ssm/examples/state_definition_config_file.conf
+    - /usr/share/doc/ssm/examples/safe_to_run_example_config_file.conf
     - https://github.com/finley/SSM/blob/master/README.md
 

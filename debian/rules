@@ -14,5 +14,5 @@ override_dh_auto_install:
 
 override_dh_compress:
 	# We wanna keep this file uncompressed -BEF-
-	dh_compress --exclude=examples/state_definition_config_file.conf
+	dh_compress --exclude=examples/safe_to_run_example_config_file.conf
 

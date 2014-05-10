@@ -774,7 +774,7 @@ sub please_specify_a_package_manager {
 
     ssm_print qq(WARNING: pkg_manager not defined in state definition config file.\n);
     ssm_print qq(WARNING: Assuming "pkg_manager = none".\n);
-    ssm_print qq(WARNING: See /usr/share/doc/ssm/examples/state_definition_config_file.conf\n);
+    ssm_print qq(WARNING: See /usr/share/doc/ssm/examples/safe_to_run_example_config_file.conf\n);
     $main::o{pkg_manager} = 'none';
 
     return 1;

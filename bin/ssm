@@ -357,7 +357,7 @@ SEE ALSO
     For details on state definition config files, where all the really
     fun stuff happens, please see:
 
-        /usr/share/doc/ssm/examples/state_definition_config_file.conf
+        /usr/share/doc/ssm/examples/safe_to_run_example_config_file.conf
     
     Also take a look at:
 
