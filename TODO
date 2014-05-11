@@ -19,6 +19,10 @@
         - has the net effect of producing a trimmed repo that is ready
           for distribution to others or point-in-time archival.
 
+- consider assume repo == $config_file url ???
+
+- Add nice comments in /etc/ssm/defaults file
+
 - add support for variables
 
     Declaring:
