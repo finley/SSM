@@ -1,5 +1,5 @@
 #
-#   Simple State Manager client.conf file
+#   Simple State Manager "defaults" file
 #
 
 # config_file   http://server/OU/FQDN
@@ -7,5 +7,5 @@
 # config_file   ftp://server/OU/FQDN
 # config_file   file:///etc/system-state-manager/FQDN
 
-config_file file:///usr/share/doc/ssm/examples/safe_to_run_example_config_file.conf
+config_file file:///usr/share/doc/simple-state-manager/examples/safe_to_run_example_config_file.conf
 

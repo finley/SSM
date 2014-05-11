@@ -38,7 +38,7 @@ $(TOPDIR)/tmp/lib/SimpleStateManager.pm:  Makefile VERSION $(TOPDIR)/lib/SimpleS
 .PHONY: install
 install:  all
 	test -d ${sysconfdir} || install -d -m 755 ${sysconfdir}
-	test -e ${sysconfdir}/client.conf || install -m 644 etc/client.conf	${sysconfdir}
+	test -e ${sysconfdir}/defaults || install -m 644 etc/defaults	${sysconfdir}
 	
 	test -d ${bindir} || install -d -m 755 ${bindir}
 	install -m 755 bin/* 					${bindir}
@@ -67,7 +67,7 @@ install:  all
 	#
 	test -d ${docdir} || install -d -m 755 ${docdir}
 	#	
-	rsync -av --exclude '.*' usr/share/doc/ ${docdir}
+	rsync -av --exclude '/.*' usr/share/doc/ ${docdir}
 	#	
 	install -m 644 $(TOPDIR)/CREDITS  	${docdir}
 	install -m 644 $(TOPDIR)/README  	${docdir}

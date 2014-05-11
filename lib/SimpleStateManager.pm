@@ -259,7 +259,27 @@ sub read_config_file {
 
     if( ! defined($main::o{config_file}) ) {
         
-        my $file = '/etc/ssm/client.conf';
+        my $file = '/etc/ssm/defaults';
+
+        if( -e '/etc/ssm/client.conf' ) {
+
+            $file = '/etc/ssm/client.conf';
+
+            ssm_print qq(\n);
+            ssm_print qq(/etc/ssm/client.conf is deprecated in favor of /etc/ssm/defaults.  Please run\n);
+            ssm_print qq/this command to rename it and make this message go away. ;-)\n/;
+            ssm_print qq(\n);
+            ssm_print qq(    mv /etc/ssm/client.conf /etc/ssm/defaults\n);
+            ssm_print qq(\n);
+            ssm_print qq(Thanks!  --TheMgmt\n);
+            ssm_print qq(\n);
+
+            sleep 3;
+
+            # Quick check to see if it was just done...
+            if( ! -e '/etc/ssm/client.conf' ) { $file = '/etc/ssm/defaults'; }
+        }
+
         open(FILE,"<$file") or die("Couldn't open $file for reading. $!\n");
             while(<FILE>) {
                 if(m/^config_file\s+(.*)(\s|#|$)/) {
@@ -281,7 +301,7 @@ sub read_config_file {
         print qq(ERROR:\n);
         print qq(\n);
         print qq(    Please specify a config file.  This can be done on the command line,\n);
-        print qq(    or by adding an entry to /etc/ssm/client.conf.\n);
+        print qq(    or by adding an entry to /etc/ssm/defaults.\n);
         print qq(\n);
         print qq(           Try: "--config URL"\n);
         print qq(\n);
@@ -793,7 +813,7 @@ sub please_specify_a_package_manager {
 
     ssm_print qq(WARNING: pkg_manager not defined in state definition config file.\n);
     ssm_print qq(WARNING: Assuming "pkg_manager = none".\n);
-    ssm_print qq(WARNING: See /usr/share/doc/ssm/examples/safe_to_run_example_config_file.conf\n);
+    ssm_print qq(WARNING: See /usr/share/doc/simple-state-manager/examples/safe_to_run_example_config_file.conf\n);
     $main::o{pkg_manager} = 'none';
 
     return 1;
@@ -3616,7 +3636,7 @@ sub _specify_an_upload_url {
 #               $local_file => file on this system, can be a temp file, or of any name
 #               $repo_file  => the name of the file as it _should_ be in the repo
 #
-#   Example:  copy_file_to_upstream_repo("/tmp/mytmp_file.2931", "/etc/ssm/client.conf/bf40cf4d09789b92acc43775c8ed43f5");
+#   Example:  copy_file_to_upstream_repo("/tmp/mytmp_file.2931", "/etc/ssm/defaults/bf40cf4d09789b92acc43775c8ed43f5");
 #
 sub copy_file_to_upstream_repo {
 

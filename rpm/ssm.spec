@@ -47,14 +47,14 @@ make
 mkdir -p $RPM_BUILD_ROOT
 make install DESTDIR=$RPM_BUILD_ROOT
 mv $RPM_BUILD_ROOT/%{_prefix}/share/doc/%{name} $RPM_BUILD_ROOT/%{_prefix}/share/doc/%{name}-%{version}
-perl -pi -e "s|share/doc/%{name}|share/doc/%{name}-%{version}|" $RPM_BUILD_ROOT/etc/ssm/client.conf
+perl -pi -e "s|share/doc/%{name}|share/doc/%{name}-%{version}|" $RPM_BUILD_ROOT/etc/ssm/defaults
 
 %clean
 [ "$RPM_BUILD_ROOT" != "/" ] && [ -d $RPM_BUILD_ROOT ] && rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(-,root,root)
-%config(noreplace) /etc/ssm/client.conf
+%config(noreplace) /etc/ssm/defaults
 %{_prefix}/lib/*
 %{_prefix}/sbin/*
 %{_prefix}/share/*

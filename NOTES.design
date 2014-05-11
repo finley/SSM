@@ -83,9 +83,9 @@ Server side
 Client side
 ---------------------------------------------------------------------
   - client written in perl (maybe python)
-  - client reads config file (/etc/system-state-manager/client.conf) and
+  - client reads config file (/etc/system-state-manager/defaults) and
     consumes the state definition file which is located by the URI as indicated
-    by the client.conf file.  Example URIs could be:
+    by the defaults file.  Example URIs could be:
     - http://server/OU/FQDN
     - https://server/OU/FQDN
     - ftp://server/OU/FQDN

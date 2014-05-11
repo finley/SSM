@@ -314,7 +314,7 @@ OPTIONS
            ftp://server.example.com/ssm_repo/fabrication-floor-appliance
           file:///etc/ssm/localhost
     
-        Defaults to the URL specified in /etc/ssm/client.conf.
+        Defaults to the URL specified in /etc/ssm/defaults.
     
     --yes
 
@@ -348,16 +348,16 @@ OPTIONS
     
 SEE ALSO
 
-    For details on the /etc/ssm/client.conf file, which points a client
+    For details on the /etc/ssm/defaults file, which points a client
     at it's state definition config file, just open it up and edit it.
     It includes instructions right there in it's comments:
 
-        /etc/ssm/client.conf
+        /etc/ssm/defaults
 
     For details on state definition config files, where all the really
     fun stuff happens, please see:
 
-        /usr/share/doc/ssm/examples/safe_to_run_example_config_file.conf
+        /usr/share/doc/simple-state-manager/examples/safe_to_run_example_config_file.conf
     
     Also take a look at:
 
