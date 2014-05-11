@@ -2318,15 +2318,19 @@ sub diff_file {
     }
 
     ssm_print "\n";
-    ssm_print "           Here is a diff between the file currently on your system (-)\n";
-    ssm_print "           and the file in the repository (+):\n";
+
+    ssm_print "           Here's a diff between the file on your system (left side) and the\n";
+    ssm_print "           one in the repository (right side).\n";
     ssm_print "           <<<------------------------------------------------------>>>\n\n";
 
     my $cmd = "$diff -y $file $tmp_file";
     run_cmd($cmd, undef, 1);
 
     ssm_print "\n";
-    ssm_print "           <<<------------------------------------------------------>>>\n\n";
+    ssm_print "           ------------------------------------------------------------\n";
+    ssm_print "            Currently on This Machine   <-- | -->   Repository Version\n";
+    ssm_print "           ------------------------------------------------------------\n";
+    ssm_print "\n";
 
     if( $unlink eq 'yes' ) {
         unlink $tmp_file;
