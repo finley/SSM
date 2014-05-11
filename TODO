@@ -2,7 +2,11 @@
     - changing /etc/ssm to /etc/simple-state-manager
     - have program look for /etc/ssm/client.conf if /etc/simple-state-manager/client.conf doesn't exist
 
-- add "--export TARGET_DIRECTORY"
+- add "--export TARGET_DIRECTORY_FOR_EXPORTED_REPO"
+
+    --export will create a distributable copy of your SSM repository
+    that _only_ includes the bits and pieces actually used by the
+    config_file you specify.
 
     Export the identified configuration to the target repo directory:
         - may be cumulative by exporting from multiple config files into
@@ -106,7 +110,7 @@
     'auto-upgrade-ssm' setting is in place.
 
 -   Have upload_url default to ssh@ or file:// version of
-    'definition_file'
+    'config_file'
 
 -   New feature:  action-tag (or maybe call "common-postscript"?)
 
@@ -203,12 +207,6 @@
 
     --only-this-bundle BUNDLE
 
-
-- contemplate adding an --export DEFINITION_FILE option
-
-    --export will create a distributable copy of your SSM repository
-    that _only_ includes the bits and pieces actually used by the
-    definition_file you specify.
 
 - global_option
     - diff_program

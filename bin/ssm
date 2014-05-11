@@ -20,7 +20,7 @@ store_invocation_command();
 GetOptions( 
     "help"                              => \$o{help},
     "version"                           => \$o{version},
-    "config|state-definition-file=s"    => \$o{definition_file},
+    "config|state-definition-file=s"    => \$o{config_file},
     "sync|sync-state"                   => \$o{sync_state},
     "summary"                           => \$o{summary},
     "yes"                               => \$o{yes},
@@ -52,7 +52,7 @@ sub main {
 
     if($o{add_file}) {
 
-        read_definition_file();
+        read_config_file();
 
         ($error_level, $changes_made) = add_new_files();
 
@@ -81,7 +81,7 @@ sub main {
         # Iterate as long as changes are happening each go-round. -BEF-
         until( ($changes_made == 0) and ($outstanding_changes eq $prior_outstanding_changes) ) {
 
-            read_definition_file();
+            read_config_file();
         
             #
             # Ok, let's go ahead and sync that state...

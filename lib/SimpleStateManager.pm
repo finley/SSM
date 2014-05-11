@@ -37,7 +37,7 @@ use Exporter;
                 version
                 user_is_root
                 get_current_state
-                read_definition_file
+                read_config_file
                 sync_state
                 ssm_print 
                 run_cmd
@@ -111,7 +111,7 @@ use Cwd 'abs_path';
 #   md5sum_match
 #   multisort
 #   print_pad
-#   read_definition_file
+#   read_config_file
 #   remove_file
 #   report_improper_file_definition
 #   report_improper_service_definition
@@ -247,7 +247,7 @@ sub ssm_print {
     return 1;
 }
 
-sub read_definition_file {
+sub read_config_file {
 
     _initialize_variables();
 
@@ -255,43 +255,62 @@ sub read_definition_file {
 
     my @analyze;
 
-    if( $main::o{debug} ) { ssm_print "read_definition_file()\n"; }
+    if( $main::o{debug} ) { ssm_print "read_config_file()\n"; }
 
-    unless( defined($main::o{definition_file}) ) {
+    if( ! defined($main::o{config_file}) ) {
         
         my $file = '/etc/ssm/client.conf';
         open(FILE,"<$file") or die("Couldn't open $file for reading. $!\n");
             while(<FILE>) {
-                if(m/^definition_file\s+(.*)(\s|#|$)/) {
-                    $main::o{definition_file} = $1;
+                if(m/^config_file\s+(.*)(\s|#|$)/) {
+                    $main::o{config_file} = $1;
+                }
+                elsif(m/^definition_file\s+(.*)(\s|#|$)/) {
+                    # support deprecated definition_file name
+                    $main::o{config_file} = $1;
                 }
             }
         close(FILE);
     }
 
+    if( ! defined($main::o{config_file}) ) {
+        # still not defined?
+
+        &main::usage();
+        print qq(\n);
+        print qq(ERROR:\n);
+        print qq(\n);
+        print qq(    Please specify a config file.  This can be done on the command line,\n);
+        print qq(    or by adding an entry to /etc/ssm/client.conf.\n);
+        print qq(\n);
+        print qq(           Try: "--config URL"\n);
+        print qq(\n);
+        exit 1;
+    }
+
     $main::o{hostname} = `hostname -f`;
     chomp $main::o{hostname};
 
-    if( $main::o{definition_file} =~ m,/$, ) {
+    if( $main::o{config_file} =~ m,/$, ) {
         # URI ends with a slash.  Is a dir.  Append hostname
-        $main::o{definition_file} .= $main::o{hostname};
+        $main::o{config_file} .= $main::o{hostname};
     }
 
-    ssm_print "\nState Definition File: $main::o{definition_file}\n" unless(@{$main::o{only_this_file}});
+    ssm_print "\nState Definition File: $main::o{config_file}\n" unless(@{$main::o{only_this_file}});
 
-    my $tmp_file = get_file($main::o{definition_file}, 'error');
+    my $tmp_file = get_file($main::o{config_file}, 'error');
 
     #
     # We assume base_url should be the same as the definition file url, sans
     # the filename itself. This will be overridden if specified in a [global]
     # section. -BEF-
     #
-    $main::o{base_url}  = dirname( $main::o{definition_file} );
+    $main::o{base_url}  = dirname( $main::o{config_file} );
 
     #
     # And let's let the bundlefile name simply be the file (no URL).
     #
-    my $bundlefile      = $main::o{definition_file};
+    my $bundlefile      = $main::o{config_file};
     $bundlefile         =~ s|^$main::o{base_url}/+||;
 
     # For --analyze-config purposes, prefix the input data from the
@@ -2746,7 +2765,7 @@ sub update_bundlefile_type_regular {
         # it won't be associated with a specific bundle file, so we default to
         # using the definition file itself. -BEF-
         #
-        $BUNDLEFILE{$name} = basename( $main::o{definition_file} );
+        $BUNDLEFILE{$name} = basename( $main::o{config_file} );
     }
 
     my $url  = "$main::o{base_url}/$BUNDLEFILE{$name}";
