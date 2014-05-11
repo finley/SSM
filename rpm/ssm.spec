@@ -1,6 +1,6 @@
 Name:         simple-state-manager
 Summary:      Manage the state of specific files and packages on a system.
-Version:      0.4.53
+Version:      0.4.54
 Release:      1
 BuildArch:    noarch
 Group:        System Environment/Applications
@@ -65,6 +65,52 @@ perl -pi -e "s|share/doc/%{name}|share/doc/%{name}-%{version}|" $RPM_BUILD_ROOT/
 #   sh echo -n "* " ; date +'%a %b %d %Y - brian@thefinleys.com'
 #
 %changelog -n %{name}
+* Sun May 11 2014 - brian@thefinleys.com
+- improve side-by-side diff verbiage
+- /etc/ssm/client.conf deprecated and renamed to /etc/ssm/defaults
+- change all references to definition_file to config_file
+- Include starter_config_file.conf based on
+  safe_to_run_example_config_file.conf, but all commented out.
+- rename state_definition_config_file.conf ->
+  safe_to_run_example_config_file.conf
+- rename state_definition_config_file.conf ->
+  safe_to_run_example_config_file.conf
+- add bundle example in example file
+- reflect new library location
+- do side-by-side diff instead of unified
+- Change package name from ssm to simple-state-manager
+- Clean up ssm droppings (/tmp/*system-state-manager*tmp* files) left by
+  do_generated_file()
+- don't try to pull from repo for diff if generated file
+- change exit code to be 0 on successful run, rather than report number
+  of outstanding changes.
+- Change 'answer_no' variable to simply 'no' (let your yes be yes, and
+  your no be no)
+- Improve do_you_want_me_to() to automatically provide relevant prompts
+  based on the $arguments variable (ie.: 'yn')
+- Further genericize invocation of action subroutines (from take_action)
+  by variablizing tmp files when implied.
+- Further standardize output.  Common output strings emitted by
+  'take_action()' now, instead of by calling function.
+- Rename variable 'just_fix_uid_gid_and_mode' to match the function that
+  we actually invoke: 'set_ownership_and_permissions'
+- Improve the 'take_action()' function
+- Improve the 'install_file()' function
+- Improve example ifcfg-eth2 file
+- ensure proper outstanding element counts for unsatisfied deps and soft
+  links
+- rename sub _add_file_to_repo to add_file_to_repo
+- rename sub _backup to backup
+- line up certain output to make easier to read
+- don't incorrectly warn that targets don't exist for relative symlinks
+- new function -> take_action() that allows interactive looping on
+  actions that partially fail, such as for a diff or install on a file
+  that doesn't exist. (Marc Roskow suggestion)
+- Clear and easy explanation of examples directory
+- improve clarity of description of actions and options (Marc Roskow
+  request)
+- Shift 'FIXING:' entries over to make obvious as part of above change.
+- Only have one blank line after "Shall I do this?"
 * Mon Mar 24 2014 - brian@thefinleys.com
 - ssm (0.4.53-1) stable; urgency=low
 - don't double-ask shall i do this for soft links 
