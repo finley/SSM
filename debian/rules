@@ -9,8 +9,8 @@
 %:
 	dh $@
 
-override_dh_auto_install:
-	$(MAKE) DESTDIR=$$(pwd)/debian/ssm prefix=/usr install
+ossmverride_dh_auto_install:
+	$(MAKE) DESTDIR=$$(pwd)/debian/$(package) prefix=/usr install
 
 override_dh_compress:
 	# We wanna keep this file uncompressed -BEF-
