@@ -1,3 +1,12 @@
+simple-state-manager (0.4.57) stable; urgency=low
+
+  * b4d969b change tests for arrays --> defined(@array) is deprecated,
+    and now they mean it: http://www.perlmonks.org/?node_id=1077762
+  * 1144afa don't email log by default in
+    safe_to_run_example_config_file.conf
+
+ -- Brian Elliott Finley <brian@thefinleys.com>  Tue, 13 May 2014 12:14:27 -0500
+
 simple-state-manager (0.4.56) stable; urgency=low
 
   * 219e535 prep for v0.4.56
