@@ -7,8 +7,8 @@ Standards-Version: 3.9.3
 
 Package: simple-state-manager
 Provides: ssm
-Conflicts: ssm < 0.4.54
-Replaces: ssm < 0.4.54
+Conflicts: ssm (<< 0.4.54)
+Replaces: ssm (<< 0.4.54)
 Architecture: all
 Depends: ${shlibs:Depends}, ${misc:Depends}, libunix-mknod-perl | unix-mknod, libwww-perl, wget, colordiff | diff, libmailtools-perl
 Suggests: libmail-mboxparser-perl, fetchmail
