@@ -14,6 +14,13 @@ SSM includes the following features, among others:
 * No daemon required on client or server
 
 
+### Installation
+
+Simple State Manager packages are availble here:
+
+    http://systemimager.org/download
+
+
 ### Package Management
 
 SSM allows you to specify a list of packages that should be installed on
