@@ -1,10 +1,11 @@
-simple-state-manager (0.4.56) UNRELEASED; urgency=low
+simple-state-manager (0.4.56) stable; urgency=low
 
+  * 219e535 prep for v0.4.56
   * 12fee5d add more automation to package versioning
   * 53ea6ad genericise package name in debian/rules
   * 8ec74bf rename spec file to match new package name
 
- -- Brian Elliott Finley <brian@thefinleys.com>  Tue, 13 May 2014 10:03:34 -0500
+ -- Brian Elliott Finley <brian@thefinleys.com>  Tue, 13 May 2014 10:23:07 -0500
 
 simple-state-manager (0.4.54) stable; urgency=low
 
