@@ -132,10 +132,22 @@ $(TOPDIR)/tmp/${package}-$(VERSION).tar.bz2.sign: $(TOPDIR)/tmp/${package}-$(VER
 
 $(TOPDIR)/tmp/${package}-$(VERSION).tar.bz2:  clean
 	@echo "Did you update the version and changelog info in?:"
-	@echo "	* VERSION"
-	@echo "	* debian/changelog (can use 'dch -i')"
-	@echo "	* rpm/${package}.spec"
-	@echo "	* git tag <VERSION>"
+	@echo 
+	@echo '# Scrape-n-paste'
+	@echo 'vim VERSION ; ver=$$(cat VERSION)'
+	@echo 
+	@echo '# deb pkg bits first'
+	@echo 'git log `git describe --tags --abbrev=0`..HEAD --oneline > /tmp/${package}.gitlog'
+	@echo 'while read line; do dch --newversion $$ver "$$line"; done < /tmp/simple-state-manager.gitlog'
+	@echo
+	@echo '# RPM bits next'
+	@echo 'perl -pi -e "s/^Version:.*/Version:      $$ver/" rpm/simple-state-manager.spec'
+	@echo '# dont worry about changelog entries in spec file for now...  #vim rpm/simple-state-manager.spec'
+	@echo
+	@echo '# commit changes and go'
+	@echo 'echo git commit -m "prep for v$$ver" -a'
+	@echo 'echo git tag v$$ver'
+	@echo 
 	@echo "If 'yes', then hit <Enter> to continue..."; \
 	read i
 	mkdir -p    $(TOPDIR)/tmp/
