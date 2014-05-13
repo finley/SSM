@@ -316,7 +316,7 @@ sub read_config_file {
         $main::o{config_file} .= $main::o{hostname};
     }
 
-    ssm_print "\nState Definition File: $main::o{config_file}\n" unless(@{$main::o{only_this_file}});
+    ssm_print "\nState Definition File: $main::o{config_file}\n" unless($main::o{only_this_file});
 
     my $tmp_file = get_file($main::o{config_file}, 'error');
 
@@ -394,8 +394,7 @@ sub read_config_file {
             #
             if( ! defined $main::o{pkg_manager} ) {
 
-                please_specify_a_package_manager();
-
+                $main::o{pkg_manager} = 'none';
             }
 
             #
@@ -407,12 +406,12 @@ sub read_config_file {
                  or ($main::o{pkg_manager} eq 'none'    )
             ) {
 
-                please_specify_a_package_manager();
+                please_specify_a_valid_pkg_manager();
 
             }
 
 
-            ssm_print "OK:      Package manager -> $main::o{pkg_manager}\n" unless(@{$main::o{only_this_file}}); 
+            ssm_print "OK:      Package manager -> $main::o{pkg_manager}\n" unless($main::o{only_this_file}); 
 
             if( ! defined $main::o{remove_running_kernel} ) { 
                 # Default to "no"
@@ -809,9 +808,9 @@ sub read_config_file {
 }
 
 
-sub please_specify_a_package_manager {
+sub please_specify_a_valid_pkg_manager {
 
-    ssm_print qq(WARNING: pkg_manager not defined in state definition config file.\n);
+    ssm_print qq(WARNING: A valid pkg_manager not defined in state definition config file.\n);
     ssm_print qq(WARNING: Assuming "pkg_manager = none".\n);
     ssm_print qq(WARNING: See /usr/share/doc/simple-state-manager/examples/safe_to_run_example_config_file.conf\n);
     $main::o{pkg_manager} = 'none';
@@ -979,7 +978,7 @@ sub sync_state {
         ssm_print "WARNING: Packages -> [packages] defined, but 'pkg_manager = none'.\n";
         return ($ERROR_LEVEL, $CHANGES_MADE);
     } 
-    elsif( defined(@{$main::o{only_this_file}}) ) {
+    elsif( $main::o{only_this_file} ) {
         # Don't print anything to keep output minimalist in this case.
         return ($ERROR_LEVEL, $CHANGES_MADE);
     }
@@ -2968,7 +2967,7 @@ sub _include_bundle {
     my @array;
 
     chomp($file);
-    ssm_print "Bundle:  $file\n" unless(@{$main::o{only_this_file}});
+    ssm_print "Bundle:  $file\n" unless($main::o{only_this_file});
 
     # For --analyze-config purposes, prefix the input data from this
     # bundle file with it's own name as a BundleFile. -BEF-

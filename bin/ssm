@@ -182,7 +182,7 @@ sub validate_options {
         exit(1);
     }
 
-    if( defined(@{$o{only_this_file}}) and $o{only_packages}) { 
+    if( $o{only_this_file} and $o{only_packages}) { 
         usage();
         print "\n";
         print "The --only-this-file and --only-packages options conflict.  Use one or the other.\n";
@@ -190,7 +190,7 @@ sub validate_options {
         exit(1);
     }
 
-    if( defined(@{$o{only_this_file}}) and $o{only_files}) { 
+    if( $o{only_this_file} and $o{only_files}) { 
         print "\n";
         print "INFO:    The --only-this-file implies --only-files.  In this case,\n";
         print "         the --only-files option is unnecessary.  Proceeding anyway...\n";
@@ -198,7 +198,7 @@ sub validate_options {
         sleep 1;
     }
 
-    if( defined($o{add_file}) and $o{sync_state}) { 
+    if( $o{add_file} and $o{sync_state}) { 
         print "\n";
         print " The --add-file option overrides the --sync option.  Proceeding\n";
         print " with --add-file.\n";
@@ -206,7 +206,7 @@ sub validate_options {
         undef $o{sync_state};
     }
 
-    if( defined($o{add_file}) and $o{only_packages}) { 
+    if( $o{add_file} and $o{only_packages}) { 
         usage();
         print "\n";
         print "The --add-file and --only-packages options conflict.  Use one or the other.\n";
