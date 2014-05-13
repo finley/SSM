@@ -1,4 +1,4 @@
-ssm (0.4.54) stable; urgency=low
+simple-state-manager (0.4.54) stable; urgency=low
 
     - improve side-by-side diff verbiage
     - /etc/ssm/client.conf deprecated and renamed to /etc/ssm/defaults
