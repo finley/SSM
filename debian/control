@@ -1,11 +1,11 @@
-Source: ssm
+Source: simple-state-manager
 Section: admin
 Priority: optional
 Maintainer: Brian Elliott Finley <brian@thefinleys.com>
 Build-Depends: debhelper (>= 9), txt2man, libwww-perl
 Standards-Version: 3.9.3
 
-Package: ssm
+Package: simple-state-manager
 Architecture: all
 Depends: ${shlibs:Depends}, ${misc:Depends}, libunix-mknod-perl | unix-mknod, libwww-perl, wget, colordiff | diff, libmailtools-perl
 Suggests: libmail-mboxparser-perl, fetchmail
