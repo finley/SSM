@@ -1,3 +1,25 @@
+--
+
+Not OK:  Regular file /usr/bin/set_dma_latency
+         Need to:
+         - copy version from repo
+         DIFFING:  /usr/bin/set_dma_latency
+
+           Here's a diff between the file on your system (left side) and the
+           one in the repository (right side).
+           <<<------------------------------------------------------>>>
+
+/usr/bin/diff: /usr/bin/set_dma_latency: No such file or directory
+
+           ------------------------------------------------------------
+            Currently on This Machine   <-- | -->   Repository Version
+           ------------------------------------------------------------
+
+
+
+--
+
+
 - consider:
     - changing /etc/ssm to /etc/simple-state-manager
     - have program look for /etc/ssm/client.conf if /etc/simple-state-manager/client.conf doesn't exist
