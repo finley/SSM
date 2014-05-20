@@ -77,9 +77,12 @@ sub main {
 
         my $outstanding_changes = -1;
         my $prior_outstanding_changes = -1;
+        our $PASS_NUMBER = 0;
 
         # Iterate as long as changes are happening each go-round. -BEF-
         until( ($changes_made == 0) and ($outstanding_changes eq $prior_outstanding_changes) ) {
+
+            $PASS_NUMBER++;
 
             read_config_file();
         
@@ -110,12 +113,13 @@ sub main {
                 sleep 3;
             }
 
-            # If --no, then there's no point in looping.  Exit here. -BEF-
-            last if($o{no});
+            # First pass gathers info and status of deps
+            # Second pass shows output
+            last if( $o{no} and $PASS_NUMBER == 2 );
 
             # The looping can go by so fast it's confusing if running
             # interactively.
-            sleep 1 unless( $o{yes} );;
+            sleep 1 unless( $o{yes} or $o{no});;
         }
     }
 

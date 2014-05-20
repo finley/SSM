@@ -239,6 +239,8 @@ sub _initialize_log_file {
 # ssm_print "thing to print";
 sub ssm_print {
 
+    if( $main::PASS_NUMBER == 1 ) { return 1; }
+
     my $content = shift;
     
     print STDOUT   $content;
@@ -316,7 +318,7 @@ sub read_config_file {
         $main::o{config_file} .= $main::o{hostname};
     }
 
-    ssm_print "\nState Definition File: $main::o{config_file}\n" unless($main::o{only_this_file});
+    ssm_print "\nConfiguration File: $main::o{config_file}\n" unless($main::o{only_this_file});
 
     my $tmp_file = get_file($main::o{config_file}, 'error');
 
@@ -546,15 +548,17 @@ sub read_config_file {
 
             my $unsatisfied = check_depends($name);
             if($unsatisfied ne "1") {
-                ssm_print "Not OK:  Service $name -> Unmet dependencies";
+                ssm_print "Not OK:  Service $name -> Unmet Dependencies";
                 unless( $main::o{summary} ) {
                     ssm_print ":\n";
                     ssm_print "         $unsatisfied";
                 }
                 ssm_print "\n";
+                if($main::o{debug}) { ssm_print "read_config_file(): before $name is $main::outstanding{$name}\n"; }
                 $main::outstanding{$name} = 'b0rken';
-                $ERROR_LEVEL++;
-                if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+                if($main::o{debug}) { ssm_print "read_config_file(): after $name is $main::outstanding{$name}\n"; }
+
+                $ERROR_LEVEL++; if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
 
             } else {
 
@@ -634,7 +638,7 @@ sub read_config_file {
                     # into no ending slash to ensure conflicting
                     # directory names are treated properly.
                     $name =~ s|/$||go;
-                    if($main::o{debug}) { ssm_print "name after: $name\n"; }
+                    if($main::o{debug}) { ssm_print "name after:  $name\n"; }
 
 
                 } elsif($key eq 'type')       { 
@@ -753,8 +757,11 @@ sub read_config_file {
                     $PRIORITY{$name}   = $priority   if(defined $priority);
                     $GENERATOR{$name}  = $generator  if(defined $generator);
                     $BUNDLEFILE{$name} = $bundlefile if(defined $bundlefile);
-                }
 
+                    # And we start with a status of unknown, later to be
+                    # determined as broken or fixed as appropriate.
+                    $main::outstanding{$name} = 'unknown' unless(defined $main::outstanding{$name}); 
+                }
             }
 
             unless(defined $TYPE{$name}) {
@@ -920,13 +927,13 @@ sub sync_state {
 
         my $unsatisfied = check_depends($file);
         if($unsatisfied ne "1") {
-            ssm_print "Not OK:  File $file -> Unmet dependencies";
+            ssm_print "Not OK:  File $file -> Unmet Dependencies";
             unless( $main::o{summary} ) {
                 ssm_print ":\n";
                 ssm_print "         $unsatisfied";
             }
             ssm_print "\n";
-            $main::outstanding{$file} = 'b0rken';
+            $main::outstanding{$file} = 'unmet_deps';
             $ERROR_LEVEL++;
             if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
         }
@@ -1322,6 +1329,7 @@ sub do_ignore {
         return report_improper_file_definition($file);
     }
 
+    $main::outstanding{$file} = 'fixed';
     ssm_print "OK:      Ignoring $file\n";
 
     return 1;
@@ -1438,6 +1446,7 @@ sub do_softlink {
 
     } else {
 
+        $main::outstanding{$file} = 'fixed';
         ssm_print "OK:      Soft link $file -> $TARGET{$file}\n";
     }
 
@@ -1526,6 +1535,7 @@ sub do_special_file {
         }
 
     } else {
+        $main::outstanding{$file} = 'fixed';
         ssm_print "OK:      " . ucfirst($TYPE{$file}) . " file $file\n";
     }
 
@@ -1660,6 +1670,8 @@ sub do_contents_unwanted {
 
     my $dir   = shift;
 
+    $main::outstanding{$dir} = 'fixed';
+
     #
     # validate input
     if(    !defined($dir)        or ($dir        !~ m#^/#)
@@ -1669,39 +1681,57 @@ sub do_contents_unwanted {
     }
 
     if( ! -e $dir ) {
-        ssm_print "Not OK: Contents-unwanted directory $dir doesn't exist\n";
-        $main::outstanding{$dir} = 'b0rken';
+        #ssm_print "Not OK: Contents-unwanted directory $dir doesn't exist\n";
+        $main::outstanding{$dir} = 'does not exist';
         return 1;
     }
     elsif( ! -d $dir ) {
-        ssm_print "Not OK: Contents-unwanted directory $dir is not a directory\n";
-        $main::outstanding{$dir} = 'b0rken';
+        #ssm_print "Not OK: Contents-unwanted directory $dir is not a directory\n";
+        $main::outstanding{$dir} = 'not a directory';
         return 1;
     }
 
-    ssm_print "INFO:    Processing contents-unwanted directory $dir\n";
+    ssm_print "INFO:    Processing contents-unwanted directory $dir\n" unless($main::o{summary});
 
     # state what we're doing
     # get list of files in directory
     my $file;
     opendir(DIR,"$dir") or die "Can't open $dir for reading";
-        # see if each file matches a defined file
+        #
+        # See if each file matches a defined file
         #   * test this to be sure that:
         #       If /etc/iptables.d/stuff/monkey is defined, make sure it is
         #       not removed, even if /etc/iptables.d/stuff is not explicitly
         #       defined.  It is implicitly defined.  Ie.: match on left hand
         #       side of string if necessary.
+        #
         while (defined ($file = readdir DIR) ) {
             next if $file =~ /^\.\.?$/;
             $file = "$dir/$file";
             ssm_print ">>> in_directory: $file\n" if( $main::o{debug} );
             unless (defined $TYPE{$file}) {
-                # for each file that isn't defined:  do_unwanted_file($file);
+                #
+                # For each file that isn't defined:  do_unwanted_file($file);
+                #
                 $TYPE{$file} = 'unwanted';
                 do_unwanted_file($file);
+                if($main::outstanding{$file} ne 'fixed') {
+                    $main::outstanding{$dir} = 'unwanted file(s) still exist(s)';
+                }
             }
         }
     closedir(DIR);
+
+    #
+    # As per the top of this subroutine, $main::outstanding{$dir} will be set
+    # to 'fixed' unless we leave something unresolved in the middle of the
+    # routine. -BEF-
+    #
+    if($main::outstanding{$dir} eq 'fixed') {
+        ssm_print "OK:      Contents-unwanted $dir\n";
+    } else {
+        ssm_print "Not OK:  Contents-unwanted $dir\n";
+    }
 
     return 1;
 }
@@ -1732,6 +1762,7 @@ sub do_unwanted_file {
     my $fix_it = undef;
     unless(defined($needs_fixing)) {
 
+        $main::outstanding{$file} = 'fixed';
         ssm_print "OK:      Unwanted $file doesn't exist\n";
 
     } else {
@@ -1856,6 +1887,7 @@ sub do_chown_and_chmod {
             }
         }
     } else {
+        $main::outstanding{$file} = 'fixed';
         ssm_print "OK:      Chown+Chmod target $file\n";
     }
 
@@ -1951,6 +1983,7 @@ sub do_directory {
             }
         }
     } else {
+        $main::outstanding{$file} = 'fixed';
         ssm_print "OK:      Directory $file\n";
     }
 
@@ -1975,6 +2008,8 @@ sub do_directory {
 
 sub do_generated_file {
 
+    if( $main::o{debug} ) { print ">>  do_generated_file()\n"; }
+
     my $file   = shift;
 
     #
@@ -1994,6 +2029,7 @@ sub do_generated_file {
     $TMPFILE{$file} = choose_tmp_file();
     open(TMP, "+>$TMPFILE{$file}") or die "Couldn't open tmp file $!";
 
+        if( $main::o{debug} ) { print ">>>  The Generator(tm): $GENERATOR{$file}\n"; }
         open(INPUT,"$GENERATOR{$file}|") or die("Couldn't run $GENERATOR{$file} $!");
         print TMP (<INPUT>);
         close(INPUT);
@@ -2027,21 +2063,26 @@ sub do_generated_file {
 
     #
     # Should we actually fix it?
-    my $fix_it = undef;
     if( defined($needs_fixing) ) {
 
         $main::outstanding{$file} = 'b0rken';
+        if( $main::o{debug} ) { print ">>>  Assigning $file as 'b0rken'\n"; }
 
         ssm_print "Not OK:  Generated file $file\n";
 
-        my $action;
         unless( $main::o{summary} ) {
+
+            my $action;
+
             ssm_print "         Need to:\n";
             if( defined($set_ownership_and_permissions) ) {
+
                 $action = 'set_ownership_and_permissions';
                 ssm_print "         - fix ownership and permissions\n";
                 diff_ownership_and_permissions($file, 12);
+
             } else {
+
                 $action = 'install_file';
                 ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
                 ssm_print "         - generate file\n";
@@ -2051,24 +2092,15 @@ sub do_generated_file {
                     diff_ownership_and_permissions($file, 12);
                 }
                 ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
+
             }
-        }
-
-        if($main::o{yes}) {
-            $fix_it = 1;
-            diff_file($file, $TMPFILE{$file});
-
-        } elsif($main::o{no}) {
-            $fix_it = undef;
-            diff_file($file, $TMPFILE{$file});
-            $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-
-        } else {
 
             take_action( $file, $action, 'ynd' );
         }
 
     } else {
+        $main::outstanding{$file} = 'fixed';
+        if( $main::o{debug} ) { print ">>>  Assigning $file as 'fixed'\n"; }
         ssm_print "OK:      Generated file $file\n";
     }
 
@@ -2079,6 +2111,8 @@ sub do_generated_file {
 
 
 sub do_regular_file {
+
+    ssm_print ">> do_contents_unwanted()\n" if( $main::o{debug} );
 
     my $file   = shift;
 
@@ -2119,26 +2153,24 @@ sub do_regular_file {
     if( defined($needs_fixing) ) {
 
         $main::outstanding{$file} = 'b0rken';
+        if( $main::o{debug} ) { print ">>>  Assigning $file as 'b0rken'\n"; }
 
-        #
-        # Summarize what needs to be done
-        #
         ssm_print "Not OK:  Regular file $file\n";
 
-        my $action;
-        ssm_print "         Need to:\n" unless( $main::o{summary} );
-        if( defined($set_ownership_and_permissions) ) {
+        unless( $main::o{summary} ) {
 
-            $action = 'set_ownership_and_permissions';
-            unless( $main::o{summary} ) {
+            my $action;
+
+            ssm_print "         Need to:\n";
+            if( defined($set_ownership_and_permissions) ) {
+
+                $action = 'set_ownership_and_permissions';
                 ssm_print "         - fix ownership and permissions:\n";
                 diff_ownership_and_permissions($file, 12);
-            }
 
-        } else {
+            } else {
 
-            $action = 'install_file';
-            unless( $main::o{summary} ) {
+                $action = 'install_file';
                 ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
                 ssm_print "         - copy version from repo\n";
                 if( -e $file and ! uid_gid_and_mode_match($file) ) {
@@ -2148,28 +2180,15 @@ sub do_regular_file {
                 }
                 ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
             }
-        }
 
-        #
-        # Decide what to do about it -- if anything
-        #
-        my $fix_it = undef;
-        if($main::o{yes}) {
-            $fix_it = 1;
-            diff_file($file);
-
-        } elsif($main::o{no}) {
-            $fix_it = undef;
-            diff_file($file);
-            $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-
-        } else {
-
+            #
+            # Decide what to do about it -- if anything
+            #
             take_action( $file, $action, 'ynda' );
         }
             
     } else {
-
+        $main::outstanding{$file} = 'fixed';
         ssm_print "OK:      Regular file $file\n";
     }
 
@@ -2181,6 +2200,11 @@ sub do_regular_file {
 #   Usage:  $return_code = take_action( $file, $action, [$prompts,] [$msg] );
 #
 sub take_action {
+
+    #
+    # First pass is observation only.
+    #
+    if( $main::PASS_NUMBER == 1 ) { return 1; }
 
     #
     # test for --yes and --no and --summary right here
@@ -2202,7 +2226,17 @@ sub take_action {
 
     until( $return_code == 1 ) {
 
-        my $answer = do_you_want_me_to($prompts);
+        my $answer;
+        
+        if($main::o{no}) {
+            $answer = 'no';
+        } 
+        elsif($main::o{yes}) {
+            $answer = 'yes';
+        } 
+        else {
+            $answer = do_you_want_me_to($prompts);
+        }   
 
         if( $answer eq 'no' ) {
             $return_code = 1;
@@ -2231,13 +2265,14 @@ sub take_action {
                 if($main::o{debug}) { ssm_print "return_code = $actions{$action}($file);\n"; }
                 $return_code = $actions{$action}($file);
 
+                $main::outstanding{$file} = 'fixed'; #XXX is it really?  verify return code
+                $CHANGES_MADE++;
+
             } else {
                 ssm_print "DEVELOPER PEBKAC ERROR: '$action' is not a valid action\n";
                 $return_code = 7;
 
             }
-            $main::outstanding{$file} = 'fixed';
-            $CHANGES_MADE++;
 
         } else {
                 if($main::o{debug}) { ssm_print "PEBKAC ERROR: '$answer' is not a valid answer\n"; }
@@ -2615,6 +2650,7 @@ sub do_hardlink {
             }
         }
     } else {
+        $main::outstanding{$file} = 'fixed';
         ssm_print "OK:      Hard link $file -> $TARGET{$file}\n";
     }
 
@@ -2930,7 +2966,7 @@ sub check_depends {
     # Singularize spaces
     $DEPENDS{$name} =~ s/^\s+//;
 
-    if( $main::o{debug} ) { print ">>> Dependencies: $DEPENDS{$name}\n"; }
+    if( $main::o{debug} ) { print ">>> Dependencies for $name: $DEPENDS{$name}\n"; }
     
     #
     # Only check for pkgs if there's a pkg in the dependency list.  pkg
@@ -2941,14 +2977,39 @@ sub check_depends {
 
     foreach( split(/\s+/, $DEPENDS{$name}) ) {
         if( /^\// ) {
+            if( $main::o{debug} ) { print ">>>> Checking on status of $_\n"; }
             #
-            # Must be a file.  If it doesn't exist, fail dep check.
-            if( ! -e $_) { $unsatisfied .= "$_ "; }
+            # Must be a file.  
+            #
+            my $file = $_;
+            if( ! -e $file) {  
+                # If it doesn't exist, fail dep check.
+                $unsatisfied .= "$file "; 
+                if( $main::o{debug} ) { print ">>>>>  $_ doesn't exist\n"; }
+
+            } elsif( defined $main::outstanding{$file} and $main::outstanding{$file} ne 'fixed') {
+
+                if($file =~ m|^$name|) {
+                    ssm_print "WARNING: You have $file specified as a dependency of $name, which is probably\n";
+                    ssm_print "         not a good idea, seing as how $name is a directory that holds $file\n";
+                    ssm_print "         and could form a non-resolving dependency.\n";
+                    sleep 1;
+                }
+
+                $unsatisfied .= "$file "; 
+                if( $main::o{debug} ) { print ">>>>>  $_ exists, but isn't considered 'fixed'\n"; }
+
+            } else {
+                if( $main::o{debug} ) { 
+                    print ">>>>>  $_ exists, and isn't defined so it's mere existence makes it OK.\n"; 
+                }
+            }
 
         } else {
             #
             # Must be a package.  See if it's installed.
-            if( ! defined $pkgs_currently_installed{$_} ) { $unsatisfied .= "$_ "; }
+            my $pkg = $_;
+            if( ! defined $pkgs_currently_installed{$pkg} ) { $unsatisfied .= "$pkg "; }
         }
     }
 
