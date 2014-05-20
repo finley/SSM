@@ -1367,10 +1367,7 @@ sub do_softlink {
     chdir $dirname;
     if( ! -e $TARGET{$file} ) {
 
-        unless( $main::o{summary} ) {
-            ssm_print "WARNING: Soft link $file -> $TARGET{$file} (target doesn't exist).\n";
-        }
-
+        ssm_print "WARNING: Soft link $file -> $TARGET{$file} (target doesn't exist).\n";
         $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
     }
     chdir $cwd;
