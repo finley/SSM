@@ -1,3 +1,15 @@
+simple-state-manager (0.4.58) stable; urgency=low
+
+  * e39ebc9 - do still WARN on missing symlink targets with --summary
+  * cfc7b80 - add PASS_NUMBER to track number of passes through the
+    config - don't display output until pass number 2 (and don't ask
+    questions   until we display it on output) - fix bug where
+    dependencies were getting overwritten
+  * 5dd83be .
+  * dde74ea add download URL to github README.md
+
+ -- Brian Elliott Finley <brian@thefinleys.com>  Thu, 22 May 2014 22:02:33 -0700
+
 simple-state-manager (0.4.57) stable; urgency=low
 
   * b4d969b change tests for arrays --> defined(@array) is deprecated,
