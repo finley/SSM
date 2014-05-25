@@ -236,6 +236,17 @@ sub _initialize_log_file {
     return 1;
 }
 
+# ssm_print_always "thing to print";
+sub ssm_print_always {
+
+    my $content = shift;
+
+    print STDOUT   $content;
+    print $LOGFILE $content;
+
+    return 1;
+}
+
 # ssm_print "thing to print";
 sub ssm_print {
 
@@ -299,14 +310,14 @@ sub read_config_file {
         # still not defined?
 
         &main::usage();
-        print qq(\n);
-        print qq(ERROR:\n);
-        print qq(\n);
-        print qq(    Please specify a config file.  This can be done on the command line,\n);
-        print qq(    or by adding an entry to /etc/ssm/defaults.\n);
-        print qq(\n);
-        print qq(           Try: "--config URL"\n);
-        print qq(\n);
+        ssm_print_always qq(\n);
+        ssm_print_always qq(ERROR:\n);
+        ssm_print_always qq(\n);
+        ssm_print_always qq(    Please specify a config file.  This can be done on the command line,\n);
+        ssm_print_always qq(    or by adding an entry to /etc/ssm/defaults.\n);
+        ssm_print_always qq(\n);
+        ssm_print_always qq(           Try: "--config URL"\n);
+        ssm_print_always qq(\n);
         exit 1;
     }
 
@@ -518,23 +529,23 @@ sub read_config_file {
             }
 
             if( (defined $name) and (defined $DETAILS{$name}) ) {
-                ssm_print "\n";
-                ssm_print "ERROR: Multiple (conflicting) definitions for:\n";
-                ssm_print "\n";
-                ssm_print "  [service]\n";
-                ssm_print "  name = $name\n";
-                ssm_print "  ...\n";
-                ssm_print "\n";
-                ssm_print "  Exiting now without modifying the service. Please examine your state\n";
-                ssm_print "  definition file and eliminate all but one of the definitions for\n";
-                ssm_print "  this service.\n";
-                ssm_print "\n";
+                ssm_print_always "\n";
+                ssm_print_always "ERROR: Multiple (conflicting) definitions for:\n";
+                ssm_print_always "\n";
+                ssm_print_always "  [service]\n";
+                ssm_print_always "  name = $name\n";
+                ssm_print_always "  ...\n";
+                ssm_print_always "\n";
+                ssm_print_always "  Exiting now without modifying the service. Please examine your state\n";
+                ssm_print_always "  definition file and eliminate all but one of the definitions for\n";
+                ssm_print_always "  this service.\n";
+                ssm_print_always "\n";
 
                 $ERROR_LEVEL++;
-                if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+                if($main::o{debug}) { ssm_print_always "ERROR_LEVEL: $ERROR_LEVEL\n"; }
 
                 # We go ahead and exit here to be super conservative.
-                ssm_print "\n";
+                ssm_print_always "\n";
                 exit $ERROR_LEVEL;
             }
 
@@ -713,26 +724,26 @@ sub read_config_file {
             # If existing priority is equal to this file's priority
             } elsif( (defined $PRIORITY{$name}) and ($PRIORITY{$name} == $priority) ) {
                 # error out;
-                ssm_print "\n";
-                ssm_print "ERROR: Multiple (conflicting) definitions for:\n";
-                ssm_print "\n";
-                ssm_print "  [file]\n";
-                ssm_print "  name     = $name\n";
-                ssm_print "  priority = $priority\n";
-                ssm_print "  ...\n";
-                ssm_print "\n";
-                ssm_print "  This instance of this file was found in $bundlefile\n";
-                ssm_print "\n";
-                ssm_print "  Exiting now without modifying the file. Please examine your state\n";
-                ssm_print "  definition file and eliminate all but one of the definitions for\n";
-                ssm_print "  this file, or raise the priority of one of the definitions.\n";
-                ssm_print "\n";
+                ssm_print_always "\n";
+                ssm_print_always "ERROR: Multiple (conflicting) definitions for:\n";
+                ssm_print_always "\n";
+                ssm_print_always "  [file]\n";
+                ssm_print_always "  name     = $name\n";
+                ssm_print_always "  priority = $priority\n";
+                ssm_print_always "  ...\n";
+                ssm_print_always "\n";
+                ssm_print_always "  This instance of this file was found in $bundlefile\n";
+                ssm_print_always "\n";
+                ssm_print_always "  Exiting now without modifying the file. Please examine your state\n";
+                ssm_print_always "  definition file and eliminate all but one of the definitions for\n";
+                ssm_print_always "  this file, or raise the priority of one of the definitions.\n";
+                ssm_print_always "\n";
 
                 $ERROR_LEVEL++;
-                if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+                if($main::o{debug}) { ssm_print_always "ERROR_LEVEL: $ERROR_LEVEL\n"; }
 
                 # We go ahead and exit here to be super conservative.
-                ssm_print "\n";
+                ssm_print_always "\n";
                 exit $ERROR_LEVEL;
 
             # If either:
@@ -2494,7 +2505,7 @@ sub get_file {
         $file =~ s/(\s+|#).*//;
         if( ! -e $file ) {
             if( $failure_behavior eq 'error' ) {
-                ssm_print "ERROR: $file doesn't exist...\n\n";
+                ssm_print_always "ERROR: $file doesn't exist...\n\n";
                 exit 1;
             } else {
                 ssm_print "WARNING: $file doesn't exist...\n";
@@ -2518,7 +2529,7 @@ sub get_file {
             # here, we know it failed.
             #
             if( $failure_behavior eq 'error' ) {
-                ssm_print "ERROR: $file doesn't exist...\n\n";
+                ssm_print_always "ERROR: $file doesn't exist...\n\n";
                 exit 1;
             } else {
                 ssm_print "WARNING: $file doesn't exist...\n";
@@ -2529,12 +2540,12 @@ sub get_file {
 
     } else {
 
-        ssm_print "I don't know how to acquire a file using the specified protocol:\n";
-        ssm_print "  $file\n";
-        ssm_print "\n";
-        ssm_print "  You may want to verify that you have a valid 'base_url' specified\n";
-        ssm_print "  in your definition file.\n";
-        ssm_print "\n";
+        ssm_print_always "I don't know how to acquire a file using the specified protocol:\n";
+        ssm_print_always "  $file\n";
+        ssm_print_always "\n";
+        ssm_print_always "  You may want to verify that you have a valid 'base_url' specified\n";
+        ssm_print_always "  in your definition file.\n";
+        ssm_print_always "\n";
 
         exit 1;
     }
