@@ -1956,58 +1956,42 @@ sub do_directory {
 
     #
     # Should we actually fix it?
-    my $fix_it = undef;
     if( defined($needs_fixing) ) {
 
         $main::outstanding{$file} = 'b0rken';
+        if( $main::o{debug} ) { print ">>>  Assigning $file as 'b0rken'\n"; }
 
         ssm_print "Not OK:  Directory $file\n";
+
         unless( $main::o{summary} ) {
+            
+            my $action;
+
             ssm_print "         Need to:\n";
             if( defined($set_ownership_and_permissions) ) {
+
+                $action = 'set_ownership_and_permissions';
                 ssm_print "         - fix ownership and permissions\n";
                 diff_ownership_and_permissions($file, 12);
+
             } else {
+
+                $action = 'create_directory';
                 ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
                 ssm_print "         - create directory\n";
                 ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
+
             }
+
+            #
+            # Decide what to do about it -- if anything
+            #
+            take_action( $file, $action, 'yn' );
         }
 
-        if($main::o{yes}) {
-            $fix_it = 1;
-        } elsif($main::o{no}) {
-            $fix_it = undef;
-            $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-        } else {
-
-            my $answer = do_you_want_me_to();
-
-            if( $answer eq 'yes' ) { 
-                $fix_it = 1;
-            } else {
-                ssm_print "         Ok, skipping this step.\n\n";
-                $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-            }
-        }
     } else {
         $main::outstanding{$file} = 'fixed';
         ssm_print "OK:      Directory $file\n";
-    }
-
-    #
-    # Take action
-    if( defined($fix_it) and ! $main::o{no} ) {
-        if( defined($set_ownership_and_permissions) ) {
-            set_ownership_and_permissions($file);
-        } else {
-            create_directory($file);
-        }
-
-        ssm_print "\n";
-
-        $main::outstanding{$file} = 'fixed';
-        $CHANGES_MADE++;
     }
 
     return 1;
@@ -2262,6 +2246,7 @@ sub take_action {
 
             my %actions = (
                 'install_file'                  => \&install_file,
+                'create_directory'              => \&create_directory,
                 'add_file_to_repo'              => \&add_file_to_repo,
                 'set_ownership_and_permissions' => \&set_ownership_and_permissions,
             );
