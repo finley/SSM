@@ -1,3 +1,10 @@
+simple-state-manager (0.4.60) stable; urgency=low
+
+  * 77b0c23 Use take_action() with do_directory also
+  * b38dee1 .
+
+ -- Brian Elliott Finley <brian@thefinleys.com>  Tue, 27 May 2014 12:24:35 -0500
+
 simple-state-manager (0.4.59) stable; urgency=low
 
   * e5c19ef .
