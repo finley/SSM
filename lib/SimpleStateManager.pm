@@ -1767,68 +1767,47 @@ sub do_unwanted_file {
 
     #
     # Should we actually fix it?
-    my $fix_it = undef;
-    unless(defined($needs_fixing)) {
-
-        $main::outstanding{$file} = 'fixed';
-        ssm_print "OK:      Unwanted $file doesn't exist\n";
-
-    } else {
+    if(defined($needs_fixing)) {
 
         $main::outstanding{$file} = 'b0rken';
+        if( $main::o{debug} ) { print ">>>  Assigning $file as 'b0rken'\n"; }
 
         if( -d $file ) {
             ssm_print "Not OK:  Unwanted directory exists: $file\n";
-            unless( $main::o{summary} ) {
+        } else {
+            ssm_print "Not OK:  Unwanted file exists: $file\n";
+        }
+
+        unless( $main::o{summary} ) {
+            my $action = 'remove_file';
+            if( -d $file ) {
                 ssm_print "         Need to:\n";
                 ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
                 ssm_print "         - remove the contents of $file\n";
                 ssm_print "         - remove $file\n";
                 ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
-            }
-        } else {
-            ssm_print "Not OK:  Unwanted file exists: $file\n";
-            unless( $main::o{summary} ) {
+            } else {
                 ssm_print "         Need to:\n";
                 ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
                 ssm_print "         - remove $file\n";
                 ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
             }
+
+            #
+            # Decide what to do about it -- if anything
+            #
+            take_action( $file, $action, 'yn' );
         }
 
-        if($main::o{yes}) {
-            $fix_it = 1;
-        } elsif($main::o{no}) {
-            $fix_it = undef;
-            $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-        } else {
-
-            if( do_you_want_me_to() eq 'yes' ) { 
-                $fix_it = 1;
-            } else {
-                ssm_print "         Ok, skipping this step.\n\n";
-                $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-            }
-        }
-    }
-
-    #
-    # Take action
-    if( defined($fix_it) ) {
-
-        ssm_print "         FIXING:  Removing: $file\n";
-
-        do_prescript($file);
-        remove_file($file);
-        do_postscript($file);
-
-        ssm_print "\n";
+    } else {
 
         $main::outstanding{$file} = 'fixed';
-        $CHANGES_MADE++;
+        ssm_print "OK:      Unwanted $file doesn't exist\n";
+
     }
 
     return 1;
+
 }
 
 
@@ -2246,6 +2225,7 @@ sub take_action {
 
             my %actions = (
                 'install_file'                  => \&install_file,
+                'remove_file'                   => \&remove_file,
                 'create_directory'              => \&create_directory,
                 'add_file_to_repo'              => \&add_file_to_repo,
                 'set_ownership_and_permissions' => \&set_ownership_and_permissions,
@@ -2403,7 +2383,7 @@ sub create_directory {
 
     do_prescript($file);
 
-    if(-e $file) { remove_file($file); }
+    if(-e $file) { remove_file($file, 'silent'); }
 
     my $dir = $file;
     eval { mkpath($dir) };
@@ -3249,10 +3229,19 @@ sub _which {
 sub remove_file {
 
     my $file    = shift;
+    my $silent  = shift;
+
+    ssm_print "         FIXING:  Removing: $file\n" unless( defined $silent );
+
+    if($main::o{debug}) { ssm_print "remove_file($file)\n"; }
+
+    do_prescript($file);
 
     my $rm = _which("rm");
     my $cmd = "$rm -fr $file";
     !system($cmd) or die("FAILED: $cmd\n $!");
+
+    do_postscript($file);
 
     return 1;
 }
