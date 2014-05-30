@@ -1,3 +1,24 @@
+Convert all functions using 'do_you_want_me_to()' to use 'take_action()'
+instead.
+
+--
+
+Verify ssm -af /my/file works properly now. (no error messages)
+
+--
+
+If -af file is in an alternate directory structure, but path exists,
+don't pull explicit path.
+
+    Ie.: don't change
+
+        /etc/init.d/script
+
+        to
+
+        /etc/rc.d/init.d/script
+
+
 --
 
 Not OK:  Regular file /usr/bin/set_dma_latency
