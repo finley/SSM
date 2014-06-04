@@ -284,14 +284,14 @@ sub read_config_file {
 
             $file = '/etc/ssm/client.conf';
 
-            ssm_print qq(\n);
-            ssm_print qq(/etc/ssm/client.conf is deprecated in favor of /etc/ssm/defaults.  Please run\n);
-            ssm_print qq/this command to rename it and make this message go away. ;-)\n/;
-            ssm_print qq(\n);
-            ssm_print qq(    mv /etc/ssm/client.conf /etc/ssm/defaults\n);
-            ssm_print qq(\n);
-            ssm_print qq(Thanks!  --TheMgmt\n);
-            ssm_print qq(\n);
+            ssm_print_always qq(\n);
+            ssm_print_always qq(/etc/ssm/client.conf is deprecated in favor of /etc/ssm/defaults.  Please run\n);
+            ssm_print_always qq/this command to rename it and make this message go away. ;-)\n/;
+            ssm_print_always qq(\n);
+            ssm_print_always qq(    mv /etc/ssm/client.conf /etc/ssm/defaults\n);
+            ssm_print_always qq(\n);
+            ssm_print_always qq(Thanks!  --TheMgmt\n);
+            ssm_print_always qq(\n);
 
             sleep 3;
 
@@ -335,7 +335,7 @@ sub read_config_file {
         $main::o{config_file} .= $main::o{hostname};
     }
 
-    ssm_print "\nConfiguration File: $main::o{config_file}\n" unless($main::o{only_this_file});
+    ssm_print_always "\nConfiguration File: $main::o{config_file}\n" unless($main::o{only_this_file});
 
     my $tmp_file = get_file($main::o{config_file}, 'error');
 
@@ -2430,7 +2430,7 @@ sub install_file {
 
     do_prescript($file);
     backup($file);
-    remove_file($file);
+    remove_file($file, 'silent', 'no_scripts');
     copy($tmp_file, $file) or die "Failed to copy($tmp_file, $file): $!";
     unlink $tmp_file;
 
@@ -3223,22 +3223,30 @@ sub _which {
     return undef;
 }
 
+#
+# Usage: remove_file($file,1,1);
+#        remove_file($file,'silent');
+#        remove_file($file,undef,'no_scripts');
+#        remove_file($file,'silent','no_scripts');
+#
+
 sub remove_file {
 
-    my $file    = shift;
-    my $silent  = shift;
+    my $file        = shift;
+    my $silent      = shift;
+    my $no_scripts  = shift;
 
     ssm_print "         FIXING:  Removing: $file\n" unless( defined $silent );
 
     if($main::o{debug}) { ssm_print "remove_file($file)\n"; }
 
-    do_prescript($file);
+    do_prescript($file) unless(defined $no_scripts);
 
     my $rm = _which("rm");
     my $cmd = "$rm -fr $file";
     !system($cmd) or die("FAILED: $cmd\n $!");
 
-    do_postscript($file);
+    do_postscript($file) unless(defined $no_scripts);
 
     return 1;
 }
