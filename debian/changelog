@@ -1,13 +1,20 @@
+simple-state-manager (0.4.61) stable; urgency=low
+
+  * 20fc787 - make --add-file work cleanly with PASS 0
+  * d3cf815 - convert 'do_softlink()' to use 'take_action()' - fix
+    handling of no package manager specified
+  * e0af588 convert 'remove_file()' to use 'take_action()'
+
+ -- Brian Elliott Finley <brian@thefinleys.com>  Wed, 04 Jun 2014 13:13:20 -0500
+
 simple-state-manager (0.4.60) stable; urgency=low
 
   * 77b0c23 Use take_action() with do_directory also
-  * b38dee1 .
 
  -- Brian Elliott Finley <brian@thefinleys.com>  Tue, 27 May 2014 12:24:35 -0500
 
 simple-state-manager (0.4.59) stable; urgency=low
 
-  * e5c19ef .
   * 5cc5fb4 Added ssm_print_always function
 
  -- Brian Elliott Finley <brian@thefinleys.com>  Sun, 25 May 2014 00:05:13 -0500
@@ -19,7 +26,6 @@ simple-state-manager (0.4.58) stable; urgency=low
     config - don't display output until pass number 2 (and don't ask
     questions   until we display it on output) - fix bug where
     dependencies were getting overwritten
-  * 5dd83be .
   * dde74ea add download URL to github README.md
 
  -- Brian Elliott Finley <brian@thefinleys.com>  Thu, 22 May 2014 22:02:33 -0700

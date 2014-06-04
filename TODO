@@ -3,10 +3,6 @@ instead.
 
 --
 
-Verify ssm -af /my/file works properly now. (no error messages)
-
---
-
 If -af file is in an alternate directory structure, but path exists,
 don't pull explicit path.
 
