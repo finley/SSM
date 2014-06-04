@@ -71,6 +71,7 @@ use Cwd 'abs_path';
 #       % egrep '^sub ' lib/SimpleStateManager.pm | perl -pi -e 's/^sub /#   /; s/ {//;' | sort
 #
 #   add_file_to_repo
+#   add_new_files
 #   backup
 #   check_depends
 #   choose_tmp_file
@@ -96,6 +97,7 @@ use Cwd 'abs_path';
 #   email_log_file
 #   _get_arch
 #   get_file
+#   get_file_type
 #   get_gid
 #   get_md5sum
 #   get_mode
@@ -108,8 +110,10 @@ use Cwd 'abs_path';
 #   _initialize_log_file
 #   _initialize_variables
 #   install_file
+#   install_softlink
 #   md5sum_match
 #   multisort
+#   please_specify_a_valid_pkg_manager
 #   print_pad
 #   read_config_file
 #   remove_file
@@ -120,11 +124,13 @@ use Cwd 'abs_path';
 #   set_ownership_and_permissions
 #   _specify_an_upload_url
 #   ssm_print
+#   ssm_print_always
 #   sync_state
 #   sync_state_install_packages
 #   sync_state_reinstall_packages
 #   sync_state_remove_packages
 #   sync_state_upgrade_packages
+#   take_action
 #   turn_groupnames_into_gids
 #   turn_service_into_file_entry
 #   turn_usernames_into_uids
@@ -897,7 +903,12 @@ sub sync_state {
 
     $CHANGES_MADE = 0;
 
+
     unless($main::o{only_files}) {
+
+        if( ! $main::o{pkg_manager} ) {
+            $main::o{pkg_manager} = 'none';
+        }
 
         if( $main::o{pkg_manager} eq "dpkg" 
          or $main::o{pkg_manager} eq "apt-get") {
@@ -913,10 +924,6 @@ sub sync_state {
             SimpleStateManager::Yum->import();
         }
         elsif( $main::o{pkg_manager} eq "none" ) {
-            require SimpleStateManager::None;
-            SimpleStateManager::None->import();
-        }
-        elsif( ! defined $main::o{pkg_manager} ) {
             require SimpleStateManager::None;
             SimpleStateManager::None->import();
         }
@@ -1355,6 +1362,8 @@ sub do_softlink {
 
     my $file = shift;
 
+    ssm_print ">> do_softlink($file)\n" if( $main::o{debug} );
+
     #
     # validate input
     unless( 
@@ -1404,52 +1413,24 @@ sub do_softlink {
     unless( (defined $current_target) and ($current_target eq $TARGET{$file}) ) {
 
         $main::outstanding{$file} = 'b0rken';
+        if( $main::o{debug} ) { print ">>>  Assigning $file as 'b0rken'\n"; }
 
         ssm_print "Not OK:  Soft link $file -> $TARGET{$file}\n";
+
         unless( $main::o{summary} ) {
+
+            my $action = 'install_softlink';
+
             ssm_print "         Need to:\n";
             ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
             ssm_print "         - remove pre-existing file $file\n" if( -e $file );
             ssm_print "         - create soft link\n";
             ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
-        }
 
-        my $fix_it = undef;
-
-        if($main::o{yes}) {
-            $fix_it = 1;
-        } elsif($main::o{no}) {
-            $fix_it = undef;
-            $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-        } else {
-            if( do_you_want_me_to() eq 'yes' ) { 
-                $fix_it = 1;
-            } else {
-                ssm_print "         Ok, skipping this step.\n\n";
-                $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-            }
-        }
-
-        if( defined($fix_it) and ! $main::o{no} ) {
-
-            ssm_print "         FIXING:  Soft link $file -> $TARGET{$file}\n";
-
-            do_prescript($file);
-
-            remove_file($file);
-            symlink($TARGET{$file}, $file) or die "Couldn't symlink($TARGET{$file}, $file) $!";
-
-            # 
-            # Should we actually do pre and post-scripts if a symlink target
-            # doesn't exist? -BEF-
-            # 
-
-            do_postscript($file);
-
-            ssm_print "\n";
-
-            $main::outstanding{$file} = 'fixed';
-            $CHANGES_MADE++;
+            #
+            # Decide what to do about it -- if anything
+            #
+            take_action( $file, $action, 'yn' );
         }
 
     } else {
@@ -1461,6 +1442,21 @@ sub do_softlink {
     return 1;
 }
 
+sub install_softlink {
+
+    my $file     = shift;
+
+    if($main::o{debug}) { ssm_print "install_softlink($file)\n"; }
+
+    ssm_print "         FIXING:  Soft link $file -> $TARGET{$file}\n";
+
+    do_prescript($file);
+    remove_file($file);
+    symlink($TARGET{$file}, $file) or die "Couldn't symlink($TARGET{$file}, $file) $!";
+    do_postscript($file);
+    
+    return 1;
+}
 
 sub do_special_file {
 
@@ -2083,9 +2079,9 @@ sub do_generated_file {
 
 sub do_regular_file {
 
-    ssm_print ">> do_contents_unwanted()\n" if( $main::o{debug} );
-
     my $file   = shift;
+
+    ssm_print ">> do_regular_file($file)\n" if( $main::o{debug} );
 
     #
     # validate input
@@ -2225,6 +2221,7 @@ sub take_action {
 
             my %actions = (
                 'install_file'                  => \&install_file,
+                'install_softlink'              => \&install_softlink,
                 'remove_file'                   => \&remove_file,
                 'create_directory'              => \&create_directory,
                 'add_file_to_repo'              => \&add_file_to_repo,
