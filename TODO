@@ -1,3 +1,68 @@
+-- Allow --add-file to specific bundle
+
+    ssm --add-file filename --bundle bundle.otherfiles
+
+    # Francis Dang request
+
+--
+- fix double running of postscripts
+
+    Ie: /etc/modprobe.d/gssIB.conf
+
+--
+-- directory+contents-unwanted
+    Allow "a" option to add unwanted files to config
+
+--
+- contemplate multi-line generators
+
+    [file]
+    name       = /tmp/my-file.generated
+    type       = generated
+    generator  = <<EOF
+    this
+    that
+    the other all 
+    EOF
+    owner      = root
+    group      = root
+    mode       = 0644
+    depends    = /my/external-generator
+
+--
+
+Handle this common user error situation in a friendly way:
+
+    ssm --sync http://mgt/my-config-file.conf
+
+    # note the missing "--config" argument
+
+--
+
+Make sure that an unwanted file that is in it's desired state (not
+there) is considered as satisfying a dependency.  Example problem:
+
+    Not OK:  File /etc/sysconfig/opensm -> Unmet Dependencies:
+             /etc/opensm/opensm.conf 
+    OK:      Unwanted /etc/opensm/opensm.conf doesn't exist
+
+--
+
+Add a --not-ok option like "GSS"
+    Recommended by Francis Dang <francis@tamu.edu>
+
+    Only shows things that are "not ok".
+
+    "Everything is OK -- no need to panic."
+
+--
+make sure postscripts run at appropriate times
+
+    install /etc/rc.d/init.d/lsf
+    (no postscript was run)
+
+--
+
 Convert all functions using 'do_you_want_me_to()' to use 'take_action()'
 instead.
 
@@ -13,6 +78,8 @@ don't pull explicit path.
         to
 
         /etc/rc.d/init.d/script
+
+        If /etc/init.d/script is specified.
 
 
 --
@@ -129,23 +196,6 @@ Not OK:  Regular file /usr/bin/set_dma_latency
     
     Implies --only-files.  If the user want's both files and packages,
     they can do a proper --chroot.
-
-- rename packages from ssm to simple-state-manager
-
-- contmplate multi-line generators
-
-    [file]
-    name       = /tmp/my-file.generated
-    type       = generated
-    generator  = <<EOF
-    this
-    that
-    the other all 
-    EOF
-    owner      = root
-    group      = root
-    mode       = 0644
-    depends    = /my/external-generator
 
 
 
