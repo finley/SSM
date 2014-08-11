@@ -194,6 +194,7 @@ my $repo_access_verified = 0;
 #   Subroutines
 #
 sub _initialize_variables {
+    if( $main::o{debug} ) { ssm_print "close_log_file()\n"; }
 
     (   %PKGS_FROM_STATE_DEFINITION,
         %PKGS_PROVIDED_BY_PKGS_FROM_STATE_DEFINITION,
@@ -220,6 +221,8 @@ sub _initialize_variables {
 }
 
 sub _initialize_log_file {
+
+    if( $main::o{debug} ) { ssm_print "_initialize_log_file()\n"; }
 
     my $log_file = "/var/log/" . basename($0);
 
@@ -268,13 +271,13 @@ sub ssm_print {
 
 sub read_config_file {
 
+    if( $main::o{debug} ) { ssm_print "read_config_file()\n"; }
+
     _initialize_variables();
 
     _initialize_log_file();
 
     my @analyze;
-
-    if( $main::o{debug} ) { ssm_print "read_config_file()\n"; }
 
     if( ! defined($main::o{config_file}) ) {
         
@@ -834,6 +837,8 @@ sub read_config_file {
 
 sub please_specify_a_valid_pkg_manager {
 
+    if( $main::o{debug} ) { ssm_print "please_specify_a_valid_pkg_manager()\n"; }
+
     ssm_print qq(WARNING: A valid pkg_manager not defined in state definition config file.\n);
     ssm_print qq(WARNING: Assuming "pkg_manager = none".\n);
     ssm_print qq(WARNING: See /usr/share/doc/simple-state-manager/examples/safe_to_run_example_config_file.conf\n);
@@ -858,6 +863,9 @@ sub print_pad {
 }
 
 sub turn_usernames_into_uids {
+
+    if( $main::o{debug} ) { ssm_print "turn_usernames_into_uids()\n"; }
+
     foreach(keys %OWNER) {
         $OWNER{$_} = user_to_uid($OWNER{$_});
     }
@@ -866,6 +874,9 @@ sub turn_usernames_into_uids {
 
 
 sub turn_groupnames_into_gids {
+
+    if( $main::o{debug} ) { ssm_print "turn_groupnames_into_gids()\n"; }
+
     foreach(keys %GROUP) {
         $GROUP{$_} = group_to_gid($GROUP{$_});
     }
@@ -874,6 +885,8 @@ sub turn_groupnames_into_gids {
 
 
 sub user_to_uid {
+
+    if( $main::o{debug} ) { ssm_print "user_to_uid()\n"; }
 
     my $user = shift;
 
@@ -888,6 +901,8 @@ sub user_to_uid {
 
 sub group_to_gid {
 
+    if( $main::o{debug} ) { ssm_print "group_to_gid()\n"; }
+
     my $group = shift;
 
     if($group =~ m/^\d+$/) {
@@ -901,8 +916,9 @@ sub group_to_gid {
 
 sub sync_state {
 
-    $CHANGES_MADE = 0;
+    if( $main::o{debug} ) { ssm_print "sync_state()\n"; }
 
+    $CHANGES_MADE = 0;
 
     unless($main::o{only_files}) {
 
@@ -1085,7 +1101,9 @@ sub sync_state {
 
 
 sub close_log_file {
+
     if( $main::o{debug} ) { ssm_print "close_log_file()\n"; }
+
     close($LOGFILE) or die("Couldn't close $LOGFILE");
 
     my $log_file = "/var/log/" . basename($0);
@@ -1127,7 +1145,8 @@ sub email_log_file {
 
 
 sub get_pkgs_to_be_removed {
-    ssm_print ">>\n>> get_pkgs_to_be_removed()\n" if( $main::o{debug} );
+
+    if( $main::o{debug} ) { ssm_print "get_pkgs_to_be_removed()\n"; }
 
     my %pkgs_currently_installed = get_pkgs_currently_installed();
 
@@ -1149,7 +1168,8 @@ sub get_pkgs_to_be_removed {
 #   - packages from definition include version numbers if appropriate
 #
 sub get_pkgs_to_be_installed {
-    ssm_print ">>\n>> get_pkgs_to_be_installed()\n" if( $main::o{debug} );
+
+    if( $main::o{debug} ) { ssm_print "get_pkgs_to_be_installed()\n"; }
 
     my %pkgs_currently_installed = get_pkgs_currently_installed();
 
@@ -1168,7 +1188,8 @@ sub get_pkgs_to_be_installed {
 
 
 sub get_pkgs_to_be_reinstalled {
-    ssm_print ">>\n>> get_pkgs_to_be_reinstalled()\n" if( $main::o{debug} );
+    
+    if( $main::o{debug} ) { ssm_print "get_pkgs_to_be_reinstalled()\n"; }
 
     #
     # returns an array:  "pkg=version" or just "pkg"
@@ -1180,8 +1201,10 @@ sub get_pkgs_to_be_reinstalled {
 
 }
 
-
 sub version {
+
+    if( $main::o{debug} ) { ssm_print "version()\n"; }
+
     # Can't use ssm_print in here -- not initialiased yet. -BEF-
     my $progname = basename($0);
     my $VERSION = '___VERSION___';
@@ -1197,7 +1220,9 @@ EOF
 #
 sub _get_arch {
 
-        use POSIX;
+    if( $main::o{debug} ) { ssm_print "_get_arch()\n"; }
+
+    use POSIX;
 
 	my $arch = (uname())[4];
 	$arch =~ s/i.86/i386/;
@@ -1248,6 +1273,8 @@ sub run_cmd {
 
 
 sub do_you_want_me_to {
+
+    if( $main::o{debug} ) { ssm_print "do_you_want_me_to()\n"; }
 
     my $prompts = shift;
     my $msg = shift;
