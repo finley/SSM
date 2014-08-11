@@ -193,6 +193,30 @@ my $repo_access_verified = 0;
 #
 #   Subroutines
 #
+# ssm_print_always "thing to print";
+sub ssm_print_always {
+
+    my $content = shift;
+
+    print STDOUT   $content;
+    print $LOGFILE $content;
+
+    return 1;
+}
+
+# ssm_print "thing to print";
+sub ssm_print {
+
+    if( $main::PASS_NUMBER == 1 ) { return 1; }
+
+    my $content = shift;
+    
+    print STDOUT   $content;
+    print $LOGFILE $content;
+
+    return 1;
+}
+
 sub _initialize_variables {
     if( $main::o{debug} ) { ssm_print "close_log_file()\n"; }
 
@@ -241,30 +265,6 @@ sub _initialize_log_file {
     $hour = sprintf("%02d", $hour);
     $min = sprintf("%02d", $min);
     print LOGFILE "TIMESTAMP: $year.$mon.$mday - $hour:$min\n";
-
-    return 1;
-}
-
-# ssm_print_always "thing to print";
-sub ssm_print_always {
-
-    my $content = shift;
-
-    print STDOUT   $content;
-    print $LOGFILE $content;
-
-    return 1;
-}
-
-# ssm_print "thing to print";
-sub ssm_print {
-
-    if( $main::PASS_NUMBER == 1 ) { return 1; }
-
-    my $content = shift;
-    
-    print STDOUT   $content;
-    print $LOGFILE $content;
 
     return 1;
 }
