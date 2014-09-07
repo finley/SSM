@@ -483,7 +483,11 @@ sub read_config_file {
                         ssm_print ">> Winning options:  $PKGS_FROM_STATE_DEFINITION{$pkg}\n\n" if($main::o{debug});
                     }
 
-                    if($main::o{debug}) { ssm_print "[packages]: $pkg, $options\n"; }
+                    if($main::o{debug}) { 
+                        ssm_print "[packages]: $pkg";
+                        ssm_print ", $options" if($options);
+                        ssm_print "\n";
+                    }
 
                     #
                     # For --analyze-config option. -BEF-
