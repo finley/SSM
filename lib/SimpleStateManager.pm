@@ -896,9 +896,9 @@ sub turn_groupnames_into_gids {
 
 sub user_to_uid {
 
-    if( $main::o{debug} ) { ssm_print "user_to_uid()\n"; }
-
     my $user = shift;
+
+    if( $main::o{debug} ) { ssm_print "user_to_uid($user)\n"; }
 
     if($user =~ m/^\d+$/) {
         # it's already all-numeric; as in, a uid was specified in the definition
@@ -911,9 +911,9 @@ sub user_to_uid {
 
 sub group_to_gid {
 
-    if( $main::o{debug} ) { ssm_print "group_to_gid()\n"; }
-
     my $group = shift;
+
+    if( $main::o{debug} ) { ssm_print "group_to_gid($group)\n"; }
 
     if($group =~ m/^\d+$/) {
         # it's already all-numeric; as in, a gid was specified in the definition
