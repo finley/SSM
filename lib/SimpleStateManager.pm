@@ -938,18 +938,22 @@ sub sync_state {
 
         if( $main::o{pkg_manager} eq "dpkg" 
          or $main::o{pkg_manager} eq "apt-get") {
+            print "sync_state(): require SimpleStateManager::Dpkg;\n" if($main::o{debug});
             require SimpleStateManager::Dpkg;
             SimpleStateManager::Dpkg->import();
         }
         elsif( $main::o{pkg_manager} eq "aptitude" ) {
+            print "sync_state(): require SimpleStateManager::Aptitude;\n" if($main::o{debug});
             require SimpleStateManager::Aptitude;
             SimpleStateManager::Aptitude->import();
         }
         elsif( $main::o{pkg_manager} eq "yum" ) {
+            print "sync_state(): require SimpleStateManager::Yum;\n" if($main::o{debug});
             require SimpleStateManager::Yum;
             SimpleStateManager::Yum->import();
         }
         elsif( $main::o{pkg_manager} eq "none" ) {
+            print "sync_state(): require SimpleStateManager::None;\n" if($main::o{debug});
             require SimpleStateManager::None;
             SimpleStateManager::None->import();
         }
