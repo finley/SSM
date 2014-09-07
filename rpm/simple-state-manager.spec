@@ -4,7 +4,7 @@ Version:      0.4.61
 Release:      1
 BuildArch:    noarch
 Group:        System Environment/Applications
-Requires:     perl-libwww-perl, perl-MailTools, Unix-Mknod, wget
+Requires:     perl-libwww-perl, perl-MailTools, Unix-Mknod, wget, bu
 Obsoletes:    ssm < 0.4.54
 License:      GPLv2
 URL:          http://download.systemimager.org/pub/ssm/
