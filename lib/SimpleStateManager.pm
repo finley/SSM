@@ -3334,6 +3334,9 @@ sub compare_package_options {
 }
 
 sub sync_state_remove_packages {
+
+    if( $main::o{debug} ) { print "sync_state_remove_packages()\n"; }
+
     my @pkgs_to_be_removed = get_pkgs_to_be_removed();
     my @pkgs_to_be_removed_deps;
 
@@ -3440,6 +3443,9 @@ sub sync_state_remove_packages {
 }
 
 sub sync_state_upgrade_packages {
+
+    if( $main::o{debug} ) { print "sync_state_upgrade_packages()\n"; }
+
     my @pkgs_to_be_upgraded = get_pkgs_that_pkg_manager_says_to_upgrade();
     my @pkgs_to_be_upgraded_deps;
 
@@ -3545,6 +3551,9 @@ sub sync_state_upgrade_packages {
 }
 
 sub sync_state_install_packages {
+
+    if( $main::o{debug} ) { print "sync_state_install_packages()\n"; }
+
     my @pkgs_to_be_installed = get_pkgs_to_be_installed();
     my @pkgs_to_be_installed_deps;
 
@@ -3651,6 +3660,9 @@ sub sync_state_install_packages {
 }
 
 sub sync_state_reinstall_packages {
+
+    if( $main::o{debug} ) { print "sync_state_reinstall_packages()\n"; }
+
     my @pkgs_to_be_reinstalled = get_pkgs_to_be_reinstalled();
     my $do_reinstall = undef;
 
