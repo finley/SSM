@@ -207,7 +207,9 @@ sub ssm_print_always {
 # ssm_print "thing to print";
 sub ssm_print {
 
-    if( $main::PASS_NUMBER == 1 ) { return 1; }
+    if( $main::PASS_NUMBER == 1 ) {
+        return 1 unless($main::o{debug}); 
+    }
 
     my $content = shift;
     
@@ -218,7 +220,6 @@ sub ssm_print {
 }
 
 sub _initialize_variables {
-    if( $main::o{debug} ) { ssm_print "close_log_file()\n"; }
 
     (   %PKGS_FROM_STATE_DEFINITION,
         %PKGS_PROVIDED_BY_PKGS_FROM_STATE_DEFINITION,
@@ -246,8 +247,6 @@ sub _initialize_variables {
 
 sub _initialize_log_file {
 
-    if( $main::o{debug} ) { ssm_print "_initialize_log_file()\n"; }
-
     my $log_file = "/var/log/" . basename($0);
 
     my $starting_lognumber = 1;
@@ -266,16 +265,26 @@ sub _initialize_log_file {
     $min = sprintf("%02d", $min);
     print LOGFILE "TIMESTAMP: $year.$mon.$mday - $hour:$min\n";
 
+    #
+    # Can't write output to log file until we've initilized it... -BEF-
+    #
+    if( $main::o{debug} ) { ssm_print "_initialize_log_file()\n"; }
+
     return 1;
 }
 
 sub read_config_file {
 
-    if( $main::o{debug} ) { ssm_print "read_config_file()\n"; }
-
     _initialize_variables();
 
     _initialize_log_file();
+
+    #
+    # This entry must be below the initializations above so that the symbol
+    # reference to the log file is defined before we try to print to it, eh.
+    # ;-) -BEF-
+    #
+    if( $main::o{debug} ) { ssm_print "read_config_file()\n"; }
 
     my @analyze;
 
@@ -393,7 +402,6 @@ sub read_config_file {
 
             $_ = shift @input;
             until( m/$stanza_terminator/ ) {
-
                 #
                 # Allow "key = value" or "key=value" type definitions.
                 s/\s*=\s*/ /o;
@@ -409,7 +417,6 @@ sub read_config_file {
 
                 $_ = shift @input;
             }
-
 
             #
             # Make sure we have a package manager defined
@@ -432,8 +439,7 @@ sub read_config_file {
 
             }
 
-
-            ssm_print "OK:      Package manager -> $main::o{pkg_manager}\n" unless($main::o{only_this_file}); 
+            ssm_print_always "OK:      Package manager -> $main::o{pkg_manager}\n" unless($main::o{only_this_file}); 
 
             if( ! defined $main::o{remove_running_kernel} ) { 
                 # Default to "no"
