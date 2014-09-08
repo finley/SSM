@@ -1,3 +1,28 @@
+simple-state-manager (0.4.62) stable; urgency=medium
+
+  * 9ff11a4 .
+  * 4133f6f - Fix bug where package operations were omitted - Add
+    upgrade_ssm_before_sync as global option (defaults to "no")
+  * 0da1359 - add/improve debug output
+  * e900e13 - add debug statements to sync_state()
+  * 0aaff1d - add debug statements to additional package related
+    subroutines
+  * cb138ae - show name of user/group in debug output when converting
+    user_to_uid or group_to_gid
+  * 989e47d - Show debug output even on first pass
+  * b543275 - Improve debug output for [packages]
+  * 3b1f2ab - add 'bu' to requires.
+  * 7df5f46 Merge branch 'master' of github.com:finley/SSM
+  * 98ec46e include 'bu' package in depends.
+  * 07ef5da - Place ssm_print subroutines at top of subroutine list to
+    assuage 'Do you need to predeclare?' messages.
+  * e7a5078 - improve debug output
+  * 6a9d754 .
+  * 0473032 - Always show config being used, even on PASS 0 - Add
+    'no_scripts' argument for 'remove_file()' function
+
+ -- Brian Elliott Finley <brian@thefinleys.com>  Sun, 07 Sep 2014 21:36:31 -0500
+
 simple-state-manager (0.4.61) stable; urgency=low
 
   * 20fc787 - make --add-file work cleanly with PASS 0
