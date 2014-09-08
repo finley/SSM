@@ -406,14 +406,24 @@ sub read_config_file {
                 # Allow "key = value" or "key=value" type definitions.
                 s/\s*=\s*/ /o;
 
-                if( m/^pkg_manager\s+(.*)(\s|#|$)/ )    { $main::o{pkg_manager} = lc($1); }
-                if( m/^base_ur[il]\s+(.*)(\s|#|$)/ )       { $main::o{base_url} = $1; }
-                if( m/^git_ur[il]\s+(.*)(\s|#|$)/ )        { $main::o{git_url} = $1; }  # deprecated, but leave in for warning messages, etc.
-                if( m/^svn_ur[il]\s+(.*)(\s|#|$)/ )        { $main::o{svn_url} = $1; }  # deprecated, but leave in for warning messages, etc.
-                if( m/^upload_url\s+(.*)(\s|#|$)/ )        { $main::o{upload_url} = $1; }
-                if( m/^email_log_to\s+(.*)(\s|#|$)/ )   { $main::o{email_log_to} = $1; }
-                if( m/^log_file_perms\s+(.*)(\s|#|$)/ )   { $main::o{log_file_perms} = $1; }
-                if( m/^remove_running_kernel\s+(.*)(\s|#|$)/ )   { $main::o{remove_running_kernel} = $1; }
+                if( m/^pkg_manager\s+(.*)(\s|#|$)/ )                { $main::o{pkg_manager} = lc($1); }
+                if( m/^base_ur[il]\s+(.*)(\s|#|$)/ )                { $main::o{base_url} = $1; }
+                if( m/^upload_url\s+(.*)(\s|#|$)/ )                 { $main::o{upload_url} = $1; }
+                if( m/^email_log_to\s+(.*)(\s|#|$)/ )               { $main::o{email_log_to} = $1; }
+                if( m/^log_file_perms\s+(.*)(\s|#|$)/ )             { $main::o{log_file_perms} = $1; }
+                if( m/^remove_running_kernel\s+(.*)(\s|#|$)/ )      { $main::o{remove_running_kernel} = $1; }
+                if( m/^upgrade_ssm_before_sync\s+(.*)(\s|#|$)/ )    { $main::o{upgrade_ssm_before_sync} = $1; }
+
+                ###############################################################################
+                #
+                # BEGIN  deprecated, but leave in for warning messages, etc.
+                #
+                if( m/^git_ur[il]\s+(.*)(\s|#|$)/ )                 { $main::o{git_url} = $1; }  
+                if( m/^svn_ur[il]\s+(.*)(\s|#|$)/ )                 { $main::o{svn_url} = $1; }  
+                #
+                # END  deprecated
+                #
+                ###############################################################################
 
                 $_ = shift @input;
             }
@@ -958,18 +968,23 @@ sub sync_state {
             SimpleStateManager::None->import();
         }
 
-        upgrade_ssm() unless($main::o{no});
+        if( $main::o{upgrade_ssm_before_sync} eq "yes" ) {
+            upgrade_ssm() unless($main::o{no});
+        }
     }
 
     #
     # Files
     my %only_this_file_hash;
-    foreach my $file ( @{$main::o{only_this_file}} ) {
-        $only_this_file_hash{$file} = 1;
+    if( $main::o{only_this_file} ) {
+        foreach my $file ( @{$main::o{only_this_file}} ) {
+            $only_this_file_hash{$file} = 1;
+        }
     }
+
     foreach my $file (sort keys %TYPE) {
 
-        next if( @{$main::o{only_this_file}} and !defined($only_this_file_hash{$file}) );
+        next if( $main::o{only_this_file} and !defined($only_this_file_hash{$file}) );
 
         last if($main::o{only_packages});
 
@@ -1042,7 +1057,6 @@ sub sync_state {
         return ($ERROR_LEVEL, $CHANGES_MADE);
     } 
     else {
-
         # Do this here, and only once, for performance purposes. -BEF-
         %PKGS_PROVIDED_BY_PKGS_FROM_STATE_DEFINITION = get_pkgs_provided_by_pkgs_from_state_definition(\%PKGS_FROM_STATE_DEFINITION);
 
