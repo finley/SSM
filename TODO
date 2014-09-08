@@ -1,3 +1,6 @@
+-- Consider adding an option to _not_ update repo metadata when doing
+   package operations.
+
 -- Allow --add-file to specific bundle
 
     ssm --add-file filename --bundle bundle.otherfiles
@@ -199,9 +202,6 @@ Not OK:  Regular file /usr/bin/set_dma_latency
 
 
 
--   Don't ever have SSM auto-upgrade itself, unless an
-    'auto-upgrade-ssm' setting is in place.
-
 -   Have upload_url default to ssh@ or file:// version of
     'config_file'
 
@@ -371,8 +371,6 @@ Not OK:  Regular file /usr/bin/set_dma_latency
             exit 7;
         }
 
-
-*   Fix bug: ssm may not auto-upgrade with Aptitude.pm
 
 *   Fix bug: output from package installs cannot go interactive.  Look
     into alternate perl modules that will allow: a) printing of output,
