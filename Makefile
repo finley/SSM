@@ -1,6 +1,5 @@
 #
-# $Id: Makefile 376 2010-09-01 17:25:40Z finley $
-#  vi:set filetype=make noet ai:
+#  vi:set filetype=make noet ai tw=0:
 #
 
 SHELL = /bin/sh
@@ -86,16 +85,35 @@ install:  all
 	
 
 .PHONY: release
-release:  tarball debs rpms
+release:
+	@echo "Please try 'make test_release' or 'make stable_release'"
+
+.PHONY: test_release
+test_release:  tarball debs rpms
 	@echo 
 	@echo "I'm about to upload the following files to:"
-	@echo "  ~/src/www.systemimager.org/pub/ssm/"
+	@echo "  ~/src/www.systemimager.org/testing/ssm/"
 	@echo "-----------------------------------------------------------------------"
 	@/bin/ls -1 $(TOPDIR)/tmp/${package}[-_]$(VERSION)*.*
 	@echo
 	@echo "Hit <Enter> to continue..."
 	@read i
-	rsync -av --progress $(TOPDIR)/tmp/${package}[-_]$(VERSION)*.* ~/src/www.systemimager.org/pub/ssm/
+	rsync -av --progress $(TOPDIR)/tmp/${package}[-_]$(VERSION)*.* ~/src/www.systemimager.org/testing/ssm/
+	@echo
+	@echo "Now run:   cd ~/src/www.systemimager.org/ && make upload"
+	@echo
+
+.PHONY: stable_release
+stable_release:  tarball debs rpms
+	@echo 
+	@echo "I'm about to upload the following files to:"
+	@echo "  ~/src/www.systemimager.org/stable/ssm/"
+	@echo "-----------------------------------------------------------------------"
+	@/bin/ls -1 $(TOPDIR)/tmp/${package}[-_]$(VERSION)*.*
+	@echo
+	@echo "Hit <Enter> to continue..."
+	@read i
+	rsync -av --progress $(TOPDIR)/tmp/${package}[-_]$(VERSION)*.* ~/src/www.systemimager.org/stable/ssm/
 	@echo
 	@echo "Now run:   cd ~/src/www.systemimager.org/ && make upload"
 	@echo
