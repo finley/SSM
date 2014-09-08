@@ -52,6 +52,8 @@ use SimpleStateManager qw(ssm_print run_cmd);
 
 sub upgrade_ssm {
 
+    ssm_print "upgrade_ssm()\n" if( $main::o{debug} );
+
     my $pkg = 'ssm';
 
     my @pkgs_to_be_upgraded = get_pkgs_that_pkg_manager_says_to_upgrade();
@@ -71,7 +73,8 @@ sub upgrade_ssm {
 }
 
 sub reinstall_pkgs {
-    ssm_print ">>\n>> reinstall_pkgs()\n" if( $main::o{debug} );
+
+    ssm_print "reinstall_pkgs()\n" if( $main::o{debug} );
 
     my @pkgs = @_;
 
@@ -101,14 +104,16 @@ sub reinstall_pkgs {
 
 
 sub upgrade_pkgs {
-    ssm_print ">>\n>> upgrade_pkgs()\n" if( $main::o{debug} );
+
+    ssm_print "upgrade_pkgs()\n" if( $main::o{debug} );
 
     return install_pkgs(@_);    
 }
 
 
 sub install_pkgs {
-    ssm_print ">>\n>> install_pkgs()\n" if( $main::o{debug} );
+
+    ssm_print "install_pkgs()\n" if( $main::o{debug} );
 
     my @pkgs = @_;
 
@@ -140,7 +145,8 @@ sub install_pkgs {
 
 
 sub remove_pkgs {
-    ssm_print ">>\n>> remove_pkgs()\n" if( $main::o{debug} );
+
+    ssm_print "remove_pkgs()\n" if( $main::o{debug} );
 
     my @pkgs = @_;
 
@@ -161,7 +167,8 @@ sub remove_pkgs {
 
 
 sub get_pkgs_currently_installed {
-    ssm_print ">>\n>> get_pkgs_currently_installed()\n" if( $main::o{debug} );
+
+    ssm_print "get_pkgs_currently_installed()\n" if( $main::o{debug} );
 
     #
     # returns a hash: package => version
@@ -202,7 +209,8 @@ sub get_pkgs_currently_installed {
 
 
 sub get_pkgs_that_pkg_manager_says_to_upgrade {
-    ssm_print ">>\n>> get_pkgs_that_pkg_manager_says_to_upgrade()\n" if( $main::o{debug} );
+
+    ssm_print "get_pkgs_that_pkg_manager_says_to_upgrade()\n" if( $main::o{debug} );
 
     # In this hash, 'pkg' is the key, and 'version' is the value.
     my %hash;
@@ -219,13 +227,11 @@ sub get_pkgs_that_pkg_manager_says_to_upgrade {
 
     #
     # Get a list of packages that would be upgraded
-    $cmd = 'DEBIAN_FRONTEND=noninteractive apt-get -s dist-upgrade';
-    ssm_print ">> $cmd\n" if( $main::o{debug} );
-
-    #
     # This is harmless, so we run it even if --dry-run, so that we get
     # the output that is interesting for the rest of the dry run.
     #
+    $cmd = 'DEBIAN_FRONTEND=noninteractive apt-get -s dist-upgrade';
+    ssm_print ">> $cmd\n" if( $main::o{debug} );
     open(OUTPUT,"$cmd|");
         while(<OUTPUT>) {
             if( m/^Inst\s(\S+)\s+/ ) {
@@ -245,7 +251,8 @@ sub get_pkgs_that_pkg_manager_says_to_upgrade {
 #        as the a key in a space seperated string format. -BEF-
 #
 sub get_pkg_dependencies {
-    ssm_print ">>\n>> get_pkg_dependencies()\n" if( $main::o{debug} );
+
+    ssm_print "get_pkg_dependencies()\n" if( $main::o{debug} );
 
     my @packages = @_;
 
@@ -287,7 +294,8 @@ sub get_pkg_dependencies {
 
 
 sub get_pkg_reverse_dependencies {
-    ssm_print ">>\n>> get_pkg_reverse_dependencies()\n" if( $main::o{debug} );
+
+    ssm_print "get_pkg_reverse_dependencies()\n" if( $main::o{debug} );
 
     my @packages = @_;
 
@@ -350,7 +358,8 @@ sub get_pkg_reverse_dependencies {
 }
 
 sub get_pkgs_provided_by_pkgs_from_state_definition {
-    ssm_print ">>\n>> get_pkgs_provided_by_pkgs_from_state_definition()\n" if( $main::o{debug} );
+
+    ssm_print "get_pkgs_provided_by_pkgs_from_state_definition()\n" if( $main::o{debug} );
 
     my $PKGS_FROM_STATE_DEFINITION = shift;
     return get_pkg_provides(keys %$PKGS_FROM_STATE_DEFINITION);
@@ -364,7 +373,8 @@ sub get_pkgs_provided_by_pkgs_from_state_definition {
 # state definition file. -BEF-
 #
 sub get_pkg_provides {
-    ssm_print ">>\n>> get_pkg_provides()\n" if( $main::o{debug} );
+
+    ssm_print "get_pkg_provides()\n" if( $main::o{debug} );
 
     my @packages = @_;
 
@@ -395,6 +405,8 @@ sub get_pkg_provides {
 }
 
 sub get_running_kernel_pkg_name {
+
+    ssm_print "get_running_kernel_pkg_name()\n" if( $main::o{debug} );
 
     use POSIX;
     my $release = (uname())[2];
