@@ -968,7 +968,7 @@ sub sync_state {
             SimpleStateManager::None->import();
         }
 
-        if( $main::o{upgrade_ssm_before_sync} eq "yes" ) {
+        if( defined $main::o{upgrade_ssm_before_sync} and $main::o{upgrade_ssm_before_sync} eq "yes" ) {
             upgrade_ssm() unless($main::o{no});
         }
     }
