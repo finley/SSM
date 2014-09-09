@@ -1,6 +1,8 @@
 -- Consider adding an option to _not_ update repo metadata when doing
    package operations.
 
+-- Consider adding a 'delete' option to 'delete' this file from the repo
+
 -- Allow --add-file to specific bundle
 
     ssm --add-file filename --bundle bundle.otherfiles
