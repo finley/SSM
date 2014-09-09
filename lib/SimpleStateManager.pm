@@ -347,7 +347,7 @@ sub read_config_file {
         $main::o{config_file} .= $main::o{hostname};
     }
 
-    ssm_print_always "\nConfiguration File: $main::o{config_file}\n" unless($main::o{only_this_file});
+    ssm_print "\nConfiguration File: $main::o{config_file}\n" unless($main::o{only_this_file});
 
     my $tmp_file = get_file($main::o{config_file}, 'error');
 
@@ -449,7 +449,7 @@ sub read_config_file {
 
             }
 
-            ssm_print_always "OK:      Package manager -> $main::o{pkg_manager}\n" unless($main::o{only_this_file}); 
+            ssm_print "OK:      Package manager -> $main::o{pkg_manager}\n" unless($main::o{only_this_file}); 
 
             if( ! defined $main::o{remove_running_kernel} ) { 
                 # Default to "no"
@@ -3464,7 +3464,14 @@ sub sync_state_upgrade_packages {
 
     if( $main::o{debug} ) { print "sync_state_upgrade_packages()\n"; }
 
-    my @pkgs_to_be_upgraded = get_pkgs_that_pkg_manager_says_to_upgrade();
+    my @pkgs_to_be_upgraded;
+    if(defined $main::o{no_pkg_repo_update}) {
+        ssm_print "OK:      Packages -> Skipping package repo update.\n";
+        @pkgs_to_be_upgraded = ();
+    } else {
+        @pkgs_to_be_upgraded = get_pkgs_that_pkg_manager_says_to_upgrade();
+    }
+    
     my @pkgs_to_be_upgraded_deps;
 
     my $do_upgrade = undef;
