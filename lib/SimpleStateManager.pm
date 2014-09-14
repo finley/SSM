@@ -79,6 +79,7 @@ use Cwd 'abs_path';
 #   compare_package_options
 #   copy_file_to_upstream_repo
 #   create_directory
+#   create_special_file
 #   diff_file
 #   diff_ownership_and_permissions
 #   do_chown_and_chmod
@@ -131,6 +132,7 @@ use Cwd 'abs_path';
 #   sync_state_remove_packages
 #   sync_state_upgrade_packages
 #   take_action
+#   touch
 #   turn_groupnames_into_gids
 #   turn_service_into_file_entry
 #   turn_usernames_into_uids
@@ -1517,6 +1519,43 @@ sub install_softlink {
     return 1;
 }
 
+
+sub create_special_file {
+
+    my $file = shift;
+
+    if($main::o{debug}) { ssm_print "create_special_file($file)\n"; }
+
+    ssm_print qq(         FIXING:  Creating ) . ucfirst($TYPE{$file}) . qq( file $file\n);
+
+    do_prescript($file);
+    remove_file($file);
+
+    if($TYPE{$file} eq 'fifo') {
+        umask 0000;
+        mkfifo($file, oct($MODE{$file})) or die "Couldn't mkfifo($file, $MODE{$file})$!";
+    }
+    elsif($TYPE{$file} eq 'character') {
+        #
+        # Thanks to Jim Pirzyk, author of Unix::Mknod, for getting back to
+        # me with a documentation fix that allows me to use his code here.
+        # -BEF- 2006.05.08
+        #
+        my $mode = oct($MODE{$file});
+        mknod( $file, S_IFCHR|$mode, makedev($MAJOR{$file}, $MINOR{$file}) );
+    }
+    elsif($TYPE{$file} eq 'block') {
+        my $mode = oct($MODE{$file});
+        mknod( $file, S_IFBLK|$mode, makedev($MAJOR{$file}, $MINOR{$file}) );
+    }
+
+    set_ownership_and_permissions($file);
+    do_postscript($file);
+
+    return 1;
+}
+
+
 sub do_special_file {
 
     my $file   = shift;
@@ -1545,7 +1584,6 @@ sub do_special_file {
     # Does it need fixing?
     my $needs_fixing = undef;
     if( ! -e $file ) {
-        # Ain't there
         $needs_fixing = 1;
     } 
     else {
@@ -1575,71 +1613,23 @@ sub do_special_file {
 
         ssm_print "Not OK:  " . ucfirst($TYPE{$file}) . " file $file\n";
         unless( $main::o{summary} ) {
+            my $action = 'create_special_file';
             ssm_print "         Need to:\n";
             ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
             ssm_print "         - remove pre-existing file $file\n" if( -e $file );
-            ssm_print "         - create $TYPE{$file} special file\n";
+            ssm_print "         - create $file as a $TYPE{$file} special file\n";
             ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
-        }
 
-        if($main::o{yes}) {
-            $fix_it = 1;
-        } elsif($main::o{no}) {
-            $fix_it = undef;
-            $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-        } else {
-
-            if( do_you_want_me_to() eq 'yes' ) { 
-                $fix_it = 1;
-            } else {
-                ssm_print "         Ok, skipping this step.\n\n";
-                $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-            }
+            #
+            # Decide what to do about it -- if anything
+            #
+            take_action( $file, $action, 'yn' );
         }
 
     } else {
+
         $main::outstanding{$file} = 'fixed';
         ssm_print "OK:      " . ucfirst($TYPE{$file}) . " file $file\n";
-    }
-
-    #
-    # Take action
-    if( defined($fix_it) and ! $main::o{no} ) {
-
-        ssm_print "         FIXING:  " . ucfirst($TYPE{$file}) . " file $file\n";
-
-        do_prescript($file);
-
-        remove_file($file);
-
-        if($TYPE{$file} eq 'fifo') {
-            umask 0000;
-            mkfifo($file, oct($MODE{$file})) or die "Couldn't mkfifo($file, $MODE{$file})$!";
-        }
-        elsif($TYPE{$file} eq 'character') {
-            #
-            # Thanks to Jim Pirzyk, author of Unix::Mknod, for getting back to
-            # me with a documentation fix that allows me to use his code here.
-            # -BEF- 2006.05.08
-            #
-            my $mode = oct($MODE{$file});
-            mknod( $file, S_IFCHR|$mode, makedev($MAJOR{$file}, $MINOR{$file}) );
-        }
-        elsif($TYPE{$file} eq 'block') {
-            my $mode = oct($MODE{$file});
-            mknod( $file, S_IFBLK|$mode, makedev($MAJOR{$file}, $MINOR{$file}) );
-        }
-
-        #
-        # Ensure proper ownership
-        set_ownership_and_permissions($file);
-
-        do_postscript($file);
-
-        ssm_print "\n";
-
-        $main::outstanding{$file} = 'fixed';
-        $CHANGES_MADE++;
     }
 
     return 1;
@@ -1922,10 +1912,6 @@ sub do_chown_and_chmod {
         if( $main::o{debug} ) { print ">>>  Assigning $file as 'b0rken'\n"; }
 
         ssm_print "Not OK:  Chown+Chmod target $file\n";
-
-
-
-
 
         unless( $main::o{summary} ) {
             my $action = 'set_ownership_and_permissions';
@@ -2230,7 +2216,7 @@ sub do_regular_file {
 #   Usage:  $return_code = take_action( $file, $action );
 #   Usage:  $return_code = take_action( $file, $action, [$prompts,] [$msg] );
 #
-#       Where $prompts is one or more of 'ynda':
+#       Where $prompts is one or more of 'ynda'.  Order doesn't matter:
 #       - y - yes
 #       - n - no
 #       - d - diff
@@ -2300,6 +2286,7 @@ sub take_action {
                 'create_directory'              => \&create_directory,
                 'add_file_to_repo'              => \&add_file_to_repo,
                 'set_ownership_and_permissions' => \&set_ownership_and_permissions,
+                'create_special_file'           => \&create_special_file,
             );
 
             # Keep this function short and sweet by simply passing the name of the
