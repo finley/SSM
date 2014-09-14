@@ -195,3 +195,25 @@ distclean: clean
 	rm -f  $(TOPDIR)/debian/files
 	rm -fr $(TOPDIR)/debian/${package}/
 
+.PHONY: testclean
+testclean:
+	rm -f  /tmp/hosts
+	rm -f  /etc/rc2.d/S99example-service
+	rm -f  /tmp/xconsole
+	rm -f  /tmp/null
+	rm -f  /tmp/one-regular-file.txt
+	rm -f  /tmp/monkey
+	rm -fr /tmp/uncle-bob
+	rm -f  /tmp/sda
+	rm -f  /tmp/monkeyboy
+	rm -f  /etc/rc6.d/K01example-service
+	rm -fr /tmp/monkey_nest
+	rm -f  /tmp/monkey_nest/eggs
+	rm -f  /tmp/bob
+	rm -f  /tmp/ls
+	rm -f  /tmp/hostname
+	rm -f  /tmp/monkey_dir
+	rm -f  /etc/rc0.d/K01example-service
+	rm -f  /tmp/etc/sysconfig/network-scripts/ifcfg-eth2
+	rm -f  /tmp/softlink
+
