@@ -1300,6 +1300,10 @@ sub run_cmd {
 }
 
 
+#
+# Usage:  my $answer = do_you_want_me_to($prompts);
+#          where $prompts is one or more of 'ynda'
+#
 sub do_you_want_me_to {
 
     if( $main::o{debug} ) { ssm_print "do_you_want_me_to()\n"; }
@@ -1710,11 +1714,34 @@ sub get_mode {
 }
 
 
+#
+# Usage:  touch($file);
+#
+sub touch {
+
+    my $file = shift;
+
+    if( ! -e $file ) {
+        # Ain't there -- create an empty file.  Use append just in case...
+        open(FILE,">>$file") or die("Couldn't open $file for writing");
+        close(FILE);
+    } 
+
+    my $mtime = time;
+    my $atime = $mtime;
+    utime $atime, $mtime, $file;
+
+    return 1;
+}
+
+
 sub set_ownership_and_permissions {
 
     my $file = shift;
 
     ssm_print "         FIXING:  Ownership and Perms: $file\n";
+
+    touch($file);
 
     chown $OWNER{$file}, $GROUP{$file}, $file;
     chmod oct($MODE{$file}), $file;
@@ -1889,63 +1916,45 @@ sub do_chown_and_chmod {
 
     #
     # Should we actually fix it?
-    my $fix_it = undef;
     if( defined($needs_fixing) ) {
 
         $main::outstanding{$file} = 'b0rken';
+        if( $main::o{debug} ) { print ">>>  Assigning $file as 'b0rken'\n"; }
 
         ssm_print "Not OK:  Chown+Chmod target $file\n";
+
+
+
+
+
         unless( $main::o{summary} ) {
-            ssm_print "         Need to:\n";
-            ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
+            my $action = 'set_ownership_and_permissions';
             if( ! -e $file ) {
+                ssm_print "         Need to:\n";
+                ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
                 ssm_print "         - create empty file\n";
                 ssm_print "         - set ownership and permissions\n";
+                ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
             } else {
-                ssm_print "         - fix ownership and permissions\n";
+                ssm_print "         Need to:\n";
+                ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
+                ssm_print "         - set ownership and permissions\n";
                 diff_ownership_and_permissions($file, 12);
+                ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
             }
-            ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
+
+            #
+            # Decide what to do about it -- if anything
+            #
+            take_action( $file, $action, 'yna' );
+
         }
 
-        if($main::o{yes}) {
-            $fix_it = 1;
-        } elsif($main::o{no}) {
-            $fix_it = undef;
-            $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-        } else {
-
-            my $answer = do_you_want_me_to();
-
-            if( $answer eq 'yes' ) { 
-                $fix_it = 1;
-            } else {
-                ssm_print "         Ok, skipping this step.\n\n";
-                $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-            }
-        }
     } else {
+
         $main::outstanding{$file} = 'fixed';
         ssm_print "OK:      Chown+Chmod target $file\n";
-    }
 
-    #
-    # Take action
-    if( defined($fix_it) and ! $main::o{no} ) {
-
-        do_prescript($file);
-        if( ! -e $file ) {
-            # Ain't there -- create an empty file
-            open(FILE,">$file") or die("Couldn't open $file for writing");
-            close(FILE);
-        } 
-        set_ownership_and_permissions($file);
-        do_postscript($file);
-
-        $main::outstanding{$file} = 'fixed';
-        $CHANGES_MADE++;
-
-        ssm_print "\n";
     }
 
     return 1;
@@ -2221,12 +2230,22 @@ sub do_regular_file {
 #   Usage:  $return_code = take_action( $file, $action );
 #   Usage:  $return_code = take_action( $file, $action, [$prompts,] [$msg] );
 #
+#       Where $prompts is one or more of 'ynda':
+#       - y - yes
+#       - n - no
+#       - d - diff
+#       - a - add
+#
 sub take_action {
 
     #
     # First pass is observation only.
     #
-    if( $main::PASS_NUMBER == 1 ) { return 1; }
+    if( $main::PASS_NUMBER == 1 ) { 
+
+        ssm_print ">>> Skipping action as this is the first PASS\n\n";
+        return 1; 
+    }
 
     #
     # test for --yes and --no and --summary right here
