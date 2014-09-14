@@ -157,6 +157,7 @@ $(TOPDIR)/tmp/${package}-$(VERSION).tar.bz2:  clean
 	@echo 
 	@echo '# deb pkg bits first'
 	@echo 'git log `git describe --tags --abbrev=0`..HEAD --oneline > /tmp/${package}.gitlog'
+	#@echo "git log `git describe --tags --abbrev=0`..HEAD --oneline --name-status | perl -p -e 's/(^\S{7} .*)/\n$1/; s/(^\S\.*)/    $1/' > /tmp/${package}.gitlog"
 	@echo 'while read line; do dch --newversion $$ver "$$line"; done < /tmp/simple-state-manager.gitlog'
 	@echo 'dch --release "" --distribution stable --no-force-save-on-release'
 	@echo 'head debian/changelog'
