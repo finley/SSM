@@ -431,10 +431,18 @@ sub read_config_file {
             }
 
             #
+            # If base_url is using the file:// style URL, then we can assume that
+            # upload_url should be the same, unless explicitly specified. -BEF-
+            #
+            if(! $main::o{upload_url}) {
+                $main::o{upload_url} = $main::o{base_url};
+            }
+
+
+            #
             # Make sure we have a package manager defined
             #
             if( ! defined $main::o{pkg_manager} ) {
-
                 $main::o{pkg_manager} = 'none';
             }
 
@@ -1334,24 +1342,31 @@ sub do_you_want_me_to {
     my $explanation = "\n";
 
     if($prompts =~ m/n/ and ! defined $main::o{answer_implications_explained_n}) {
-        $explanation .= qq/           N -> No   -- Don't do anything.  [The default]\n/;
+        $explanation .= qq/           N -> No, don't do anything.  [The default]\n/;
         $main::o{answer_implications_explained_n} = 'yes';
         $i_had_to_explain_something = 1;
         }
     if($prompts =~ m/y/ and ! defined $main::o{answer_implications_explained_y}) {
-        $explanation .= qq/           y -> Yes  -- Execute all of the "Need to:" actions above.\n/;
+        $explanation .= qq/           y -> Yes, execute all of the "Need to:" actions above.\n/;
         $main::o{answer_implications_explained_y} = 'yes';
         $i_had_to_explain_something = 1;
         }
     if($prompts =~ m/d/ and ! defined $main::o{answer_implications_explained_d}) {
-        $explanation .= qq/           d -> Diff -- Show me a diff then ask me again.\n/;
+        $explanation .= qq/           d -> Show me the differences between the repo version and the\n/;
+        $explanation .= qq/                local version, then ask me again.\n/;
         $main::o{answer_implications_explained_d} = 'yes';
         $i_had_to_explain_something = 1;
         }
     if($prompts =~ m/a/ and ! defined $main::o{answer_implications_explained_a}) {
-        $explanation .= qq/           a -> Add  -- Copy the local version of this file to your repo\n/;
-        $explanation .= qq/                        and update the configuration to use it.\n/;
+        $explanation .= qq/           a -> Add the local version of this file to your repo and\n/;
+        $explanation .= qq/                update the configuration to use it.\n/;
         $main::o{answer_implications_explained_a} = 'yes';
+        $i_had_to_explain_something = 1;
+        }
+    if($prompts =~ m/c/ and ! defined $main::o{answer_implications_explained_c}) {
+        $explanation .= qq/           c -> Comment out this entry in the configuration, but\n/;
+        $explanation .= qq/                preserve any files it references in the repo.\n/;
+        $main::o{answer_implications_explained_c} = 'yes';
         $i_had_to_explain_something = 1;
         }
     $explanation .= qq/\n/;
@@ -1384,6 +1399,9 @@ sub do_you_want_me_to {
 
     } elsif( m/^a$/i ) {
         return 'add';
+
+    } elsif( m/^c$/i ) {
+        return 'comment out';
 
     } elsif( m/^c$/i ) {
         return 'comments';
@@ -1491,7 +1509,7 @@ sub do_softlink {
             #
             # Decide what to do about it -- if anything
             #
-            take_action( $file, $action, 'yn' );
+            take_action( $file, $action, 'ync' );
         }
 
     } else {
@@ -1623,7 +1641,7 @@ sub do_special_file {
             #
             # Decide what to do about it -- if anything
             #
-            take_action( $file, $action, 'yn' );
+            take_action( $file, $action, 'ync' );
         }
 
     } else {
@@ -1864,7 +1882,7 @@ sub do_unwanted_file {
             #
             # Decide what to do about it -- if anything
             #
-            take_action( $file, $action, 'yn' );
+            take_action( $file, $action, 'ync' );
         }
 
     } else {
@@ -1932,7 +1950,7 @@ sub do_chown_and_chmod {
             #
             # Decide what to do about it -- if anything
             #
-            take_action( $file, $action, 'yna' );
+            take_action( $file, $action, 'ync' );
 
         }
 
@@ -2011,7 +2029,7 @@ sub do_directory {
             #
             # Decide what to do about it -- if anything
             #
-            take_action( $file, $action, 'yn' );
+            take_action( $file, $action, 'ync' );
         }
 
     } else {
@@ -2112,7 +2130,7 @@ sub do_generated_file {
 
             }
 
-            take_action( $file, $action, 'ynd' );
+            take_action( $file, $action, 'yndc' );
         }
 
     } else {
@@ -2201,7 +2219,7 @@ sub do_regular_file {
             #
             # Decide what to do about it -- if anything
             #
-            take_action( $file, $action, 'ynda' );
+            take_action( $file, $action, 'yndac' );
         }
             
     } else {
@@ -2273,7 +2291,12 @@ sub take_action {
             $return_code = 2;  # we did our diff, but don't want to exit the higher level loop yet
 
         } elsif( $answer eq 'add' ) {
-            $return_code = add_file_to_repo( $file );
+            $return_code = add_file_to_repo($file);
+            $main::outstanding{$file} = 'fixed';
+            $CHANGES_MADE++;
+
+        } elsif( $answer eq 'comment out' ) {
+            $return_code = update_bundle_file_comment_out_entry($file);
             $main::outstanding{$file} = 'fixed';
             $CHANGES_MADE++;
 
@@ -2829,6 +2852,87 @@ sub uid_gid_and_mode_match {
     }
 
     return undef;
+}
+
+
+sub update_bundle_file_comment_out_entry {
+
+    my $file = shift;
+
+    if(! $main::o{"upload_url"} ) {
+
+        _specify_an_upload_url();
+
+        $ERROR_LEVEL++;
+        if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+        ssm_print "\n";
+
+        return 3;
+    }
+
+    my @newfile;
+
+    my $url  = "$main::o{base_url}/$BUNDLEFILE{$file}";
+    my $bundle_file = get_file($url, 'error');
+
+    open(FILE, "<$bundle_file") or die("Couldn't open $bundle_file for reading");
+    push my @input, (<FILE>);
+    close(FILE);
+
+    my $stanza_terminator = '^(\s+|$)';
+
+    my $found_entry = 'no';
+    while (@input) {
+
+        $_ = shift @input;
+
+        if( m|^name\s*=\s*$file| ) {
+
+            #
+            # We've got a hit!  Rewind until we get to the beginning of the
+            # stanza (the named file may occur anywhere in the stanza) -BEF-
+            #
+            until ($_ =~ m/^\[file\]/ ) {
+                unshift @input, $_;
+                $_ = pop @newfile;
+            }
+
+            ssm_print qq(Updating:  Commenting out entry for "$file" in config file "$BUNDLEFILE{$file}".\n);
+
+            my $hostname = `hostname -f`;
+            chomp $hostname;
+
+            push @newfile, "#\n";
+            push @newfile, "# Commented out via ssm client on $hostname at " . localtime() . "\n";
+            push @newfile, "#\n";
+
+            until( m/$stanza_terminator/ ) {
+
+                # Comment out each entry
+                s/(.*)/#$1/;
+
+                # Add line to new file
+                push @newfile, $_;
+
+                # Get next line to process
+                $_ = shift @input;
+            }
+        }
+
+        # Add all other lines into newfile verbatim
+        push @newfile, $_;
+    }
+
+    my $tmp_bundle_file = choose_tmp_file();
+    open(FILE, ">$tmp_bundle_file") or die("Couldn't open $tmp_bundle_file for writing");
+    print FILE @newfile;
+    close(FILE);
+
+    ssm_print "copy_file_to_upstream_repo($tmp_bundle_file, $BUNDLEFILE{$file})\n" if($main::o{debug});
+    copy_file_to_upstream_repo($tmp_bundle_file, $BUNDLEFILE{$file});
+    unlink $tmp_bundle_file;
+
+    return 1;
 }
 
 
