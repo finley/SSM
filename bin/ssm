@@ -253,6 +253,20 @@ sub validate_options {
         $o{no} = 1; 
     }
 
+    #
+    # Handle this common user error situation in a friendly way.  Note
+    # the missing "--config" argument. -BEF-
+    #
+    #   ssm --sync http://mgt/my-config-file.conf
+    #
+    # So we assume that the user meant this:
+    #
+    #   ssm --sync --config http://mgt/my-config-file.conf
+    #
+    if(! $o{config_file} and $ARGV[0]) {
+        $o{config_file} = $ARGV[0];
+    }
+
     return 1;
 }
 
