@@ -1,3 +1,9 @@
+-- when doing an 'a' and updating a file in the repo, if $file has more
+   than one instance, make sure we only update the prefered instance.
+
+    search to be sure that $priority($file) matches the entry in the
+    config chunk
+
 -- Consider adding an option to _not_ update repo metadata when doing
    package operations.
 
