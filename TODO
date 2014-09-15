@@ -7,8 +7,6 @@
 -- Consider adding an option to _not_ update repo metadata when doing
    package operations.
 
--- Consider adding a 'delete' option to 'delete' this file from the repo
-
 -- Allow --add-file to specific bundle
 
     ssm --add-file filename --bundle bundle.otherfiles
@@ -39,14 +37,6 @@
     group      = root
     mode       = 0644
     depends    = /my/external-generator
-
---
-
-Handle this common user error situation in a friendly way:
-
-    ssm --sync http://mgt/my-config-file.conf
-
-    # note the missing "--config" argument
 
 --
 
