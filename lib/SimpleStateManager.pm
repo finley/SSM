@@ -2420,6 +2420,27 @@ sub diff_file {
     ssm_print "           ------------------------------------------------------------\n";
     ssm_print "\n";
 
+    # use Text::Diff;
+    # 
+    # 
+    # my $f1 = '/etc/hosts';
+    # my $f2 = '/tmp/hosts';
+    # $f2 = '/lib/modules/3.13.0-35-generic/kernel/drivers/ata/pata_acpi.ko';
+    # 
+    # my $diff;
+    # if( -T $f1 and -T $f2 ) {
+    #     $diff = diff $f1, $f2, { STYLE => "Table" };
+    # }
+    # else {
+    #     $diff = "Suppressing diff -- at least one of these two files is binary.";
+    # }
+    # 
+    # #my $diff = diff $f1, $f2, { STYLE => "Unified" };
+    # #my $diff = diff $f1, $f2, { STYLE => "Context" };
+    # #my $diff = diff $f1, $f2, { STYLE => "OldStyle" };
+    # 
+    # print "$diff\n";
+
     if( $unlink eq 'yes' ) {
         unlink $tmp_file;
     }
