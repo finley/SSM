@@ -2998,9 +2998,18 @@ sub update_bundlefile_type_regular {
 
         $_ = shift @input;
 
-        if( m|^name\s+=\s+$name| ) {
+        if( m|^name\s*=\s*$name| ) {
 
             $found_entry = 'yes';
+
+            #
+            # We've got a hit!  Rewind until we get to the beginning of the
+            # stanza (the named file may occur anywhere in the stanza) -BEF-
+            #
+            until ($_ =~ m/^\[file\]/ ) {
+                unshift @input, $_;
+                $_ = pop @newfile;
+            }
 
             until( m/$stanza_terminator/ ) {
 
