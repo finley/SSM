@@ -1,3 +1,27 @@
+simple-state-manager (0.4.64) stable; urgency=medium
+
+  * 520bffd - gracefully handle when user omits --config, but specifies
+    a URL just the same
+  * 23ae8f0 .
+  * dab82a6 - improve regexes and add rewind function to
+    update_bundlefile_type_regular()
+  * 0f15584 .
+  * 67c820a - added commented out sample for alternate diff method
+  * 46bc977 - Default upload_url to base_url if using a file:// style
+    URL - Add 'c -- comment out' option and
+    update_bundle_file_comment_out_entry() routine
+  * 5a0ead4 add testclean target
+  * 873a9d9 - Convert do_special_file() to use take_action() - created
+    create_special_file() subroutine to support take_action()   model
+    with do_special_file()
+  * 4ecbaf8 - Create touch() subroutine - Convert do_chown_and_chmod()
+    to use take_action() - When skipping a task on first PASS, say so if
+    --debug is on
+  * c6d0792 contemplating alternate git log output for packaging
+  * 14cc3dd - remove blank lines from [global] stanza
+
+ -- Brian Elliott Finley <brian@thefinleys.com>  Tue, 16 Sep 2014 15:40:17 -0500
+
 simple-state-manager (0.4.63) stable; urgency=medium
 
   * d6c0215 - Add option '--no-pkg-repo-update'
