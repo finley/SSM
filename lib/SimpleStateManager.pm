@@ -3971,8 +3971,8 @@ sub copy_file_to_upstream_repo {
         umask 000;
         my $path = "$repo_dir/$dir";
         $path =~ s|/+|/|g;
-        eval { mkpath("$path", 1, 0775) };
-        if($main::o{debug}) { ssm_print qq(mkpath "$path", 1, 0775); }
+        eval { mkpath("$path", 0, 0775) };
+        if($main::o{debug}) { ssm_print qq(mkpath "$path", 0, 0775); }
         if($@) { ssm_print "Couldn’t create $dir: $@"; }
 
         #
