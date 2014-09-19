@@ -354,7 +354,7 @@ sub read_config_file {
     my $tmp_file = get_file($main::o{config_file}, 'error');
 
     #
-    # We assume base_url should be the same as the definition file url, sans
+    # We assume base_url should be the same as the main configuration file url, sans
     # the filename itself. This will be overridden if specified in a [global]
     # section. -BEF-
     #
@@ -367,7 +367,7 @@ sub read_config_file {
     $bundlefile         =~ s|^$main::o{base_url}/+||;
 
     # For --analyze-config purposes, prefix the input data from the
-    # state definition file with it's own name as a BundleFile. -BEF-
+    # main configuration file with it's own name as a BundleFile. -BEF-
     my @input = "BundleFile: $bundlefile\n";
     push @input, "\n";
 
@@ -575,9 +575,9 @@ sub read_config_file {
                 ssm_print_always "  name = $name\n";
                 ssm_print_always "  ...\n";
                 ssm_print_always "\n";
-                ssm_print_always "  Exiting now without modifying the service. Please examine your state\n";
-                ssm_print_always "  definition file and eliminate all but one of the definitions for\n";
-                ssm_print_always "  this service.\n";
+                ssm_print_always "  Exiting now without modifying the service. Please examine your\n";
+                ssm_print_always "  configuration and eliminate all but one of the definitions\n";
+                ssm_print_always "  for this service.\n";
                 ssm_print_always "\n";
 
                 $ERROR_LEVEL++;
@@ -773,9 +773,9 @@ sub read_config_file {
                 ssm_print_always "\n";
                 ssm_print_always "  This instance of this file was found in $bundlefile\n";
                 ssm_print_always "\n";
-                ssm_print_always "  Exiting now without modifying the file. Please examine your state\n";
-                ssm_print_always "  definition file and eliminate all but one of the definitions for\n";
-                ssm_print_always "  this file, or raise the priority of one of the definitions.\n";
+                ssm_print_always "  Exiting now without modifying the file. Please examine your\n";
+                ssm_print_always "  configuration and eliminate all but one of the definitions\n";
+                ssm_print_always "  for this file, or change the priority of one of the definitions.\n";
                 ssm_print_always "\n";
 
                 $ERROR_LEVEL++;
@@ -869,7 +869,7 @@ sub please_specify_a_valid_pkg_manager {
 
     if( $main::o{debug} ) { ssm_print "please_specify_a_valid_pkg_manager()\n"; }
 
-    ssm_print qq(WARNING: A valid pkg_manager not defined in state definition config file.\n);
+    ssm_print qq(WARNING: A valid pkg_manager is not defined in the configuration.\n);
     ssm_print qq(WARNING: Assuming "pkg_manager = none".\n);
     ssm_print qq(WARNING: See /usr/share/doc/simple-state-manager/examples/safe_to_run_example_config_file.conf\n);
     $main::o{pkg_manager} = 'none';
@@ -1051,7 +1051,7 @@ sub sync_state {
 
     # Get integer value that represents the number of packages defined.
     if( (scalar (keys %PKGS_FROM_STATE_DEFINITION)) == 0) {
-        ssm_print "OK:      Packages -> No [packages] defined in the state definition file.\n";
+        ssm_print "OK:      Packages -> No [packages] defined in the configuration.\n";
         return ($ERROR_LEVEL, $CHANGES_MADE);
     }
     elsif( $main::o{pkg_manager} eq 'none' ) {
@@ -1203,7 +1203,7 @@ sub get_pkgs_to_be_removed {
 #
 # returns an array:  "pkg=version" or just "pkg"
 #   - packages not currently installed
-#   - packages from definition include version numbers if appropriate
+#   - packages from configuration include version numbers if appropriate
 #
 sub get_pkgs_to_be_installed {
 
@@ -2611,7 +2611,7 @@ sub get_file {
         ssm_print_always "  $file\n";
         ssm_print_always "\n";
         ssm_print_always "  You may want to verify that you have a valid 'base_url' specified\n";
-        ssm_print_always "  in your definition file.\n";
+        ssm_print_always "  in your configuration.\n";
         ssm_print_always "\n";
 
         exit 1;
@@ -2949,7 +2949,6 @@ sub update_bundle_file_comment_out_entry {
     print FILE @newfile;
     close(FILE);
 
-    ssm_print "copy_file_to_upstream_repo($tmp_bundle_file, $BUNDLEFILE{$file})\n" if($main::o{debug});
     copy_file_to_upstream_repo($tmp_bundle_file, $BUNDLEFILE{$file});
     unlink $tmp_bundle_file;
 
@@ -2978,7 +2977,7 @@ sub update_bundlefile_type_regular {
         #
         # If this is a new file, that doesn't yet exist in the definition, then
         # it won't be associated with a specific bundle file, so we default to
-        # using the definition file itself. -BEF-
+        # using the configuration file itself. -BEF-
         #
         $BUNDLEFILE{$name} = basename( $main::o{config_file} );
     }
@@ -3034,11 +3033,11 @@ sub update_bundlefile_type_regular {
 
     if( $found_entry eq 'yes' ) {
 
-        ssm_print qq(Updating:  Entry for "$name" in definition file "$BUNDLEFILE{$name}".\n);
+        ssm_print qq(Updating:  Entry for "$name" in configuration file "$BUNDLEFILE{$name}".\n);
 
     } else {
 
-        ssm_print qq(Adding:  Entry for "$name" in definition file "$BUNDLEFILE{$name}".\n);
+        ssm_print qq(Adding:  Entry for "$name" in configuration file "$BUNDLEFILE{$name}".\n);
 
         push @newfile,   "\n";
         push @newfile,   "[file]\n";
@@ -3245,7 +3244,7 @@ sub add_new_files {
         my $abs_path = abs_path($file);
         $file = $abs_path;
 
-        ssm_print "Adding:  $file\n";
+        ssm_print "Adding:  $file to repository.\n";
 
         add_file_to_repo($file);
         $CHANGES_MADE++;
@@ -3662,7 +3661,7 @@ sub sync_state_upgrade_packages {
         if( scalar(@pkgs_to_be_upgraded_deps) > 0) {
             ssm_print "Additional packages to install:  The packages below are not defined,\n";
             ssm_print "but are dependencies of the packages above, which are defined.  This is\n";
-            ssm_print "generally an indication that you need to update your definition file to\n";
+            ssm_print "generally an indication that you need to update your configuration to\n";
             ssm_print "a) include the packages below, or b) remove the packages above.\n";
             ssm_print "Hope that helps! --TheMgmt\n";
             ssm_print "------------------------------------------------------------------------\n";
@@ -3678,7 +3677,7 @@ sub sync_state_upgrade_packages {
             ssm_print "often happens when a newer version of a package that includes version\n";
             ssm_print "information in the name, such as a kernel package, obsoletes an earlier\n";
             ssm_print "version of the same package.  Generally, the resolution in this case is\n";
-            ssm_print "to update your definition file to 1) remove the packages below, and\n";
+            ssm_print "to update your configuration to 1) remove the packages below, and\n";
             ssm_print "2) the next time this program iterates, add the packages from the\n";
             ssm_print "'Packages to remove' section.  Hope that helps! --TheMgmt\n";
             ssm_print "------------------------------------------------------------------------\n";
@@ -3770,7 +3769,7 @@ sub sync_state_install_packages {
         if( scalar(@pkgs_to_be_installed_deps) > 0) {
             ssm_print "Additional packages to install:  The packages below are not defined,\n";
             ssm_print "but are dependencies of the packages above, which are defined.  This is\n";
-            ssm_print "generally an indication that you need to update your definition file to\n";
+            ssm_print "generally an indication that you need to update your configuration to\n";
             ssm_print "a) include the packages below, or b) remove the packages above.\n";
             ssm_print "Hope that helps! --TheMgmt\n";
             ssm_print "------------------------------------------------------------------------\n";
@@ -3786,7 +3785,7 @@ sub sync_state_install_packages {
             ssm_print "often happens when a newer version of a package that includes version\n";
             ssm_print "information in the name, such as a kernel package, obsoletes an earlier\n";
             ssm_print "version of the same package.  Generally, the resolution in this case is\n";
-            ssm_print "to update your definition file to 1) remove the packages below, and\n";
+            ssm_print "to update your configuration to 1) remove the packages below, and\n";
             ssm_print "2) the next time this program iterates, add the packages from the\n";
             ssm_print "'Packages to remove' section.  Hope that helps! --TheMgmt\n";
             ssm_print "------------------------------------------------------------------------\n";
@@ -3907,6 +3906,8 @@ sub copy_file_to_upstream_repo {
 
     my $local_file = shift;
     my $repo_file  = shift;
+
+    ssm_print "copy_file_to_upstream_repo($local_file, $repo_file)\n" if($main::o{debug});
 
     #
     # For URL's of type "ssh://"
