@@ -1,3 +1,15 @@
+-- change treatment of [services] entries
+    - stop converting them to individual files
+    - use system specific commands to evaluate and manipulate
+        - my $current_settings = get_service_settings($servicename)
+        - apply_service_settings($servicename, $target_settings)
+
+-- add an "a" option for "directories".
+
+-- add a "u" option for "unwanted".  Convert a file to an unwanted file.
+   Complimentary to "c" for comment out, but actually make it go away on
+   the system.
+
 -- when doing an 'a' and updating a file in the repo, if $file has more
    than one instance, make sure we only update the prefered instance.
 
@@ -403,8 +415,6 @@ Not OK:  Regular file /usr/bin/set_dma_latency
     # the
     # following to your options directive.
     #  OPTIONS="-o quiet=1 -o APT::Get::AllowUnauthenticated=true -o aptitude::Cmdline::ignore-trust-violations=yes"
-
-*   Consider allowing depends and pre/postscripts in [services] sections
 
 *   Add "yum clean all" to Yum.pm
     * prolly early on
