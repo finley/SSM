@@ -355,12 +355,9 @@ sub read_config_file {
         exit 1;
     }
 
-    $main::o{hostname} = `hostname -f`;
-    chomp $main::o{hostname};
-
     if( $main::o{config_file} =~ m,/$, ) {
         # URI ends with a slash.  Is a dir.  Append hostname
-        $main::o{config_file} .= $main::o{hostname};
+        $main::o{config_file} .= get_hostname();
     }
 
     ssm_print "\nConfiguration File: $main::o{config_file}\n" unless($main::o{only_this_file});
@@ -1180,7 +1177,7 @@ sub email_log_file {
     my $fh;
     my $log_file = "/var/log/" . basename($0);
     my $file = $log_file;
-    my $subject = "SSM: $main::o{hostname}";
+    my $subject = "SSM: " . get_hostname();
 
     $msg = Mail::Send->new;
     $msg = Mail::Send->new(Subject => $subject, To => $main::o{email_log_to} );
@@ -2890,6 +2887,13 @@ sub uid_gid_and_mode_match {
 }
 
 
+sub get_hostname {
+    my $hostname = `hostname -f`;
+    chomp $hostname;
+    return $hostname;
+}
+
+
 sub update_bundle_file_comment_out_entry {
 
     my $file = shift;
@@ -2934,9 +2938,7 @@ sub update_bundle_file_comment_out_entry {
 
             ssm_print qq(Updating:  Commenting out entry for "$file" in config file "$BUNDLEFILE{$file}".\n);
 
-            my $hostname = `hostname -f`;
-            chomp $hostname;
-
+            my $hostname = get_hostname();
             push @newfile, "#\n";
             push @newfile, "# Commented out via ssm client on $hostname at " . get_timestamp() . "\n";
             push @newfile, "#\n";
@@ -2980,12 +2982,16 @@ sub update_bundlefile_type_regular {
     # Name of system file in question, and attributes
     #
     my $name       = shift;
-    my $comment    = $main::o{comment};
-    my $type       = 'regular';
     my $md5sum     = shift;
     my $owner      = shift;
     my $group      = shift;
     my $mode       = shift;
+
+    my $type       = 'regular';
+
+    my $timestamp = get_timestamp();
+    my $hostname  = get_hostname();
+    my $comment   = "From $hostname on $timestamp";
 
     if(! defined $BUNDLEFILE{$name}) {
         #
@@ -3030,10 +3036,17 @@ sub update_bundlefile_type_regular {
                    s#^name\s*=.*#name       = $name#;
                 s/^comment\s*=.*/comment    = $comment/;
                    s/^type\s*=.*/type       = regular/;
-                 s/^md5sum\s*=.*/md5sum     = $md5sum/;
                   s/^owner\s*=.*/owner      = $owner/;
                   s/^group\s*=.*/group      = $group/;
                    s/^mode\s*=.*/mode       = $mode/;
+
+                #
+                # When we match the md5sum bit, comment out the prior entry,
+                # but keep it for posterity, then add the new entry too.
+                #
+                if( s/^(md5sum\s*=.*)/# $1/ ) {
+                    $_ .= "md5sum     = $md5sum  # $timestamp\n";
+                };
 
                 push @newfile, $_;
 
@@ -3058,7 +3071,7 @@ sub update_bundlefile_type_regular {
         push @newfile,   "name       = $name\n";
         push @newfile,   "comment    = $comment\n";
         push @newfile,   "type       = regular\n";
-        push @newfile,   "md5sum     = $md5sum\n";
+        push @newfile,   "md5sum     = $md5sum  # $timestamp\n";
         push @newfile,   "owner      = $owner\n";
         push @newfile,   "group      = $group\n";
         push @newfile,   "mode       = $mode\n";
@@ -3323,9 +3336,6 @@ sub add_file_to_repo {
         my $local_file;
         my $repo_file;
 
-        my $hostname = `hostname -f`;
-        chomp $hostname;
-        $main::o{comment} = "From $hostname on " . get_timestamp();
         $main::o{file_to_add} = $file;
 
         my $type = get_file_type($file);
@@ -3340,10 +3350,16 @@ sub add_file_to_repo {
         my $group  = get_gid($file);
         my $mode   = get_mode($file);
 
+        #
+        # Copy the file itself into the repo
+        #
         $repo_file = "$file/$md5sum";
         ssm_print "copy_file_to_upstream_repo($file, $repo_file)\n" if($main::o{debug});
         copy_file_to_upstream_repo($file, $repo_file);
 
+        #
+        # Update the bundle file with a new or updated entry for the file above
+        #
         my $tmp_file = update_bundlefile_type_regular( $name, $md5sum, $owner, $group, $mode );
         $repo_file = "$BUNDLEFILE{$file}";
         ssm_print "copy_file_to_upstream_repo($tmp_file, $repo_file)\n" if($main::o{debug});
