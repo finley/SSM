@@ -247,6 +247,25 @@ sub _initialize_variables {
     return 1;
 }
 
+#
+# Usage:  my $timestamp = get_timestamp();
+#
+sub get_timestamp {
+
+    my ($sec,$min,$hour,$day,$month,$year,$wday,$yday,$isdst) = localtime(time);
+
+    $year   += 1900;
+    $month  = sprintf("%02d", $month + 1);
+    $day    = sprintf("%02d", $day);
+    $hour   = sprintf("%02d", $hour);
+    $min    = sprintf("%02d", $min);
+    $sec    = sprintf("%02d", $sec);
+
+    # Result is => 2014-06-04 13:11:55
+    return "$year-$month-$day $hour:$min:$sec";
+}
+
+
 sub _initialize_log_file {
 
     my $log_file = "/var/log/" . basename($0);
@@ -259,13 +278,8 @@ sub _initialize_log_file {
     open(LOGFILE,">$log_file") or die("Couldn't open $log_file for writing!");
     $LOGFILE = *LOGFILE;
 
-    my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time);
-    $year += 1900;
-    $mon  = sprintf("%02d", $mon + 1);
-    $mday = sprintf("%02d", $mday);
-    $hour = sprintf("%02d", $hour);
-    $min = sprintf("%02d", $min);
-    print LOGFILE "TIMESTAMP: $year.$mon.$mday - $hour:$min\n";
+    my $timestamp = get_timestamp();
+    print LOGFILE "TIMESTAMP: $timestamp\n";
 
     #
     # Can't write output to log file until we've initilized it... -BEF-
@@ -2924,7 +2938,7 @@ sub update_bundle_file_comment_out_entry {
             chomp $hostname;
 
             push @newfile, "#\n";
-            push @newfile, "# Commented out via ssm client on $hostname at " . localtime() . "\n";
+            push @newfile, "# Commented out via ssm client on $hostname at " . get_timestamp() . "\n";
             push @newfile, "#\n";
 
             until( m/$stanza_terminator/ ) {
@@ -3311,7 +3325,7 @@ sub add_file_to_repo {
 
         my $hostname = `hostname -f`;
         chomp $hostname;
-        $main::o{comment} = "From $hostname on " . localtime();
+        $main::o{comment} = "From $hostname on " . get_timestamp();
         $main::o{file_to_add} = $file;
 
         my $type = get_file_type($file);
