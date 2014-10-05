@@ -1,3 +1,32 @@
+-- package management global option
+
+    pkg_specification_style = (minimalist|explicit)
+
+    minimalist -- Only specify the packages you know you need.  Missing
+    packages and their dependencies will automatically be installed.
+    Additional packages are considered OK and are left alone.
+    
+    explicit -- The exact list of packages specified will be used.
+    Missing packages will be installed, and extra packages will be
+    uninstalled.
+
+    Default: minimalist
+
+    
+
+-- add global setting:
+
+    max_kernel_pkgs = N (default to 3)
+
+        Maximum number of kernel packages to keep on a system.  Prevents
+        /boot from filling up with old kernel packages.
+
+        Behavior:  When a new kernel is added to a system that already
+        has three (two old, and one running), then the new one makes for
+        four.  After installing the new kernel, the oldest kernel will
+        be removed.
+
+
 -- change treatment of [services] entries
     - stop converting them to individual files
     - use system specific commands to evaluate and manipulate
