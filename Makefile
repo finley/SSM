@@ -72,7 +72,7 @@ install:  all
 	install -m 644 $(TOPDIR)/README  	${docdir}
 	#	
 	cat $(TOPDIR)/usr/share/doc/examples/safe_to_run_example_config_file.conf \
-		| perl -pi -e 's/^/#/' > ${docdir}/examples/starter_config_file.conf
+		| perl -p -e 's/^/#/' > ${docdir}/examples/starter_config_file.conf
 	#	
 	find ${docdir} -type d -exec chmod 0775 '{}' \;
 	find ${docdir} -type f -exec chmod 0664 '{}' \;
