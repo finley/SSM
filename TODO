@@ -1,3 +1,26 @@
+-- update documentation and sample config files
+
+-- build regression testing harness
+
+    Directory w/series of config files
+
+        test_configs.d/*.conf
+    
+
+    Simple test script maybe?
+        
+        for config in $(/bin/ls test_configs.d/*.conf)
+        do
+            ssm --config $config --summary
+            ssm --config $config --sync --no
+            ssm --config $config --sync --yes
+            ssm --config $config --summary
+        done
+
+
+    'make test' executes the test script
+
+
 -- package management global option
 
     pkg_specification_style = (minimalist|explicit)
