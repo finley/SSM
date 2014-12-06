@@ -56,7 +56,6 @@ install:  all
 	install -m 644 $(TOPDIR)/tmp/lib/SimpleStateManager.pm ${libdir}/SimpleStateManager.pm
 	#
 	test -d ${libdir}/SimpleStateManager/ || install -d -m 755 ${libdir}/SimpleStateManager/
-	install -m 644 $(TOPDIR)/lib/SimpleStateManager/Aptitude.pm ${libdir}/SimpleStateManager/
 	install -m 644 $(TOPDIR)/lib/SimpleStateManager/Dpkg.pm 	${libdir}/SimpleStateManager/
 	install -m 644 $(TOPDIR)/lib/SimpleStateManager/Yum.pm  	${libdir}/SimpleStateManager/
 	install -m 644 $(TOPDIR)/lib/SimpleStateManager/None.pm  	${libdir}/SimpleStateManager/

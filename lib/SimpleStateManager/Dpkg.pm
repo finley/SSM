@@ -1,8 +1,7 @@
 #  
-#   Copyright (C) 2006-2008 Brian Elliott Finley
+#   Copyright (C) 2006-2014 Brian Elliott Finley
 #
-#   $Id: SimpleStateManager.pm 234 2008-10-16 02:06:06Z finley $
-#    vi: set filetype=perl tw=0:
+#    vi: set et ai ts=4 filetype=perl tw=0 number:
 # 
 
 package SimpleStateManager::Dpkg;
@@ -11,7 +10,6 @@ use Exporter;
 @ISA = qw(Exporter);
 @EXPORT = qw(
                 upgrade_ssm
-                reinstall_pkgs
                 upgrade_pkgs
                 install_pkgs
                 remove_pkgs
@@ -22,25 +20,51 @@ use Exporter;
                 get_pkg_reverse_dependencies
                 get_pkg_provides
                 get_running_kernel_pkg_name
+                get_pending_pkg_changes
+                get_native_arch
+                update_pkg_availability_data
             );
-
 use strict;
 use SimpleStateManager qw(ssm_print run_cmd);
+
+use AptPkg::Config '$_config';
+use AptPkg::System '$_system';
+use AptPkg::Cache;
+
+$_config->init;
+$_system            = $_config->system;
+$_config->{quiet}   = 2;
+
+my $pkg_cache = AptPkg::Cache->new;
+my $policy = $pkg_cache->policy;
+my $pkg_changes_made;
 
 
 ################################################################################
 #
 #   This package provides the following functions:
 #
-#       % egrep '^sub ' lib/SimpleStateManager/Dpkg.pm | perl -pi -e 's/^sub /#   /; s/ {//;' | sort
+#       % egrep '^sub ' lib/SimpleStateManager/Dpkg.pm | perl -p -e 's/^sub /#   /; s/ {//;' | sort
 #
+#   do_apt_get_dry_run
+#   get_native_arch
+#   get_pending_pkg_changes
 #   get_pkg_dependencies
+#   get_pkg_dependencies_old
 #   get_pkg_provides
 #   get_pkg_reverse_dependencies
 #   get_pkgs_currently_installed
+#   get_pkgs_from_state_definition
 #   get_pkgs_provided_by_pkgs_from_state_definition
 #   get_pkgs_that_pkg_manager_says_to_upgrade
+#   get_pkgs_we_need_to_install
+#   get_pkgs_we_need_to_upgrade
 #   get_running_kernel_pkg_name
+#   install_pkgs
+#   remove_pkgs
+#   update_pkg_availability_data
+#   upgrade_pkgs
+#   upgrade_ssm
 #
 ################################################################################
 
@@ -72,41 +96,12 @@ sub upgrade_ssm {
     return 1;
 }
 
-sub reinstall_pkgs {
-
-    ssm_print "reinstall_pkgs()\n" if( $main::o{debug} );
-
-    my @pkgs = @_;
-
-    my $package_list;
-    foreach(@pkgs) {
-        next unless(defined $_);
-        $package_list .= " $_";
-    }
-
-    my $cmd;
-    if(defined $package_list) {
-        ssm_print "Downloading packages...\n";
-        $cmd = 'DEBIAN_FRONTEND=noninteractive apt-get -q=2 --force-yes -y --reinstall --download-only install' . $package_list;
-        run_cmd($cmd);
-
-        ssm_print "Re-installing packages...\n";
-        $cmd = 'DEBIAN_FRONTEND=noninteractive apt-get -q=2 --force-yes -y --reinstall install' . $package_list;
-        run_cmd($cmd);
-
-        # Remove any packages lying around in the cache.  Again.
-        $cmd = 'apt-get clean';
-        run_cmd($cmd);
-    }
-
-    return 1;    
-}
-
 
 sub upgrade_pkgs {
 
     ssm_print "upgrade_pkgs()\n" if( $main::o{debug} );
 
+    $pkg_changes_made = 'yes';
     return install_pkgs(@_);    
 }
 
@@ -127,12 +122,12 @@ sub install_pkgs {
 
         my $cmd;
 
-        ssm_print "FIXING:  Packages -> Downloading.\n";
-        $cmd = 'DEBIAN_FRONTEND=noninteractive apt-get -q=2 --force-yes -y --download-only install';
+        ssm_print "FIXING:  Packages -> Downloading...\n";
+        $cmd = 'DEBIAN_FRONTEND=noninteractive apt-get -q=2 --force-yes --yes --download-only install';
         run_cmd($cmd);
 
-        ssm_print "FIXING:  Packages -> Installing.\n";
-        $cmd = 'DEBIAN_FRONTEND=noninteractive apt-get -q=2 --force-yes -y install' . $pkgs;
+        ssm_print "FIXING:  Packages -> Installing...\n";
+        $cmd = 'DEBIAN_FRONTEND=noninteractive apt-get -q=2 --force-yes --yes install' . $pkgs;
         run_cmd($cmd);
 
         # Remove any packages lying around in the cache.  Again.
@@ -140,15 +135,17 @@ sub install_pkgs {
         run_cmd($cmd);
     }
 
+    $pkg_changes_made = 'yes';
+
     return 1;    
 }
 
 
 sub remove_pkgs {
 
-    ssm_print "remove_pkgs()\n" if( $main::o{debug} );
-
     my @pkgs = @_;
+
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     my $cmd;
     foreach(@pkgs) {
@@ -158,9 +155,13 @@ sub remove_pkgs {
 
     if(defined $cmd) {
         ssm_print "FIXING:  Packages -> Removing.\n";
-        $cmd = 'DEBIAN_FRONTEND=noninteractive apt-get -q=2 --force-yes -y remove' . $cmd;
+        $cmd = 'DEBIAN_FRONTEND=noninteractive apt-get -q=2 --force-yes --yes remove' . $cmd;
         run_cmd($cmd);
     }
+
+    $pkg_changes_made = 'yes';
+
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n"; sleep 2; }
 
     return 1;
 }
@@ -168,43 +169,272 @@ sub remove_pkgs {
 
 sub get_pkgs_currently_installed {
 
-    ssm_print "get_pkgs_currently_installed()\n" if( $main::o{debug} );
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
+    # set up the cache
+    if($pkg_changes_made) {
+        $pkg_cache = AptPkg::Cache->new;
+        $policy = $pkg_cache->policy;
+        $pkg_changes_made = undef;
+    }
 
     #
     # returns a hash: package => version
     #
-
-    my %hash;
-
-    my $cmd = 'dpkg -l';
-    ssm_print ">> $cmd\n" if( $main::o{debug} );
-    open(FILE,"$cmd|") or die("couldn't open $cmd for reading");
-    while (<FILE>) {
-
-            #
-            # Only choose packages marked as installed (ii)
-            #
-            # Sample output:
-            #
-            #   ii  abcde         2.3.99.2-1         A Better CD Encoder
-            #   ii  acpi          0.09-1             displays information on ACPI devices
-            #   ii  acpi-support  0.73               a collection of useful events for acpi
-            #   ii  acpid         1.0.4-1ubuntu10    Utilities for using ACPI power management
-            #   ii  acroread      7.0.1-0.0.ubuntu1  Adobe Acrobat Reader: Portable Document Form
-            #   ii  adduser       3.80ubuntu2        Add and remove users and groups
-            #
-            #                   Matches the package name -> $1
-            #                   | 
-            #                   |       Matches the version string -> $2
-            #                   |       |
-            #                   vvvvv   vvvvv
-            next unless(m/^ii\s+(\S+)\s+(\S+)\s+/);
-
-            $hash{$1} = $2;
+    my %pkgs_currently_installed;
+    foreach my $pkg (sort keys %{$pkg_cache}) {
+        my $p_ref = $pkg_cache->{$pkg};
+        if( $p_ref->{CurrentState} and $p_ref->{CurrentState} eq 'Installed' ) {
+            #print "get_pkgs_currently_installed() >> $pkg $p_ref->{CurrentVer}{VerStr}\n" if($main::o{debug});
+            $pkgs_currently_installed{$pkg}{'current_version'}   = $p_ref->{CurrentVer}{VerStr};
+            if ( my $c_ref = $policy->candidate($p_ref) ) {
+                $pkgs_currently_installed{$pkg}{'candidate_version'} = $c_ref->{VerStr} if( $c_ref->{VerStr} ne $p_ref->{CurrentVer}{VerStr} );
+            }
+        }
     }
-    close(FILE);
 
-    return %hash;
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n"; sleep 2; }
+
+    return %pkgs_currently_installed;
+}
+
+
+sub update_pkg_availability_data {
+
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
+    if( $::o{no_pkg_repo_update} ) {
+        ssm_print "INFO:    Not updating package repo info\n";
+        return 1;
+    }
+
+    #
+    # Get the latest updates
+    my $cmd = 'apt-get -q=2 update';
+    #
+    # Run even if --no so that we don't get 'Unable to locate package X'
+    # errors. -BEF-
+    run_cmd($cmd, undef, 1);
+
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n"; sleep 2; }
+
+    return 1;
+}
+
+
+sub get_pkgs_we_need_to_upgrade {
+
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
+    my %pkgs_we_need_to_upgrade;
+
+    update_pkg_availability_data();
+
+    my %pkgs_currently_installed = get_pkgs_currently_installed();
+
+    foreach my $pkg (keys %pkgs_currently_installed) {
+
+        if( $pkgs_currently_installed{$pkg}{'candidate_version'} ) {
+
+            # debug output
+            ssm_print "$debug_prefix Needs upgrade:  $pkg " if( $main::o{debug} );
+            ssm_print "Current: $pkgs_currently_installed{$pkg}{'current_version'}  " if( $main::o{debug} );
+            ssm_print "Upgrade to: $pkgs_currently_installed{$pkg}{'candidate_version'}\n" if( $main::o{debug} );
+
+            $pkgs_we_need_to_upgrade{$pkg} = $pkgs_currently_installed{$pkg}{'candidate_version'};
+        }
+    }
+
+    #foreach my $pkg (keys %pkgs_currently_installed) {
+    #
+    #    my $p_ref = $pkg_cache->{$pkg};
+    #
+    #    if ( my $c_ref = $policy->candidate($p_ref) ) {
+    #
+    #        my $candidate_version = $c_ref->{VerStr};
+    #        my $current_version   = $p_ref->{CurrentVer}{VerStr};
+    #
+    #        if( $candidate_version ne $current_version ) {
+    #            $pkgs_we_need_to_upgrade{$pkg} = $candidate_version;
+    #            ssm_print ">> Needs upgrade:  $pkg  CurrVer: $current_version  CandVer: $candidate_version\n" if( $main::o{debug} );
+    #        }
+    #    }
+    #}
+
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n"; sleep 2; }
+
+    return %pkgs_we_need_to_upgrade;
+}
+
+
+sub get_pkgs_we_need_to_install {
+
+    ssm_print "get_pkgs_we_need_to_install()\n" if( $main::o{debug} );
+
+    my %pkgs_currently_installed = get_pkgs_currently_installed();
+
+    my %pkgs_we_need_to_install;
+    foreach my $pkg (keys %::PKGS_FROM_STATE_DEFINITION) {
+    print "X=X $pkg\n";
+        if( ! $pkgs_currently_installed{$pkg} ) {
+            $pkgs_we_need_to_install{$pkg} = 1;
+            ssm_print ">> Needs to be installed:  $pkg\n" if( $main::o{debug} );
+        }
+    }
+    
+    return %pkgs_we_need_to_install;
+}
+
+
+#
+#   my %pending_pkg_changes = get_pending_pkg_changes($action);
+#   
+#       Where $action is one of 'install', 'remove', or 'upgrade'
+#
+sub get_pending_pkg_changes {
+
+    my $action = shift;
+
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
+    my %pkgs_already_installed = get_pkgs_currently_installed();
+
+    my $native_arch = get_native_arch();
+
+    my %space_delimited_pkg_list;
+    my %pending_pkg_changes;
+
+    if($action eq 'upgrade') {
+        %pending_pkg_changes = do_apt_get_dry_run($action);
+
+    } else {
+        foreach my $pkg (keys %::PKGS_FROM_STATE_DEFINITION) {
+
+            my $options = $::PKGS_FROM_STATE_DEFINITION{$pkg};
+
+            if($options =~ m/\bunwanted\b/i) {
+
+                $space_delimited_pkg_list{'remove'}  .= " $pkg";
+
+            } else {
+
+                #
+                # If the package is already installed, no need to try and install it
+                # again, so skip it.
+                #
+                next if( $pkgs_already_installed{"$pkg:$native_arch"} );
+                next if( $pkgs_already_installed{"$pkg"} );
+
+                $space_delimited_pkg_list{'install'}  .= " $pkg";
+            }
+        }
+
+        %pending_pkg_changes = do_apt_get_dry_run($action, $space_delimited_pkg_list{$action});
+    }
+
+    #
+    # Help user to make sure they don't try to remove something they want to keep
+    #
+    foreach my $pkg (sort keys %pending_pkg_changes) {
+
+        if( $pending_pkg_changes{$pkg} eq 'remove' ) {
+
+            if ($::PKGS_TARGET_STATE{$pkg} and ($::PKGS_TARGET_STATE{$pkg} ne 'remove')) {
+                ssm_print "WARNING: Package $pkg is now marked as $pending_pkg_changes{$pkg}, but was already marked as $::PKGS_TARGET_STATE{$pkg}\n";
+
+            } elsif ($::PKGS_FROM_STATE_DEFINITION{$pkg} and $::PKGS_FROM_STATE_DEFINITION{$pkg} !~ m/\bunwanted\b/i ) {
+                ssm_print "WARNING: Package $pkg is now marked as $pending_pkg_changes{$pkg}, but is marked for install in the config.\n";
+            }
+
+        } else {
+            $::PKGS_TARGET_STATE{$pkg} = $pending_pkg_changes{$pkg};
+        }
+    }
+
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n"; sleep 2; }
+
+    return %pending_pkg_changes;
+}
+
+
+#
+#   Usage:  my %hash = do_apt_get_dry_run($action, $space_delimited_pkg_list);
+#   Usage:  my %hash = do_apt_get_dry_run("install", "ash sendmail rsync");
+#   Usage:  my %hash = do_apt_get_dry_run("remove", "ash sendmail rsync");
+#   Usage:  my %hash = do_apt_get_dry_run("upgrade");
+#
+#       Returns a hash of $pkg = $pending_state;
+#       Where $pending_state may be one of 'install', 'upgrade', or 'remove'.
+#
+sub do_apt_get_dry_run {
+
+    my $action                   = shift;
+    my $space_delimited_pkg_list = shift;
+
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
+    my %pending_pkg_changes;
+
+    if(! $space_delimited_pkg_list) {
+        if($action eq 'upgrade') {
+            #
+            # make sure we have some value in this variable to feed the
+            # function below...
+            $space_delimited_pkg_list = "";
+
+        } else {
+            return %pending_pkg_changes;
+        }
+    }
+
+    my $cmd = "apt-get --dry-run $action $space_delimited_pkg_list";
+    ssm_print "$debug_prefix $cmd\n" if( $main::o{debug} );
+    open(INPUT,"$cmd|") or die("Couldn't run $cmd for input");
+    while(<INPUT>) {
+        
+        #
+        # Example output (as INPUT):
+        #
+        #   Inst libapt-pkg4.12 [1.0.1ubuntu2.5] (1.0.1ubuntu2.6 Ubuntu:14.04/trusty-updates [amd64])
+        #   Conf libapt-pkg4.12 (1.0.1ubuntu2.6 Ubuntu:14.04/trusty-updates [amd64])
+        #   Inst apt [1.0.1ubuntu2.5] (1.0.1ubuntu2.6 Ubuntu:14.04/trusty-updates [amd64])
+        #   Conf apt (1.0.1ubuntu2.6 Ubuntu:14.04/trusty-updates [amd64])
+        #   Inst libapt-inst1.5 [1.0.1ubuntu2.5] (1.0.1ubuntu2.6 Ubuntu:14.04/trusty-updates [amd64])
+        #   Inst libpoppler44 [0.24.5-2ubuntu4] (0.24.5-2ubuntu4.1 Ubuntu:14.04/trusty-updates [amd64])
+        #   [snip]
+        #
+        #   Remv skype:i386 [4.3.0.37-1]
+        #   Remv libgl1-mesa-dri:i386 [10.1.3-0ubuntu0.1]
+        #   [snip]
+        #
+
+        if(m/^Inst\s+(\S+)\s+/) { 
+
+            my $pkg = $1;
+
+            my $pkg_ref = $pkg_cache->{$pkg};
+            if ($pkg_ref->{CurrentState} eq 'Installed') {
+
+                # Ok, upgrading existing package
+                $pending_pkg_changes{$pkg} = 'upgrade';
+
+            } else {
+
+                # Not an upgrade, must be a fresh install
+                $pending_pkg_changes{$pkg} = 'install';
+            }
+
+        } elsif(m/^Remv\s+(\S+)\s+/) {
+
+            my $pkg = $1;
+            $pending_pkg_changes{$pkg} = 'remove';
+        }
+    }
+    close(INPUT);
+
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n"; sleep 2; }
+
+    return %pending_pkg_changes;
 }
 
 
@@ -212,35 +442,9 @@ sub get_pkgs_that_pkg_manager_says_to_upgrade {
 
     ssm_print "get_pkgs_that_pkg_manager_says_to_upgrade()\n" if( $main::o{debug} );
 
-    # In this hash, 'pkg' is the key, and 'version' is the value.
-    my %hash;
-    my $cmd;
+    my %pkgs_we_need_to_upgrade = get_pkgs_we_need_to_upgrade();
 
-    #
-    # Get the latest updates
-    ssm_print "OK:      Packages -> Updating availability information.\n";
-    $cmd = 'apt-get -q=2 update';
-    #
-    # Run even if --no so that we don't get 'Unable to locate package X'
-    # errors. -BEF-
-    run_cmd($cmd, undef, 1);
-
-    #
-    # Get a list of packages that would be upgraded
-    # This is harmless, so we run it even if --dry-run, so that we get
-    # the output that is interesting for the rest of the dry run.
-    #
-    $cmd = 'DEBIAN_FRONTEND=noninteractive apt-get -s dist-upgrade';
-    ssm_print ">> $cmd\n" if( $main::o{debug} );
-    open(OUTPUT,"$cmd|");
-        while(<OUTPUT>) {
-            if( m/^Inst\s(\S+)\s+/ ) {
-                $hash{$1} = 1;
-            }
-        }
-    close(OUTPUT);
-
-    return (keys %hash);
+    return (keys %pkgs_we_need_to_upgrade);
 }
 
 
@@ -250,9 +454,9 @@ sub get_pkgs_that_pkg_manager_says_to_upgrade {
 # NOTE:  If there are alternates as dependencies, all alternates are returned
 #        as the a key in a space seperated string format. -BEF-
 #
-sub get_pkg_dependencies {
+sub get_pkg_dependencies_old {
 
-    ssm_print "get_pkg_dependencies()\n" if( $main::o{debug} );
+    ssm_print "get_pkg_dependencies_old()\n" if( $main::o{debug} );
 
     my @packages = @_;
 
@@ -261,7 +465,7 @@ sub get_pkg_dependencies {
         $cmd .= " $pkg"
     }
 
-    ssm_print ">> $cmd\n" if( $main::o{debug} );
+    ssm_print ">> " . substr($cmd, 0, 72) . "...\n" if( $main::o{debug} );
     my @array;
     open(OUTPUT,"$cmd|") or die;
         while(<OUTPUT>) {
@@ -290,6 +494,48 @@ sub get_pkg_dependencies {
 
     my %erasures; #XXX do anything with this? -BEF- 2008.10.20
     return (\%dependencies, \%erasures);
+}
+
+
+sub get_pkg_dependencies {
+
+    ssm_print "get_pkg_dependencies()\n" if( $main::o{debug} );
+
+    my @packages = @_;
+
+    # [$] apt-cache depends sendmail
+    # sendmail
+    #   Depends: sendmail-base
+    #   Depends: sendmail-bin
+    #   Depends: sendmail-cf
+    #   Depends: sensible-mda
+    #   Suggests: sendmail-doc
+    #   Suggests: rmail
+    #   Breaks: sendmail-base
+    #   Breaks: <sendmail-base:i386>
+    #   Replaces: sendmail-base
+    #   Replaces: <sendmail-base:i386>
+    #   Replaces: <sendmail-tls>
+    #   Replaces: <sendmail-tls:i386>
+    #
+    my $cmd = 'apt-cache depends';
+    foreach my $pkg (@packages) {
+        $cmd .= " $pkg"
+    }
+    ssm_print ">> " . substr($cmd, 0, 72) . "...\n" if( $main::o{debug} );
+
+    my %dependencies;
+    open(OUTPUT,"$cmd|") or die;
+    while(<OUTPUT>) {
+        if(m/^\s+Depends:\s+(\S+)/) {
+            my $pkg = $1;
+            $dependencies{$pkg} = 1;
+            ssm_print "get_pkg_dependencies() >> $pkg\n" if( $main::o{debug} );
+        }
+    }
+    close(OUTPUT);
+
+    return (\%dependencies);
 }
 
 
@@ -357,12 +603,18 @@ sub get_pkg_reverse_dependencies {
     return %reverse_dependencies;
 }
 
+sub get_pkgs_from_state_definition {
+
+    ssm_print "get_pkgs_provided_by_pkgs_from_state_definition()\n" if( $main::o{debug} );
+
+    return get_pkg_provides(keys %::PKGS_FROM_STATE_DEFINITION);
+}
+
 sub get_pkgs_provided_by_pkgs_from_state_definition {
 
     ssm_print "get_pkgs_provided_by_pkgs_from_state_definition()\n" if( $main::o{debug} );
 
-    my $PKGS_FROM_STATE_DEFINITION = shift;
-    return get_pkg_provides(keys %$PKGS_FROM_STATE_DEFINITION);
+    return get_pkg_provides(keys %::PKGS_FROM_STATE_DEFINITION);
 }
 
 #
@@ -383,7 +635,7 @@ sub get_pkg_provides {
         $cmd .= " $pkg"
     }
 
-    ssm_print ">> $cmd\n" if( $main::o{debug} );
+    ssm_print ">> " . substr($cmd, 0, 72) . "...\n" if( $main::o{debug} );
     my @array;
     open(OUTPUT,"$cmd|") or die;
         while(<OUTPUT>) {
@@ -416,6 +668,20 @@ sub get_running_kernel_pkg_name {
     $running_kernel_pkg_name =~ s/:.*//;
 
     return $running_kernel_pkg_name;
+}
+
+sub get_native_arch {
+
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
+    my $native_arch = `dpkg --print-architecture`;
+    chomp $native_arch;
+
+    ssm_print "$debug_prefix $native_arch\n" if( $main::o{debug} );
+
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n"; sleep 2; }
+
+    return $native_arch;
 }
 
 #

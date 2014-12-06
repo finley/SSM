@@ -13,6 +13,47 @@ use SimpleStateManager;
 
 our %o;
 our %outstanding;
+our %PKGS_FROM_STATE_DEFINITION;
+
+our %PKGS_TARGET_STATE;
+#
+#   Examples:
+#
+#       $::PKGS_TARGET_STATE{$pkg} = 'install';
+#       $::PKGS_TARGET_STATE{$pkg} = 'remove';
+#       $::PKGS_TARGET_STATE{$pkg} = 'upgrade';
+#
+#   Intended to allow assessment of progress on target states
+#   independent of the scope of an individual module or subroutine.
+#
+#   Use with code such as the following for a full assessment, such as
+#   to declare the summary state at the end of a run:
+#
+#       #################################################################
+#       #
+#       # Do these once
+#       #
+#       use AptPkg::Config '$_config';
+#       use AptPkg::System '$_system';
+#       use AptPkg::Cache;
+#       
+#       $_config->init;
+#       $_system            = $_config->system;
+#       $_config->{quiet}   = 2;
+#       
+#       #################################################################
+#       #
+#       # Do these each time /* something may have changed */
+#       #
+#       # set up the cache
+#       my $cache = AptPkg::Cache->new;
+#       my $policy = $cache->policy;
+#
+#       my $pkg_ref = $cache->{$pkg};
+#       if ($pkg_ref->{CurrentState} eq 'Installed') { action...; }
+#       #
+#       #################################################################
+#
 
 # Do this before GetOptions mucks up ARGV. -BEF-
 store_invocation_command();

@@ -68,76 +68,80 @@ use Cwd 'abs_path';
 #
 #   This package provides the following functions:
 #
-#       % egrep '^sub ' lib/SimpleStateManager.pm | perl -pi -e 's/^sub /#   /; s/ {//;' | sort
+#       % egrep '^sub ' lib/SimpleStateManager.pm | perl -p -e 's/^sub /#   /; s/ {//;' | sort
 #
 #   add_file_to_repo
 #   add_new_files
 #   backup
 #   check_depends
+#   check_depends_interactive
 #   choose_tmp_file
+#   chown_and_chmod_interactive
 #   close_log_file
 #   compare_package_options
+#   contents_unwanted_interactive
 #   copy_file_to_upstream_repo
 #   create_directory
 #   create_special_file
 #   diff_file
 #   diff_ownership_and_permissions
-#   do_chown_and_chmod
-#   do_contents_unwanted
-#   do_directory
-#   do_generated_file
-#   do_hardlink
-#   do_ignore
-#   do_postscript
-#   do_prescript
-#   do_regular_file
-#   do_softlink
-#   do_special_file
-#   do_unwanted_file
+#   directory_interactive
 #   do_you_want_me_to
 #   email_log_file
+#   execute_postscript
+#   execute_prescript
+#   generated_file_interactive
 #   _get_arch
 #   get_file
 #   get_file_type
 #   get_gid
+#   get_hostname
 #   get_md5sum
 #   get_mode
+#   get_pad
 #   get_pkgs_to_be_installed
-#   get_pkgs_to_be_reinstalled
-#   get_pkgs_to_be_removed
+#   get_timestamp
 #   get_uid
 #   group_to_gid
+#   hardlink_interactive
+#   ignore_file_interactive
 #   _include_bundle
 #   _initialize_log_file
 #   _initialize_variables
 #   install_file
+#   install_packages_interactive
 #   install_softlink
 #   md5sum_match
 #   multisort
 #   please_specify_a_valid_pkg_manager
 #   print_pad
 #   read_config_file
+#   regular_file_interactive
 #   remove_file
+#   remove_packages_interactive
 #   report_improper_file_definition
 #   report_improper_service_definition
 #   rotate_log_file
 #   run_cmd
 #   set_ownership_and_permissions
+#   softlink_interactive
+#   special_file_interactive
 #   _specify_an_upload_url
 #   ssm_print
 #   ssm_print_always
 #   sync_state
-#   sync_state_install_packages
-#   sync_state_reinstall_packages
-#   sync_state_remove_packages
-#   sync_state_upgrade_packages
-#   take_action
+#   take_file_action
+#   take_pkg_action
 #   touch
 #   turn_groupnames_into_gids
 #   turn_service_into_file_entry
 #   turn_usernames_into_uids
 #   uid_gid_and_mode_match
+#   unwanted_file_interactive
+#   update_bundle_file_comment_out_entry
 #   update_bundlefile_type_regular
+#   update_package_repository_info_interactive
+#   upgrade_packages_interactive
 #   user_is_root
 #   user_to_uid
 #   version
@@ -148,11 +152,6 @@ use Cwd 'abs_path';
 ################################################################################
 #
 #   Variables and What Not
-#
-# Hash for holding package information
-my %PKGS_FROM_STATE_DEFINITION;
-my %PKGS_PROVIDED_BY_PKGS_FROM_STATE_DEFINITION;
-
 #
 # Hashes for holding file and service information
 my (
@@ -178,10 +177,9 @@ my (
     %TMPFILE,     # name of a temporary file associated with a file
 );
 
+my $OUTSTANDING_PACKAGES_TO_INSTALL   = 0;
 my $OUTSTANDING_PACKAGES_TO_REMOVE    = 0;
 my $OUTSTANDING_PACKAGES_TO_UPGRADE   = 0;
-my $OUTSTANDING_PACKAGES_TO_INSTALL   = 0;
-my $OUTSTANDING_PACKAGES_TO_REINSTALL = 0;
 
 my $ERROR_LEVEL  = 0;
 my $CHANGES_MADE = 0;
@@ -223,8 +221,7 @@ sub ssm_print {
 
 sub _initialize_variables {
 
-    (   %PKGS_FROM_STATE_DEFINITION,
-        %PKGS_PROVIDED_BY_PKGS_FROM_STATE_DEFINITION,
+    (   %::PKGS_FROM_STATE_DEFINITION,
         %TYPE,
         %MODE,
         %OWNER,
@@ -462,6 +459,7 @@ sub read_config_file {
             #
             unless( ($main::o{pkg_manager} eq 'dpkg'    )
                  or ($main::o{pkg_manager} eq 'aptitude')
+                 or ($main::o{pkg_manager} eq 'apt-get')
                  or ($main::o{pkg_manager} eq 'yum'     )
                  or ($main::o{pkg_manager} eq 'none'    )
             ) {
@@ -470,7 +468,7 @@ sub read_config_file {
 
             }
 
-            ssm_print "OK:      Package manager -> $main::o{pkg_manager}\n" unless($main::o{only_this_file}); 
+            ssm_print "INFO:    Package manager -> $main::o{pkg_manager}\n" unless($main::o{only_this_file}); 
 
             if( ! defined $main::o{remove_running_kernel} ) { 
                 # Default to "no"
@@ -513,11 +511,11 @@ sub read_config_file {
                     # do nothing
                 } else {
                     ($pkg, $options) = split;
-                    if(! defined $PKGS_FROM_STATE_DEFINITION{$pkg}) {
-                        $PKGS_FROM_STATE_DEFINITION{$pkg} = $options;
+                    if(! defined $::PKGS_FROM_STATE_DEFINITION{$pkg}) {
+                        $::PKGS_FROM_STATE_DEFINITION{$pkg} = $options;
                     } else {
-                        $PKGS_FROM_STATE_DEFINITION{$pkg} = compare_package_options($pkg, $options);
-                        ssm_print ">> Winning options:  $PKGS_FROM_STATE_DEFINITION{$pkg}\n\n" if($main::o{debug});
+                        $::PKGS_FROM_STATE_DEFINITION{$pkg} = compare_package_options($pkg, $options);
+                        ssm_print ">> Winning options:  $pkg $::PKGS_FROM_STATE_DEFINITION{$pkg}\n\n" if($main::o{debug});
                     }
 
                     if($main::o{debug}) { 
@@ -690,7 +688,8 @@ sub read_config_file {
                 if($key eq 'name') { 
                     $name = $value; 
 
-                    if($main::o{debug}) { ssm_print "name before: $name\n"; }
+                    #if($main::o{debug}) { ssm_print "name before: $name\n"; }
+
                     # Turn double slashes into single slashes so that
                     # tests for conflicting host names work properly.
                     $name =~ s|/+|/|go;
@@ -699,7 +698,8 @@ sub read_config_file {
                     # into no ending slash to ensure conflicting
                     # directory names are treated properly.
                     $name =~ s|/$||go;
-                    if($main::o{debug}) { ssm_print "name after:  $name\n"; }
+
+                    #if($main::o{debug}) { ssm_print "name after:  $name\n"; }
 
 
                 } elsif($key eq 'type')       { 
@@ -889,23 +889,40 @@ sub please_specify_a_valid_pkg_manager {
 }
 
 
+# Return a pad of spaces of N length
+# get_pad(N);
+sub get_pad {
+
+    my $length = shift;
+
+    my $pad = "";
+    my $i = 0;
+    until($i == $length) {
+        $pad .= " ";
+        $i++;
+    }
+
+    return $pad;
+}
+
 # Print a pad of spaces of N length
 # print_pad(N);
 sub print_pad {
 
-    my $pad = shift;
+    my $length = shift;
 
     my $i = 0;
-    until($i == $pad) {
+    until($i == $length) {
         print " ";
         $i++;
     }
+
     return 1;
 }
 
 sub turn_usernames_into_uids {
 
-    if( $main::o{debug} ) { ssm_print "turn_usernames_into_uids()\n"; }
+    #if( $main::o{debug} ) { ssm_print "turn_usernames_into_uids()\n"; }
 
     foreach(keys %OWNER) {
         $OWNER{$_} = user_to_uid($OWNER{$_});
@@ -916,7 +933,7 @@ sub turn_usernames_into_uids {
 
 sub turn_groupnames_into_gids {
 
-    if( $main::o{debug} ) { ssm_print "turn_groupnames_into_gids()\n"; }
+    #if( $main::o{debug} ) { ssm_print "turn_groupnames_into_gids()\n"; }
 
     foreach(keys %GROUP) {
         $GROUP{$_} = group_to_gid($GROUP{$_});
@@ -929,7 +946,7 @@ sub user_to_uid {
 
     my $user = shift;
 
-    if( $main::o{debug} ) { ssm_print "user_to_uid($user)\n"; }
+    #if( $main::o{debug} ) { ssm_print "user_to_uid($user)\n"; }
 
     if($user =~ m/^\d+$/) {
         # it's already all-numeric; as in, a uid was specified in the definition
@@ -944,7 +961,7 @@ sub group_to_gid {
 
     my $group = shift;
 
-    if( $main::o{debug} ) { ssm_print "group_to_gid($group)\n"; }
+    #if( $main::o{debug} ) { ssm_print "group_to_gid($group)\n"; }
 
     if($group =~ m/^\d+$/) {
         # it's already all-numeric; as in, a gid was specified in the definition
@@ -957,7 +974,7 @@ sub group_to_gid {
 
 sub sync_state {
 
-    if( $main::o{debug} ) { ssm_print "sync_state()\n"; }
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     $CHANGES_MADE = 0;
 
@@ -968,23 +985,19 @@ sub sync_state {
         }
 
         if( $main::o{pkg_manager} eq "dpkg" 
+         or $main::o{pkg_manager} eq "aptitude"
          or $main::o{pkg_manager} eq "apt-get") {
-            print "sync_state(): require SimpleStateManager::Dpkg;\n" if($main::o{debug});
+            ssm_print "$debug_prefix require SimpleStateManager::Dpkg;\n" if($main::o{debug});
             require SimpleStateManager::Dpkg;
             SimpleStateManager::Dpkg->import();
         }
-        elsif( $main::o{pkg_manager} eq "aptitude" ) {
-            print "sync_state(): require SimpleStateManager::Aptitude;\n" if($main::o{debug});
-            require SimpleStateManager::Aptitude;
-            SimpleStateManager::Aptitude->import();
-        }
         elsif( $main::o{pkg_manager} eq "yum" ) {
-            print "sync_state(): require SimpleStateManager::Yum;\n" if($main::o{debug});
+            ssm_print "$debug_prefix require SimpleStateManager::Yum;\n" if($main::o{debug});
             require SimpleStateManager::Yum;
             SimpleStateManager::Yum->import();
         }
         elsif( $main::o{pkg_manager} eq "none" ) {
-            print "sync_state(): require SimpleStateManager::None;\n" if($main::o{debug});
+            ssm_print "$debug_prefix require SimpleStateManager::None;\n" if($main::o{debug});
             require SimpleStateManager::None;
             SimpleStateManager::None->import();
         }
@@ -1009,51 +1022,52 @@ sub sync_state {
 
         last if($main::o{only_packages});
 
-        my $unsatisfied = check_depends($file);
-        if($unsatisfied ne "1") {
-            ssm_print "Not OK:  File $file -> Unmet Dependencies";
-            unless( $main::o{summary} ) {
-                ssm_print ":\n";
-                ssm_print "         $unsatisfied";
-            }
-            ssm_print "\n";
-            $main::outstanding{$file} = 'unmet_deps';
-            $ERROR_LEVEL++;
-            if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-        }
+        # my $unsatisfied = check_depends($file);
+        # if($unsatisfied ne "1") {
+        #     ssm_print "Not OK:  File $file -> Unmet Dependencies";
+        #     unless( $main::o{summary} ) {
+        #         ssm_print ":\n";
+        #         ssm_print "         $unsatisfied";
+        #     }
+        #     ssm_print "\n";
+        #     $main::outstanding{$file} = 'unmet_deps';
+        #     $ERROR_LEVEL++;
+        #     if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+        # }
 
-        elsif( ($TYPE{$file} eq 'ignore') or ($TYPE{$file} eq 'ignored') ) {
-            do_ignore($file);
+        # elsif( ($TYPE{$file} eq 'ignore') or ($TYPE{$file} eq 'ignored') ) {
+        if( ($TYPE{$file} eq 'ignore') or ($TYPE{$file} eq 'ignored') ) {
+            ignore_file_interactive($file);
         }
         elsif( $TYPE{$file} eq 'softlink' ) {
-            do_softlink($file);
+            softlink_interactive($file);
         }
         elsif( $TYPE{$file} eq 'hardlink' ) {
-            do_hardlink($file);
+            hardlink_interactive($file);
         }
         elsif(     $TYPE{$file} eq 'block' 
                 or $TYPE{$file} eq 'character'
                 or $TYPE{$file} eq 'fifo'      ) {
-            do_special_file($file);
+            special_file_interactive($file);
         }
         elsif( $TYPE{$file} eq 'chown+chmod' ) {
-            do_chown_and_chmod($file);
+            chown_and_chmod_interactive($file);
         }
         elsif( $TYPE{$file} eq 'regular' ) {
-            do_regular_file($file);
+            regular_file_interactive($file);
         }
         elsif( $TYPE{$file} eq 'directory' ) {
-            do_directory($file);
+            directory_interactive($file);
         }
         elsif( $TYPE{$file} eq 'unwanted' ) {
-            do_unwanted_file($file);
+            unwanted_file_interactive($file);
         }
         elsif( $TYPE{$file} eq 'directory+contents-unwanted' ) {
-            do_directory($file);
-            do_contents_unwanted($file);
+            directory_interactive($file);
+            contents_unwanted_interactive($file);
         }
         elsif( $TYPE{$file} eq 'generated' ) {
-            do_generated_file($file);
+            generated_file_interactive($file);
         }
         else {
             return report_improper_file_definition($file);
@@ -1061,7 +1075,7 @@ sub sync_state {
     }
 
     # Get integer value that represents the number of packages defined.
-    if( (scalar (keys %PKGS_FROM_STATE_DEFINITION)) == 0) {
+    if( (scalar (keys %::PKGS_FROM_STATE_DEFINITION)) == 0) {
         ssm_print "OK:      Packages -> No [packages] defined in the configuration.\n";
         return ($ERROR_LEVEL, $CHANGES_MADE);
     }
@@ -1077,63 +1091,36 @@ sub sync_state {
         ssm_print "OK:      Option --only-files specified.  Skipping [packages] sections.\n"; 
         return ($ERROR_LEVEL, $CHANGES_MADE);
     } 
-    else {
-        # Do this here, and only once, for performance purposes. -BEF-
-        %PKGS_PROVIDED_BY_PKGS_FROM_STATE_DEFINITION = get_pkgs_provided_by_pkgs_from_state_definition(\%PKGS_FROM_STATE_DEFINITION);
-
-        if( $main::o{debug} ) {
-            ssm_print '>> Contents of: %PKGS_PROVIDED_BY_PKGS_FROM_STATE_DEFINITION' . "\n";
-            foreach (keys %PKGS_PROVIDED_BY_PKGS_FROM_STATE_DEFINITION) {
-                ssm_print ">> Provided: $_=$PKGS_PROVIDED_BY_PKGS_FROM_STATE_DEFINITION{$_}\n" ;
-            }
-        }
-    }
 
     ####################################################################
     #
     # BEGIN Package related activities
     #
-    # 1 of 4
-    #   Packages to Install:
-    #   Install dependencies (not in definition):
-    sync_state_install_packages();
-
-    # 2 of 4
-    #   Packages to Upgrade:
-    #   Upgrade dependencies (not in definition):
-    sync_state_upgrade_packages();
-
-    # 3 of 4
-    #   Packages to remove:
-    #   Remove dependencies (in definition):
-    sync_state_remove_packages();
-
-    # 4 of 4
-    #   Packages to Re-install: (DO WE REALLY NEED THIS? -BEF-)
-    sync_state_reinstall_packages();
-
+    update_package_repository_info_interactive();
+    upgrade_packages_interactive();
+    install_packages_interactive();
+    remove_packages_interactive();
     #
     # END Package related activities
     #
     ####################################################################
-
+    
     # Remove checked out SSM DB, if it exists.
     my $ou_path = "/tmp/ssm_db.repo.$$";
-    remove_file("$ou_path");
+    remove_file("$ou_path", 'silent');
 
     ssm_print "\n";
-    ssm_print "Changes made:        $CHANGES_MADE\n";
+    ssm_print "Changes made:              $CHANGES_MADE\n";
     ssm_print "Outstanding changes:\n";
     ssm_print "-------------------------------\n";
-    ssm_print "- Packages to install:     $OUTSTANDING_PACKAGES_TO_INSTALL\n";
-    ssm_print "- Packages to re-install:  $OUTSTANDING_PACKAGES_TO_REINSTALL\n";
-    ssm_print "- Packages to remove:      $OUTSTANDING_PACKAGES_TO_REMOVE\n";
-    ssm_print "- Packages to upgrade:     $OUTSTANDING_PACKAGES_TO_UPGRADE\n";
-    ssm_print "- Other:                   $ERROR_LEVEL\n";
+#    ssm_print "- Packages to install:     $OUTSTANDING_PACKAGES_TO_INSTALL\n";
+#    ssm_print "- Packages to upgrade:     $OUTSTANDING_PACKAGES_TO_UPGRADE\n";
+#    ssm_print "- Packages to remove:      $OUTSTANDING_PACKAGES_TO_REMOVE\n";
+    ssm_print "Ask Marc for his opinion here...\n";
+    ssm_print "- File related:            $ERROR_LEVEL\n";
     ssm_print "\n";
 
     $ERROR_LEVEL += $OUTSTANDING_PACKAGES_TO_INSTALL;
-    $ERROR_LEVEL += $OUTSTANDING_PACKAGES_TO_REINSTALL;
     $ERROR_LEVEL += $OUTSTANDING_PACKAGES_TO_REMOVE;
     $ERROR_LEVEL += $OUTSTANDING_PACKAGES_TO_UPGRADE;
 
@@ -1144,8 +1131,39 @@ sub sync_state {
         ssm_print "\n";
     }
 
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n"; sleep 2; }
+
     sleep 1;
     return ($ERROR_LEVEL, $CHANGES_MADE);
+}
+
+
+sub check_depends_interactive {
+
+    my $file = shift;
+
+    my $check_depends_results = check_depends($file);
+
+    if($check_depends_results eq "1") {
+        return 1;
+
+    } else {
+
+        ssm_print "Not OK:  File $file -> Unmet Dependencies";
+        unless( $main::o{summary} ) {
+            ssm_print ":\n";
+            ssm_print "         $check_depends_results";
+            ssm_print "\n";
+        }
+        $main::outstanding{$file} = 'unmet_deps';
+        $ERROR_LEVEL++;
+        if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+
+        my $action = 'null';
+        take_file_action( $file, $action, 'n#' );
+
+        return undef;
+    }
 }
 
 
@@ -1193,22 +1211,22 @@ sub email_log_file {
 }
 
 
-sub get_pkgs_to_be_removed {
-
-    if( $main::o{debug} ) { ssm_print "get_pkgs_to_be_removed()\n"; }
-
-    my %pkgs_currently_installed = get_pkgs_currently_installed();
-
-    my @array;
-    foreach my $pkg ( keys %pkgs_currently_installed ) {
-        if( ! defined($PKGS_FROM_STATE_DEFINITION{$pkg}) or ($PKGS_FROM_STATE_DEFINITION{$pkg} =~ m/\bunwanted\b/i )) {
-        ssm_print ">>> remove: $pkg\n" if( $main::o{debug} );
-            push @array, $pkg;
-        }
-    }
-    
-    return @array;
-}
+#sub get_pkgs_to_be_removed {
+#
+#    if( $main::o{debug} ) { ssm_print "get_pkgs_to_be_removed()\n"; }
+#
+#    my %pkgs_currently_installed = get_pkgs_currently_installed();
+#
+#    my @array;
+#    foreach my $pkg ( keys %pkgs_currently_installed ) {
+#        if( ! defined($::PKGS_FROM_STATE_DEFINITION{$pkg}) or ($::PKGS_FROM_STATE_DEFINITION{$pkg} =~ m/\bunwanted\b/i )) {
+#        ssm_print ">>> remove: $pkg\n" if( $main::o{debug} );
+#            push @array, $pkg;
+#        }
+#    }
+#    
+#    return @array;
+#}
 
 
 #
@@ -1226,9 +1244,9 @@ sub get_pkgs_to_be_installed {
     # If it's in the state definition, but not installed, install it.
     #
     my %hash;
-    foreach my $pkg (keys %PKGS_FROM_STATE_DEFINITION) {
-        if(( ! $pkgs_currently_installed{$pkg} ) and ( $PKGS_FROM_STATE_DEFINITION{$pkg} !~ m/\bunwanted\b/i )) {
-            $hash{$pkg} = $PKGS_FROM_STATE_DEFINITION{$pkg};
+    foreach my $pkg (keys %::PKGS_FROM_STATE_DEFINITION) {
+        if(( ! $pkgs_currently_installed{$pkg} ) and ( $::PKGS_FROM_STATE_DEFINITION{$pkg} !~ m/\bunwanted\b/i )) {
+            $hash{$pkg} = $::PKGS_FROM_STATE_DEFINITION{$pkg};
         }
     }
 
@@ -1236,23 +1254,9 @@ sub get_pkgs_to_be_installed {
 }
 
 
-sub get_pkgs_to_be_reinstalled {
-    
-    if( $main::o{debug} ) { ssm_print "get_pkgs_to_be_reinstalled()\n"; }
-
-    #
-    # returns an array:  "pkg=version" or just "pkg"
-    #   packages currently installed that need to be reinstalled
-    #
-
-    my @array;
-    return @array;  #XXX remove all calls to get_pkgs_to_be_reinstalled from code, then remove this subroutine. No longer needed w/no version number supported.  -BEF-
-
-}
-
 sub version {
 
-    if( $main::o{debug} ) { ssm_print "version()\n"; }
+    if( $main::o{debug} ) { print "version()\n"; }
 
     # Can't use ssm_print in here -- not initialiased yet. -BEF-
     my $progname = basename($0);
@@ -1346,40 +1350,47 @@ sub do_you_want_me_to {
             if($main::o{debug}) { ssm_print "do_you_want_me_to(): $prompt\n"; }
             $msg .= "/$prompt";
         }
-        $msg .= "]: ";
+        $msg .= "/?]: ";
     }
 
     my $i_had_to_explain_something = undef;
     my $explanation = "\n";
 
-    if($prompts =~ m/n/ and ! defined $main::o{answer_implications_explained_n}) {
+    if($prompts =~ m/n/ and ! defined $main::o{answer_implications_explained}{n}) {
         $explanation .= qq/           N -> No, don't do anything.  [The default]\n/;
-        $main::o{answer_implications_explained_n} = 'yes';
+        $main::o{answer_implications_explained}{n} = 'yes';
         $i_had_to_explain_something = 1;
         }
-    if($prompts =~ m/y/ and ! defined $main::o{answer_implications_explained_y}) {
-        $explanation .= qq/           y -> Yes, execute all of the "Need to:" actions above.\n/;
-        $main::o{answer_implications_explained_y} = 'yes';
+    if($prompts =~ m/y/ and ! defined $main::o{answer_implications_explained}{y}) {
+        $explanation .= qq/           y -> Yes, execute all of the "Need to" actions above.\n/;
+        $main::o{answer_implications_explained}{y} = 'yes';
         $i_had_to_explain_something = 1;
         }
-    if($prompts =~ m/d/ and ! defined $main::o{answer_implications_explained_d}) {
+    if($prompts =~ m/d/ and ! defined $main::o{answer_implications_explained}{d}) {
         $explanation .= qq/           d -> Show me the differences between the repo version and the\n/;
         $explanation .= qq/                local version, then ask me again.\n/;
-        $main::o{answer_implications_explained_d} = 'yes';
+        $main::o{answer_implications_explained}{d} = 'yes';
         $i_had_to_explain_something = 1;
         }
-    if($prompts =~ m/a/ and ! defined $main::o{answer_implications_explained_a}) {
+    if($prompts =~ m/a/ and ! defined $main::o{answer_implications_explained}{a}) {
         $explanation .= qq/           a -> Add the local version of this file to your repo and\n/;
         $explanation .= qq/                update the configuration to use it.\n/;
-        $main::o{answer_implications_explained_a} = 'yes';
+        $main::o{answer_implications_explained}{a} = 'yes';
         $i_had_to_explain_something = 1;
         }
-    if($prompts =~ m/c/ and ! defined $main::o{answer_implications_explained_c}) {
-        $explanation .= qq/           c -> Comment out this entry in the configuration, but\n/;
+    if($prompts =~ m/#/ and ! defined $main::o{answer_implications_explained}{'#'}) {
+        $explanation .= qq/           # -> Comment out this entry in the configuration, but\n/;
         $explanation .= qq/                preserve any files it references in the repo.\n/;
-        $main::o{answer_implications_explained_c} = 'yes';
+        $main::o{answer_implications_explained}{'#'} = 'yes';
         $i_had_to_explain_something = 1;
         }
+
+    if(! defined $main::o{answer_implications_explained}{help}) {
+        $explanation .= qq/           ? -> Show help info for each of these options.\n/;
+        $main::o{answer_implications_explained}{help} = 'yes';
+        $i_had_to_explain_something = 1;
+        }
+
     $explanation .= qq/\n/;
 
     if( $i_had_to_explain_something ) {
@@ -1411,20 +1422,23 @@ sub do_you_want_me_to {
     } elsif( m/^a$/i ) {
         return 'add';
 
-    } elsif( m/^c$/i ) {
+    } elsif( m/^#$/i ) {
         return 'comment out';
 
-    } elsif( m/^c$/i ) {
-        return 'comments';
+    } elsif( m/^\?$/i ) {
+        $::o{answer_implications_explained} = undef;
+        return 'help';
 
     }
 }
 
 
-sub do_ignore {
+sub ignore_file_interactive {
      
     #
-    # Simply ignore the entry.
+    # Simply ignore the entry.  Allows you to have a higher priority for
+    # ignoring a file in one bundle, vs. another bundle that might call for the
+    # same file's removal....
     #
 
     my $file = shift;
@@ -1443,7 +1457,7 @@ sub do_ignore {
     return 1;
 }
 
-sub do_softlink {
+sub softlink_interactive {
 
     # 
     # Accept either relative or absolute target, and implement as user
@@ -1452,7 +1466,7 @@ sub do_softlink {
 
     my $file = shift;
 
-    ssm_print ">> do_softlink($file)\n" if( $main::o{debug} );
+    ssm_print ">> softlink_interactive($file)\n" if( $main::o{debug} );
 
     #
     # validate input
@@ -1465,7 +1479,7 @@ sub do_softlink {
     }
 
     #
-    # Singularize double slashes in target names
+    # Singularize double slashes in target names for beautification purposes
     $TARGET{$file} =~ s#/+#/#g;
 
     #
@@ -1520,7 +1534,7 @@ sub do_softlink {
             #
             # Decide what to do about it -- if anything
             #
-            take_action( $file, $action, 'ync' );
+            take_file_action( $file, $action, 'yn#' );
         }
 
     } else {
@@ -1532,6 +1546,7 @@ sub do_softlink {
     return 1;
 }
 
+
 sub install_softlink {
 
     my $file     = shift;
@@ -1540,10 +1555,10 @@ sub install_softlink {
 
     ssm_print "         FIXING:  Soft link $file -> $TARGET{$file}\n";
 
-    do_prescript($file);
+    execute_prescript($file);
     remove_file($file);
     symlink($TARGET{$file}, $file) or die "Couldn't symlink($TARGET{$file}, $file) $!";
-    do_postscript($file);
+    execute_postscript($file);
     
     return 1;
 }
@@ -1557,7 +1572,7 @@ sub create_special_file {
 
     ssm_print qq(         FIXING:  Creating ) . ucfirst($TYPE{$file}) . qq( file $file\n);
 
-    do_prescript($file);
+    execute_prescript($file);
     remove_file($file);
 
     if($TYPE{$file} eq 'fifo') {
@@ -1579,13 +1594,13 @@ sub create_special_file {
     }
 
     set_ownership_and_permissions($file);
-    do_postscript($file);
+    execute_postscript($file);
 
     return 1;
 }
 
 
-sub do_special_file {
+sub special_file_interactive {
 
     my $file   = shift;
 
@@ -1608,6 +1623,8 @@ sub do_special_file {
     ) {
         return report_improper_file_definition($file);
     }
+
+    if( ! check_depends_interactive($file) ) { return 1; }   # just return now if failed deps check
 
     #
     # Does it need fixing?
@@ -1652,7 +1669,7 @@ sub do_special_file {
             #
             # Decide what to do about it -- if anything
             #
-            take_action( $file, $action, 'ync' );
+            take_file_action( $file, $action, 'yn#' );
         }
 
     } else {
@@ -1769,9 +1786,9 @@ sub set_ownership_and_permissions {
 }
 
 
-sub do_contents_unwanted {
+sub contents_unwanted_interactive {
 
-    ssm_print ">> do_contents_unwanted()\n" if( $main::o{debug} );
+    ssm_print ">> contents_unwanted_interactive()\n" if( $main::o{debug} );
 
     my $dir   = shift;
 
@@ -1816,10 +1833,10 @@ sub do_contents_unwanted {
             ssm_print ">>> in_directory: $file\n" if( $main::o{debug} );
             unless (defined $TYPE{$file}) {
                 #
-                # For each file that isn't defined:  do_unwanted_file($file);
+                # For each file that isn't defined:  unwanted_file_interactive($file);
                 #
                 $TYPE{$file} = 'unwanted';
-                do_unwanted_file($file);
+                unwanted_file_interactive($file);
                 if($main::outstanding{$file} ne 'fixed') {
                     $main::outstanding{$dir} = 'unwanted file(s) still exist(s)';
                 }
@@ -1842,7 +1859,7 @@ sub do_contents_unwanted {
 }
 
 
-sub do_unwanted_file {
+sub unwanted_file_interactive {
 
     my $file   = shift;
 
@@ -1853,6 +1870,8 @@ sub do_unwanted_file {
     ) {
         return report_improper_file_definition($file);
     }
+
+    # don't do "check_depends_interactive" for an unwanted file...
 
     #
     # Does it need fixing?
@@ -1893,7 +1912,7 @@ sub do_unwanted_file {
             #
             # Decide what to do about it -- if anything
             #
-            take_action( $file, $action, 'ync' );
+            take_file_action( $file, $action, 'yn#' );
         }
 
     } else {
@@ -1908,7 +1927,7 @@ sub do_unwanted_file {
 }
 
 
-sub do_chown_and_chmod {
+sub chown_and_chmod_interactive {
 
     my $file   = shift;
 
@@ -1922,6 +1941,8 @@ sub do_chown_and_chmod {
     ) {
         return report_improper_file_definition($file);
     }
+
+    if( ! check_depends_interactive($file) ) { return 1; }   # just return now if failed deps check
 
     #
     # Does it need fixing?
@@ -1961,7 +1982,7 @@ sub do_chown_and_chmod {
             #
             # Decide what to do about it -- if anything
             #
-            take_action( $file, $action, 'ync' );
+            take_file_action( $file, $action, 'yn#' );
 
         }
 
@@ -1976,7 +1997,7 @@ sub do_chown_and_chmod {
 }
 
 
-sub do_directory {
+sub directory_interactive {
 
     my $file   = shift;
 
@@ -1990,6 +2011,8 @@ sub do_directory {
     ) {
         return report_improper_file_definition($file);
     }
+
+    if( ! check_depends_interactive($file) ) { return 1; }   # just return now if failed deps check
 
     #
     # Does it need fixing?
@@ -2040,7 +2063,7 @@ sub do_directory {
             #
             # Decide what to do about it -- if anything
             #
-            take_action( $file, $action, 'ync' );
+            take_file_action( $file, $action, 'yn#' );
         }
 
     } else {
@@ -2052,9 +2075,9 @@ sub do_directory {
 }
 
 
-sub do_generated_file {
+sub generated_file_interactive {
 
-    if( $main::o{debug} ) { print ">>  do_generated_file()\n"; }
+    if( $main::o{debug} ) { print ">>  generated_file_interactive()\n"; }
 
     my $file   = shift;
 
@@ -2084,6 +2107,8 @@ sub do_generated_file {
         $MD5SUM{$file} = Digest::MD5->new->addfile(*TMP)->hexdigest;
 
     close(TMP);
+
+    if( ! check_depends_interactive($file) ) { return 1; }   # just return now if failed deps check
 
     #
     # Does it need fixing?
@@ -2141,7 +2166,7 @@ sub do_generated_file {
 
             }
 
-            take_action( $file, $action, 'yndc' );
+            take_file_action( $file, $action, 'ynd#' );
         }
 
     } else {
@@ -2156,11 +2181,11 @@ sub do_generated_file {
 }
 
 
-sub do_regular_file {
+sub regular_file_interactive {
 
     my $file   = shift;
 
-    ssm_print ">> do_regular_file($file)\n" if( $main::o{debug} );
+    ssm_print ">> regular_file_interactive($file)\n" if( $main::o{debug} );
 
     #
     # validate input
@@ -2173,6 +2198,8 @@ sub do_regular_file {
     ) {
         return report_improper_file_definition($file);
     }
+
+    if( ! check_depends_interactive($file) ) { return 1; }   # just return now if failed deps check
 
     #
     # Does it need fixing?
@@ -2230,7 +2257,7 @@ sub do_regular_file {
             #
             # Decide what to do about it -- if anything
             #
-            take_action( $file, $action, 'yndac' );
+            take_file_action( $file, $action, 'ynda#' );
         }
             
     } else {
@@ -2241,17 +2268,103 @@ sub do_regular_file {
     return 1;
 }
 
+
 #
-#   Usage:  $return_code = take_action( $file, $action );
-#   Usage:  $return_code = take_action( $file, $action, [$prompts,] [$msg] );
+#   Usage:  $return_code = take_pkg_action( $action, @packages );
+#
+sub take_pkg_action {
+
+    #
+    # First pass is observation only.
+    #
+    if( $main::PASS_NUMBER == 1 ) { 
+
+        ssm_print ">>> Skipping take_pkg_action as this is the first PASS\n\n";
+        return 1; 
+    }
+
+    my $action   = shift;
+    my @packages; push @packages, @_;
+
+    my $prompts  = 'yn';
+    my $return_code = 0;
+
+    if($main::o{debug}) { 
+        ssm_print "take_pkg_action( $action, ";
+        foreach my $pkg (@packages) {
+            ssm_print "$pkg ";
+        }
+        ssm_print ")\n";
+    }
+
+    until( $return_code == 1 ) {
+
+        my $answer;
+        
+        if($main::o{no}) {
+            $answer = 'no';
+        } 
+        elsif($main::o{yes}) {
+            $answer = 'yes';
+        } 
+        else {
+            $answer = do_you_want_me_to($prompts);
+        }   
+
+        if( $answer eq 'no' ) {
+            $return_code = 1;
+
+        } elsif( $answer eq 'yes' ) {
+
+            my %actions = (
+                'install_pkgs'  => \&install_pkgs,
+                'upgrade_pkgs'  => \&upgrade_pkgs,
+                'remove_pkgs'   => \&remove_pkgs,
+            );
+
+            # Keep this function short and sweet by simply passing the name of the
+            # action as the subroutine to execute from the list of allowable
+            # subroutine actions listed above. -BEF-
+            if(defined $actions{$action}) {
+                if($main::o{debug}) { ssm_print "return_code = $actions{$action}(@packages);\n"; }
+                $return_code = $actions{$action}(@packages);
+
+                if($return_code eq 1) {
+                    $main::outstanding{$action} = 'fixed'; #XXX is it really?  verify return code
+                    $CHANGES_MADE++;
+                }
+
+            } else {
+                ssm_print "take_pkg_action() >> DEVELOPER PEBKAC ERROR: '$action' is not a valid action\n";
+                $return_code = 7;
+
+            }
+
+        } else {
+                if($main::o{debug}) { ssm_print "take_pkg_action() >> PEBKAC ERROR: '$answer' is not a valid answer\n"; }
+                $return_code = 7;
+        }
+
+    }
+
+    ssm_print "\n";
+
+    return $return_code;
+}
+
+
+#
+#   Usage:  $return_code = take_file_action( $file, $action );
+#   Usage:  $return_code = take_file_action( $file, $action, [$prompts,] [$msg] );
 #
 #       Where $prompts is one or more of 'ynda'.  Order doesn't matter:
 #       - y - yes
 #       - n - no
 #       - d - diff
 #       - a - add
+#       - # - comment out
 #
-sub take_action {
+sub take_file_action {
 
     #
     # First pass is observation only.
@@ -2274,7 +2387,7 @@ sub take_action {
     my $return_code = 0;
 
     if($main::o{debug}) { 
-        ssm_print "take_action( $file, $action"; 
+        ssm_print "take_file_action( $file, $action"; 
         ssm_print ", $prompts"  if(defined $prompts);
         ssm_print ", $msg"      if(defined $msg);
         ssm_print " )\n"; 
@@ -2334,13 +2447,13 @@ sub take_action {
                 $CHANGES_MADE++;
 
             } else {
-                ssm_print "DEVELOPER PEBKAC ERROR: '$action' is not a valid action\n";
+                ssm_print "take_file_action() >> DEVELOPER PEBKAC ERROR: '$action' is not a valid action\n";
                 $return_code = 7;
 
             }
 
         } else {
-                if($main::o{debug}) { ssm_print "PEBKAC ERROR: '$answer' is not a valid answer\n"; }
+                if($main::o{debug}) { ssm_print "take_file_action() >> PEBKAC ERROR: '$answer' is not a valid answer\n"; }
                 $return_code = 7;
         }
 
@@ -2459,7 +2572,7 @@ sub diff_file {
     return 1;
 }
 
-sub do_prescript {
+sub execute_prescript {
 
     my $file = shift;
 
@@ -2472,7 +2585,7 @@ sub do_prescript {
     return 1;
 }
 
-sub do_postscript {
+sub execute_postscript {
 
     my $file = shift;
 
@@ -2494,7 +2607,7 @@ sub create_directory {
 
     if($main::o{debug}) { ssm_print "create_directory($file)\n"; }
 
-    do_prescript($file);
+    execute_prescript($file);
 
     if(-e $file) { remove_file($file, 'silent'); }
 
@@ -2504,7 +2617,7 @@ sub create_directory {
 
     set_ownership_and_permissions($file);
 
-    do_postscript($file);
+    execute_postscript($file);
 
     return 1;
 }
@@ -2544,7 +2657,7 @@ sub install_file {
         return 2;
     }
 
-    do_prescript($file);
+    execute_prescript($file);
     backup($file);
     remove_file($file, 'silent', 'no_scripts');
     copy($tmp_file, $file) or die "Failed to copy($tmp_file, $file): $!";
@@ -2552,7 +2665,7 @@ sub install_file {
 
     set_ownership_and_permissions($file);
 
-    do_postscript($file);
+    execute_postscript($file);
 
     return 1;
 }
@@ -2655,7 +2768,7 @@ sub choose_tmp_file {
 }
 
 
-sub do_hardlink {
+sub hardlink_interactive {
 
     my $file   = shift;
 
@@ -2668,6 +2781,8 @@ sub do_hardlink {
     ) {
         return report_improper_file_definition($file);
     }
+
+    if( ! check_depends_interactive($file) ) { return 1; }   # just return now if failed deps check
 
     #
     # Does it need fixing?
@@ -2746,7 +2861,7 @@ sub do_hardlink {
 
         ssm_print "         FIXING:  Hard link $file -> $TARGET{$file}\n";
 
-        do_prescript($file);
+        execute_prescript($file);
 
         remove_file($file);
         link($TARGET{$file}, $file) or die "Couldn't link($TARGET{$file}, $file) $!";
@@ -2759,7 +2874,7 @@ sub do_hardlink {
         #   names (links) for the file.
         #
 
-        do_postscript($file);
+        execute_postscript($file);
 
         ssm_print "\n";
         
@@ -3133,6 +3248,10 @@ sub turn_service_into_file_entry {
 }
 
 
+#
+# Returns '1' if dependencies are satisfied
+# Returns a list of unsatisfied dependencies if unsatisfied
+#
 sub check_depends {
 
     my $name = shift;
@@ -3405,7 +3524,7 @@ sub rotate_log_file {
         my $file_new = "$file." . $i;
 
         if( -e $file_old ) {
-            if( $main::o{debug} ) { print " rename($file_old, $file_new)\n"; }
+            #if( $main::o{debug} ) { print " rename($file_old, $file_new)\n"; }
             rename($file_old, $file_new) or die("Couldn't rename $file_old to $file_new");
         }
 
@@ -3464,29 +3583,29 @@ sub remove_file {
 
     if($main::o{debug}) { ssm_print "remove_file($file)\n"; }
 
-    do_prescript($file) unless(defined $no_scripts);
+    execute_prescript($file) unless(defined $no_scripts);
 
     my $rm = _which("rm");
     my $cmd = "$rm -fr $file";
     !system($cmd) or die("FAILED: $cmd\n $!");
 
-    do_postscript($file) unless(defined $no_scripts);
+    execute_postscript($file) unless(defined $no_scripts);
 
     return 1;
 }
 
 sub compare_package_options {
 
-    if( $main::o{debug} ) { print "compare_package_options()\n"; }
-
     my $pkg                 = shift;
     my $challenger_options  = shift;
 
-    my $incumbent_options   = $PKGS_FROM_STATE_DEFINITION{$pkg};
+    ssm_print "compare_package_options()\n" if( $main::o{debug} );
 
-    ssm_print ">> pkg: $pkg\n" if( $main::o{debug} );
-    ssm_print ">> challenger_options: $challenger_options\n" if( $main::o{debug} );
-    ssm_print ">> incumbent_options:  $incumbent_options\n" if( $main::o{debug} );
+    my $incumbent_options   = $::PKGS_FROM_STATE_DEFINITION{$pkg};
+
+    ssm_print "compare_package_options() >> pkg: $pkg\n" if( $main::o{debug} );
+    ssm_print "compare_package_options() >> challenger_options: $challenger_options\n" if( $main::o{debug} );
+    ssm_print "compare_package_options() >> incumbent_options:  $incumbent_options\n" if( $main::o{debug} );
 
     if($incumbent_options eq '') {
         return $challenger_options;
@@ -3501,7 +3620,7 @@ sub compare_package_options {
     } else {
         $incumbent_priority = 0;
     }
-    ssm_print ">> incumbent_priority:  $incumbent_priority\n" if( $main::o{debug} );
+    #ssm_print "compare_package_options() >> incumbent_priority:  $incumbent_priority\n" if( $main::o{debug} );
 
     my $challenger_priority;
     if($challenger_options =~ m/\bpriority=(\d+)/i) {
@@ -3509,392 +3628,189 @@ sub compare_package_options {
     } else {
         $challenger_priority = 0;
     }
-    ssm_print ">> challenger_priority:  $challenger_priority\n" if( $main::o{debug} );
+    #ssm_print "compare_package_options() >> challenger_priority:  $challenger_priority\n" if( $main::o{debug} );
 
-    if($challenger_priority gt $incumbent_priority) {
-        return $challenger_options;
+    my $winning_options;
+    if($challenger_priority > $incumbent_priority) {
+        $winning_options = $challenger_options;
     } else {
-        return $incumbent_options;
+        $winning_options = $incumbent_options;
     }
+    ssm_print "compare_package_options() >> winning_options:  $winning_options\n" if( $main::o{debug} );
 
-    exit 6; # if we get down to here -- something went wrong.  -BEF-
+    return $winning_options;
 }
 
-sub sync_state_remove_packages {
 
-    if( $main::o{debug} ) { print "sync_state_remove_packages()\n"; }
+sub remove_packages_interactive {
 
-    my @pkgs_to_be_removed = get_pkgs_to_be_removed();
-    my @pkgs_to_be_removed_deps;
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
-    my $do_remove = undef;
+    # Only do pkg stuff on later passes
+    return 1 if( $main::PASS_NUMBER == 1 );
 
-    if( scalar(@pkgs_to_be_removed) > 0) {
+    my %pkg_changes = get_pending_pkg_changes('remove');
 
-        my %hash;
-        my %pkgs_currently_installed = get_pkgs_currently_installed();
-        my %reverse_dependencies = get_pkg_reverse_dependencies(@pkgs_to_be_removed);
+    if(%pkg_changes) {
 
-        #
-        # For each package that is not in the definition, and is about
-        # to be removed, check to see if it is also listed in the reverse
-        # dependencies.  If it is, delete it from the reverse dependencies,
-        # as there's no need in having it listed in both places. -BEF-
-        foreach my $pkg (@pkgs_to_be_removed) {
-            if( defined($reverse_dependencies{$pkg}) ) {
-                delete $reverse_dependencies{$pkg};
-            }
-        }
-
-        #
-        # For each of the reverse dependencies, if the package is 
-        # currently installed, include it as a package to remove.
-        # We don't include other dependencies, as there's no reason
-        # to try and remove something that isn't there. -BEF-
-        foreach my $pkg (keys %reverse_dependencies) {
-            if( defined($pkgs_currently_installed{$pkg}) ) {
-                $hash{$pkg} = 1; 
-            }
-        }
-        foreach(keys %hash) {
-            push(@pkgs_to_be_removed_deps, $_);
-        }
-
+        ssm_print "Not OK:  Package removes\n";
         ssm_print "\n";
-        ssm_print "Packages to remove: " . scalar(@pkgs_to_be_removed) . "\n";
-        ssm_print "------------------------------------------------------------------------\n";
-        foreach(sort @pkgs_to_be_removed) {
-            ssm_print "$_\n";
-        }
-        ssm_print "\n";
+        ssm_print "         Need to:\n";
 
-        if( scalar(@pkgs_to_be_removed_deps) > 0) {
-            ssm_print "Additional packages to remove:  The packages below are defined, but\n";
-            ssm_print "depend on the packages being removed above, which are not defined.\n";
-            ssm_print "This is generally an indication that you need to update your definition\n";
-            ssm_print "file to a) include the packages above, or b) remove the packages below.\n";
-            ssm_print "Hope that helps! --TheMgmt\n";
-            ssm_print "------------------------------------------------------------------------\n";
-            foreach(sort @pkgs_to_be_removed_deps) {
-                ssm_print "$_\n";
-            }
-            ssm_print "\n";
-        }
- 
-        # Find out if the running kernel belongs to a package slated to be
-        # removed, and prevent it. -BEF-
-        my $dont_remove_anything_as_running_kernel_is_listed = 0;
-        my $running_kernel_pkg_name;
-        if( $main::o{remove_running_kernel} ne 'yes' ) {
-            $running_kernel_pkg_name = get_running_kernel_pkg_name();
-            foreach( @pkgs_to_be_removed, @pkgs_to_be_removed_deps ) {
-                if( m/$running_kernel_pkg_name/ ) {
-                    ssm_print "$_\n" if $main::o{debug};
-                    $dont_remove_anything_as_running_kernel_is_listed = 1;
-                    last;
-                }
+        my $max_length = 0;
+        foreach my $pkg (sort keys %pkg_changes) {
+            my $length = length $pkg_changes{$pkg};
+            if($length > $max_length) {
+                $max_length = $length;
             }
         }
 
-        $OUTSTANDING_PACKAGES_TO_REMOVE = scalar(@pkgs_to_be_removed);
-        $OUTSTANDING_PACKAGES_TO_REMOVE += scalar(@pkgs_to_be_removed_deps);
-        if($dont_remove_anything_as_running_kernel_is_listed eq 1) {
-            $do_remove = undef;
-            ssm_print "WARNING: Packages -> Not removing -- running kernel is in the list ($running_kernel_pkg_name).\n";
-            sleep 1;
-        } elsif($main::o{yes}) {
-            $do_remove = 1;
-        } elsif($main::o{no}) {
-            $do_remove = undef;
-            ssm_print "WARNING: Packages -> Not removing due to --no option.\n";
-            sleep 1;
-        } else {
-            ssm_print "  Shall I do this? [N/y]: ";
-            if( do_you_want_me_to() eq 'yes' ) { 
-                $do_remove = 1;
-            } else {
-                ssm_print "  Ok, skipping this step.\n\n";
-                sleep 1;
-            }
+        my @sort_list;
+        foreach my $pkg (sort keys %pkg_changes) {
+
+            my $action = lc( $pkg_changes{$pkg} );
+            my $pad = get_pad($max_length - length($action));
+
+            push @sort_list, "- ${action}${pad} $pkg";
         }
+
+        foreach my $line (sort @sort_list) {
+            ssm_print "         $line\n";
+        }
+
+        take_pkg_action('remove_pkgs', (keys %pkg_changes) );
 
     } else {
-        ssm_print "OK:      Packages -> No packages to remove.\n";
+        ssm_print "OK:      Package removes\n";
     }
 
-    if( defined($do_remove) ) {
-        $CHANGES_MADE += $OUTSTANDING_PACKAGES_TO_REMOVE;
-        $OUTSTANDING_PACKAGES_TO_REMOVE = 0;
-        remove_pkgs(@pkgs_to_be_removed, @pkgs_to_be_removed_deps);
-    }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n"; sleep 2; }
+
+    return 1;
 }
 
-sub sync_state_upgrade_packages {
+sub upgrade_packages_interactive {
 
-    if( $main::o{debug} ) { print "sync_state_upgrade_packages()\n"; }
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
-    my @pkgs_to_be_upgraded;
-    if(defined $main::o{no_pkg_repo_update}) {
-        ssm_print "OK:      Packages -> Skipping package repo update.\n";
-        @pkgs_to_be_upgraded = ();
-    } else {
-        @pkgs_to_be_upgraded = get_pkgs_that_pkg_manager_says_to_upgrade();
-    }
-    
-    my @pkgs_to_be_upgraded_deps;
+    # Only do pkg stuff on later passes
+    return 1 if( $main::PASS_NUMBER == 1 );
 
-    my $do_upgrade = undef;
+    my %pkg_changes = get_pending_pkg_changes('upgrade');
 
-    if( scalar(@pkgs_to_be_upgraded) > 0) {
+    if(%pkg_changes) {
 
-        my %hash;
-        my ($dependencies, $erasures) = get_pkg_dependencies(@pkgs_to_be_upgraded);
-        foreach $_ (keys %$dependencies) {
-            my $already_listed = 'no';
-
-            #
-            # Each package may have a series of alternates as dependencies,
-            # any one of which will satisfy it's dependency.  Those are
-            # stored as the value in %$dependencies separated by spaces. -BEF-
-            #
-            my @pkg_alternatives = split(/\s+/, $_);
-            foreach my $pkg (@pkg_alternatives) {
-                if((defined $PKGS_FROM_STATE_DEFINITION{$pkg}) or (defined $PKGS_PROVIDED_BY_PKGS_FROM_STATE_DEFINITION{$pkg})) {
-                    $already_listed = 'yes';
-                }
-            }
-            if($already_listed eq 'no') {
-                #
-                # If we find that a package has a dependency that is not in it's state
-                # definition, then we add it to the list of dependencies of packages to
-                # be upgraded.  If there are alternates, we just take the first one. -BEF-
-                $hash{$pkg_alternatives[0]} = 1;
-            }
-        }
-        foreach(keys %hash) {
-            push(@pkgs_to_be_upgraded_deps, $_);
-        }
-
-        my @pkgs_to_be_auto_removed;
-        foreach $_ (keys %$erasures) {
-            push(@pkgs_to_be_auto_removed, $_);
-        }
-
+        ssm_print "Not OK:  Package upgrades\n";
         ssm_print "\n";
-        ssm_print "Packages to upgrade: " . scalar(@pkgs_to_be_upgraded) . "\n";
-        ssm_print "------------------------------------------------------------------------\n";
-        foreach(sort @pkgs_to_be_upgraded) {
-            ssm_print "$_\n";
-        }
-        ssm_print "\n";
+        ssm_print "         Need to:\n";
 
-        if( scalar(@pkgs_to_be_upgraded_deps) > 0) {
-            ssm_print "Additional packages to install:  The packages below are not defined,\n";
-            ssm_print "but are dependencies of the packages above, which are defined.  This is\n";
-            ssm_print "generally an indication that you need to update your configuration to\n";
-            ssm_print "a) include the packages below, or b) remove the packages above.\n";
-            ssm_print "Hope that helps! --TheMgmt\n";
-            ssm_print "------------------------------------------------------------------------\n";
-            foreach(sort @pkgs_to_be_upgraded_deps) {
-                ssm_print "$_\n";
-            }
-            ssm_print "\n";
-        }
-
-        if( scalar(@pkgs_to_be_auto_removed) > 0) {
-            ssm_print "Packages to be removed:  The packages below are defined, but one or more\n";
-            ssm_print "of the packages above need them removed to satisfy a dependency.  This\n";
-            ssm_print "often happens when a newer version of a package that includes version\n";
-            ssm_print "information in the name, such as a kernel package, obsoletes an earlier\n";
-            ssm_print "version of the same package.  Generally, the resolution in this case is\n";
-            ssm_print "to update your configuration to 1) remove the packages below, and\n";
-            ssm_print "2) the next time this program iterates, add the packages from the\n";
-            ssm_print "'Packages to remove' section.  Hope that helps! --TheMgmt\n";
-            ssm_print "------------------------------------------------------------------------\n";
-            foreach(sort @pkgs_to_be_auto_removed) {
-                ssm_print "$_\n";
-            }
-            ssm_print "\n";
-        }
-
-        $OUTSTANDING_PACKAGES_TO_UPGRADE = scalar(@pkgs_to_be_upgraded);
-        if($main::o{yes}) {
-            $do_upgrade = 1;
-        } elsif($main::o{no}) {
-            $do_upgrade = undef;
-            ssm_print "WARNING: Packages -> Not upgrading due to --no option.\n";
-            sleep 1;
-        } else {
-            ssm_print "  Shall I do this? [N/y]: ";
-            if( do_you_want_me_to() eq 'yes' ) { 
-                $do_upgrade = 1;
-            } else {
-                ssm_print "  Ok, skipping this step.\n\n";
-                sleep 1;
+        my $max_length = 0;
+        foreach my $pkg (sort keys %pkg_changes) {
+            my $length = length $pkg_changes{$pkg};
+            if($length > $max_length) {
+                $max_length = $length;
             }
         }
+
+        my @sort_list;
+        foreach my $pkg (sort keys %pkg_changes) {
+
+            my $action = lc( $pkg_changes{$pkg} );
+            my $pad = get_pad($max_length - length($action));
+
+            push @sort_list, "- ${action}${pad} $pkg";
+        }
+
+        foreach my $line (sort @sort_list) {
+            ssm_print "         $line\n";
+        }
+
+        take_pkg_action('upgrade_pkgs', (keys %pkg_changes) );
+
     } else {
-        ssm_print "OK:      Packages -> No packages to upgrade.\n";
+        ssm_print "OK:      Package upgrades\n";
     }
 
-    if( defined($do_upgrade) ) {
-        $CHANGES_MADE += $OUTSTANDING_PACKAGES_TO_UPGRADE;
-        $OUTSTANDING_PACKAGES_TO_UPGRADE = 0;
-        upgrade_pkgs(@pkgs_to_be_upgraded, @pkgs_to_be_upgraded_deps);
-    }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n"; sleep 2; }
+
+    return 1;
 }
 
-sub sync_state_install_packages {
+sub install_packages_interactive {
 
-    if( $main::o{debug} ) { print "sync_state_install_packages()\n"; }
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
-    my @pkgs_to_be_installed = get_pkgs_to_be_installed();
-    my @pkgs_to_be_installed_deps;
+    # Only do pkg stuff on later passes
+    return 1 if( $main::PASS_NUMBER == 1 );
 
-    my $do_install = undef;
+    my %pkg_changes = get_pending_pkg_changes('install');
 
-    if( scalar(@pkgs_to_be_installed) > 0) {
+    if(%pkg_changes) {
 
-        my %hash;
-        my ($dependencies, $erasures) = get_pkg_dependencies(@pkgs_to_be_installed);
-        foreach $_ (keys %$dependencies) {
-            my $already_listed = 'no';
-
-            #
-            # Each package may have a series of alternates as dependencies,
-            # any one of which will satisfy it's dependency.  Those are
-            # stored as the value in %$dependencies separated by spaces. -BEF-
-            #
-            my @pkg_alternatives = split(/\s+/, $_);
-            foreach my $pkg (@pkg_alternatives) {
-                if((defined $PKGS_FROM_STATE_DEFINITION{$pkg}) or (defined $PKGS_PROVIDED_BY_PKGS_FROM_STATE_DEFINITION{$pkg})) {
-                    $already_listed = 'yes';
-                }
-            }
-            if($already_listed eq 'no') {
-                #
-                # If we find that a package has a dependency that is not in it's state
-                # definition, then we add it to the list of dependencies of packages to
-                # be upgraded.  If there are alternates, we just take the first one. -BEF-
-                $hash{$pkg_alternatives[0]} = 1;
-            }
-        }
-        foreach(keys %hash) {
-            push(@pkgs_to_be_installed_deps, $_);
-        }
-
-        my @pkgs_to_be_auto_removed;
-        foreach $_ (keys %$erasures) {
-            push(@pkgs_to_be_auto_removed, $_);
-        }
-
+        ssm_print "Not OK:  Package installs\n";
         ssm_print "\n";
-        ssm_print "Packages to install: " . scalar(@pkgs_to_be_installed) . "\n";
-        ssm_print "------------------------------------------------------------------------\n";
-        foreach(sort @pkgs_to_be_installed) {
-            ssm_print "$_\n";
-        }
-        ssm_print "\n";
+        ssm_print "         Need to:\n";
 
-        if( scalar(@pkgs_to_be_installed_deps) > 0) {
-            ssm_print "Additional packages to install:  The packages below are not defined,\n";
-            ssm_print "but are dependencies of the packages above, which are defined.  This is\n";
-            ssm_print "generally an indication that you need to update your configuration to\n";
-            ssm_print "a) include the packages below, or b) remove the packages above.\n";
-            ssm_print "Hope that helps! --TheMgmt\n";
-            ssm_print "------------------------------------------------------------------------\n";
-            foreach(sort @pkgs_to_be_installed_deps) {
-                ssm_print "$_\n";
-            }
-            ssm_print "\n";
-        }
-
-        if( scalar(@pkgs_to_be_auto_removed) > 0) {
-            ssm_print "Packages to be removed:  The packages below are defined, but one or more\n";
-            ssm_print "of the packages above need them removed to satisfy a dependency.  This\n";
-            ssm_print "often happens when a newer version of a package that includes version\n";
-            ssm_print "information in the name, such as a kernel package, obsoletes an earlier\n";
-            ssm_print "version of the same package.  Generally, the resolution in this case is\n";
-            ssm_print "to update your configuration to 1) remove the packages below, and\n";
-            ssm_print "2) the next time this program iterates, add the packages from the\n";
-            ssm_print "'Packages to remove' section.  Hope that helps! --TheMgmt\n";
-            ssm_print "------------------------------------------------------------------------\n";
-            foreach(sort @pkgs_to_be_auto_removed) {
-                ssm_print "$_\n";
-            }
-            ssm_print "\n";
-        }
-
-        $OUTSTANDING_PACKAGES_TO_INSTALL = scalar(@pkgs_to_be_installed);
-        if($main::o{yes}) {
-            $do_install = 1;
-        } elsif($main::o{no}) {
-            $do_install = undef;
-            ssm_print "WARNING: Packages -> Not installing due to --no option.\n";
-            sleep 1;
-        } else {
-            ssm_print "  Shall I do this? [N/y]: ";
-            if( do_you_want_me_to() eq 'yes' ) { 
-                $do_install = 1;
-            } else {
-                ssm_print "  Ok, skipping this step.\n\n";
-                sleep 1;
+        my $max_length = 0;
+        foreach my $pkg (sort keys %pkg_changes) {
+            my $length = length $pkg_changes{$pkg};
+            if($length > $max_length) {
+                $max_length = $length;
             }
         }
+
+        my @sort_list;
+        foreach my $pkg (sort keys %pkg_changes) {
+
+            my $action = lc( $pkg_changes{$pkg} );
+            my $pad = get_pad($max_length - length($action));
+
+            push @sort_list, "- ${action}${pad} $pkg";
+        }
+
+        foreach my $line (sort @sort_list) {
+            ssm_print "         $line\n";
+        }
+
+        take_pkg_action('install_pkgs', (keys %pkg_changes) );
 
     } else {
-        ssm_print "OK:      Packages -> No packages to install.\n";
+        ssm_print "OK:      Package installs\n";
     }
 
-    if( defined($do_install) ) {
-        $CHANGES_MADE += $OUTSTANDING_PACKAGES_TO_INSTALL;
-        $OUTSTANDING_PACKAGES_TO_INSTALL = 0;
-        install_pkgs(@pkgs_to_be_installed, @pkgs_to_be_installed_deps);
-    }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n"; sleep 2; }
+
+    return 1;
 }
 
-sub sync_state_reinstall_packages {
 
-    if( $main::o{debug} ) { print "sync_state_reinstall_packages()\n"; }
+sub update_package_repository_info_interactive {
 
-    my @pkgs_to_be_reinstalled = get_pkgs_to_be_reinstalled();
-    my $do_reinstall = undef;
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
-    if( scalar(@pkgs_to_be_reinstalled) > 0) {
+    # Only do pkg stuff on later passes
+    return 1 if( $main::PASS_NUMBER == 1 );
 
-        ssm_print "\n";
-        ssm_print "Packages to re-install: " . scalar(@pkgs_to_be_reinstalled) . "\n";
-        ssm_print "------------------------------------------------------------------------\n";
-        foreach(@pkgs_to_be_reinstalled) {
-            ssm_print "$_\n";
-        }
+    if( $::o{summary} ) {
+        $::o{no_pkg_repo_update} = 'true';
+    }
 
-        $OUTSTANDING_PACKAGES_TO_REINSTALL = scalar(@pkgs_to_be_reinstalled);
-        if($main::o{yes}) {
-            $do_reinstall = 1;
-        } elsif($main::o{no}) {
-            $do_reinstall = undef;
-            ssm_print "WARNING: Packages -> Not re-installing due to --no option.\n";
-            sleep 1;
-        } else {
-            ssm_print "  Shall I do this? [N/y]: ";
-            if( do_you_want_me_to() eq 'yes' ) { 
-                $do_reinstall = 1;
-            } else {
-                ssm_print "  Ok, skipping this step.\n\n";
-                sleep 1;
-            }
-        }
+    my $return_code;
+    if( $::o{no_pkg_repo_update} ) {
+
+        ssm_print "INFO:    Package repo update -> skipping\n";
+        $return_code = 1;
+
     } else {
-        ssm_print "OK:      Packages -> No packages to re-install.\n";
+        ssm_print "INFO:    Package repo update -> updating\n";
+        $return_code = update_pkg_availability_data();
     }
 
-    if( defined($do_reinstall) ) {
-        $CHANGES_MADE += $OUTSTANDING_PACKAGES_TO_REINSTALL;
-        $OUTSTANDING_PACKAGES_TO_REINSTALL = 0;
-        reinstall_pkgs(@pkgs_to_be_reinstalled);
-    }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n"; sleep 2; }
+
+    return $return_code;
 }
+
 
 # See http://www.webmasterworld.com/forum13/1012.htm for details. -BEF-
 sub multisort {
@@ -3910,6 +3826,7 @@ sub multisort {
         ||
     $a3 cmp $b3
 }
+
 
 sub _specify_an_upload_url {
         ssm_print "INFO:  You don't have an upload_url specified in the definition.\n";
