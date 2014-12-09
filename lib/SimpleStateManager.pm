@@ -100,7 +100,7 @@ use Cwd 'abs_path';
 #   get_mode
 #   get_pad
 #   get_pkgs_to_be_installed
-#   get_timestamp
+#   get_current_time_as_timestamp
 #   get_uid
 #   group_to_gid
 #   hardlink_interactive
@@ -152,6 +152,9 @@ use Cwd 'abs_path';
 ################################################################################
 #
 #   Variables and What Not
+#
+my $STATE_DIR = "/var/lib/simple-state-manager";
+my $PKG_REPO_UPDATE_TIMESTAMP_FILE = "$STATE_DIR/PKG_REPO_UPDATE_TIMESTAMP_FILE";
 #
 # Hashes for holding file and service information
 my (
@@ -244,10 +247,11 @@ sub _initialize_variables {
     return 1;
 }
 
+
 #
-# Usage:  my $timestamp = get_timestamp();
+# Usage:  my $timestamp = get_current_time_as_timestamp();
 #
-sub get_timestamp {
+sub get_current_time_as_timestamp {
 
     my ($sec,$min,$hour,$day,$month,$year,$wday,$yday,$isdst) = localtime(time);
 
@@ -263,6 +267,22 @@ sub get_timestamp {
 }
 
 
+#
+#   my $timestamp = get_file_timestamp($file);
+#   (returns an epoch style timestamp)
+#
+sub get_file_timestamp {
+
+    my $file = shift;
+    
+    if( ! -e $file ) {
+        return undef;
+    } else {
+        return stat($file)->mtime;
+    }
+}
+
+
 sub _initialize_log_file {
 
     my $log_file = "/var/log/" . basename($0);
@@ -275,7 +295,7 @@ sub _initialize_log_file {
     open(LOGFILE,">$log_file") or die("Couldn't open $log_file for writing!");
     $LOGFILE = *LOGFILE;
 
-    my $timestamp = get_timestamp();
+    my $timestamp = get_current_time_as_timestamp();
     print LOGFILE "TIMESTAMP: $timestamp\n";
 
     #
@@ -1117,7 +1137,11 @@ sub sync_state {
 #    ssm_print "- Packages to upgrade:     $OUTSTANDING_PACKAGES_TO_UPGRADE\n";
 #    ssm_print "- Packages to remove:      $OUTSTANDING_PACKAGES_TO_REMOVE\n";
     ssm_print "Ask Marc for his opinion here...\n";
-    ssm_print "- File related:            $ERROR_LEVEL\n";
+    ssm_print "  how about simply saying:\n";
+    ssm_print "    Outstanding file changes:  Yes (or no)\n";
+    ssm_print "    Outstanding package changes:  Yes (or no)\n";
+    ssm_print "  or simply saying _nothing_...  We say it for each item as we go anyway.\n";
+#    ssm_print "- File related:            $ERROR_LEVEL\n";
     ssm_print "\n";
 
     $ERROR_LEVEL += $OUTSTANDING_PACKAGES_TO_INSTALL;
@@ -1259,10 +1283,10 @@ sub version {
     if( $main::o{debug} ) { print "version()\n"; }
 
     # Can't use ssm_print in here -- not initialiased yet. -BEF-
-    my $progname = basename($0);
+    my $PROGNAME = basename($0);
     my $VERSION = '___VERSION___';
     print <<EOF;
-$progname (part of Simple State Manager) v$VERSION
+$PROGNAME (part of Simple State Manager) v$VERSION
     
 EOF
 }
@@ -3055,7 +3079,7 @@ sub update_bundle_file_comment_out_entry {
 
             my $hostname = get_hostname();
             push @newfile, "#\n";
-            push @newfile, "# Commented out via ssm client on $hostname at " . get_timestamp() . "\n";
+            push @newfile, "# Commented out via ssm client on $hostname at " . get_current_time_as_timestamp() . "\n";
             push @newfile, "#\n";
 
             until( m/$stanza_terminator/ ) {
@@ -3104,7 +3128,7 @@ sub update_bundlefile_type_regular {
 
     my $type       = 'regular';
 
-    my $timestamp = get_timestamp();
+    my $timestamp = get_current_time_as_timestamp();
     my $hostname  = get_hostname();
     my $comment   = "From $hostname on $timestamp";
 
@@ -3503,7 +3527,7 @@ sub add_file_to_repo {
 
 #   Example:
 #
-#   my $file = "/tmp/$progname.log";
+#   my $file = "/tmp/$PROGNAME.log";
 #   my $ending_lognumber    = 7;
 #   my $starting_lognumber  = 1;
 #   rotate_log_file($file, $starting_lognumber, $ending_lognumber);
@@ -3788,23 +3812,43 @@ sub update_package_repository_info_interactive {
 
     my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
-    # Only do pkg stuff on later passes
-    return 1 if( $main::PASS_NUMBER == 1 );
+    my $window = 24;    # update window in number of hours
 
-    if( $::o{summary} ) {
-        $::o{no_pkg_repo_update} = 'true';
-    }
+    # Only do pkg stuff on later passes
+    if( $main::PASS_NUMBER == 1 ) { return 1; }
+
+    if( $::o{summary} ) { $::o{no_pkg_repo_update} = 'true'; }
 
     my $return_code;
     if( $::o{no_pkg_repo_update} ) {
 
         ssm_print "INFO:    Package repo update -> skipping\n";
-        $return_code = 1;
+        return 1;
 
     } else {
-        ssm_print "INFO:    Package repo update -> updating\n";
-        $return_code = update_pkg_availability_data();
+
+        if( -e $PKG_REPO_UPDATE_TIMESTAMP_FILE ) {
+
+            my $current_time = time();
+            my $timestamp = get_file_timestamp( $PKG_REPO_UPDATE_TIMESTAMP_FILE );
+
+            my $age_of_timestamp = $current_time - $timestamp;
+
+            my $window_in_seconds = $window * 60 * 60;     # hours * minutes * seconds
+
+            if( $age_of_timestamp < $window_in_seconds ) {
+                ssm_print "INFO:    Package repo update -> skipping (last update within ${window} hours)\n";
+                return 1;
+            }
+        }
     }
+
+    ssm_print "INFO:    Package repo update -> updating\n";
+
+    $return_code = update_pkg_availability_data();
+
+    mkpath("$STATE_DIR", 0, 0775) unless( -e $STATE_DIR );
+    touch $PKG_REPO_UPDATE_TIMESTAMP_FILE;
 
     if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n"; sleep 2; }
 
