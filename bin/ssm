@@ -65,14 +65,13 @@ GetOptions(
     "sync|sync-state"                   => \$o{sync_state},
     "summary"                           => \$o{summary},
     "yes"                               => \$o{yes},
-    "no|n"                              => \$o{no},
+    "n|no"                              => \$o{no},
     "debug"                             => \$o{debug},
     "op|only-packages"                  => \$o{only_packages},
     "of|only-files"                     => \$o{only_files},
     "otf|only-this-file=s@"             => \$o{only_this_file},
     "af|add-file=s@"                    => \$o{add_file},
     "analyze-config"                    => \$o{analyze_config},
-    "no-pkg-repo-update"                => \$o{no_pkg_repo_update},
 ) or usage() and exit(1);
 
 my $error_level = 0;
@@ -166,16 +165,16 @@ sub main {
     }
 
 
-    ssm_print "-------------------------------\n";
-    ssm_print "Total outstanding changes: $outstanding_change_count\n";
-
-    if($error_level > 0) {
-        ssm_print qq(\n);
-        ssm_print qq(         Please check the output above, and address anything that is\n);
-        ssm_print qq(         "Not OK", then give it another whirl.\n);
-    }
-
-    ssm_print qq(\n);
+#    ssm_print "-------------------------------\n";
+#    ssm_print "Total outstanding changes: $outstanding_change_count\n";
+#
+#    if($error_level > 0) {
+#        ssm_print qq(\n);
+#        ssm_print qq(         Please check the output above, and address anything that is\n);
+#        ssm_print qq(         "Not OK", then give it another whirl.\n);
+#    }
+#
+#    ssm_print qq(\n);
 
     email_log_file();
 
@@ -406,13 +405,6 @@ OPTIONS
         Output details about where config elements are defined, and what
         their priorities are.  Implies the options --sync and --no.
     
-    --no-pkg-repo-update
-
-        Don't fetch updated package availability data from your system's
-        subscribed package repositories.  This options can be useful if
-        your system cannot currently access it's package repositories or
-        if you want to preserve the current package version levels.
-        
     
 SEE ALSO
 

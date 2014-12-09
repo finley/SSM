@@ -443,6 +443,8 @@ sub read_config_file {
                 if( m/^log_file_perms\s+(.*)(\s|#|$)/ )             { $main::o{log_file_perms} = $1; }
                 if( m/^remove_running_kernel\s+(.*)(\s|#|$)/ )      { $main::o{remove_running_kernel} = $1; }
                 if( m/^upgrade_ssm_before_sync\s+(.*)(\s|#|$)/ )    { $main::o{upgrade_ssm_before_sync} = $1; }
+                if( m/^pkg_repo_update\s+(.*)(\s|#|$)/ )            { $main::o{pkg_repo_update} = $1; }
+                if( m/^pkg_repo_update_window\s+(.*)(\s|#|$)/ )     { $main::o{pkg_repo_update_window} = $1; }
 
                 ###############################################################################
                 #
@@ -466,6 +468,15 @@ sub read_config_file {
                 $main::o{upload_url} = $main::o{base_url};
             }
 
+            # default to 'auto'
+            if(! $::o{pkg_repo_update}) {
+                $::o{pkg_repo_update} = 'auto';
+            }
+
+            # default to '24' hours
+            if(! $::o{pkg_repo_update_window}) {
+                $::o{pkg_repo_update_window} = 24;
+            }
 
             #
             # Make sure we have a package manager defined
@@ -1129,20 +1140,20 @@ sub sync_state {
     my $ou_path = "/tmp/ssm_db.repo.$$";
     remove_file("$ou_path", 'silent');
 
-    ssm_print "\n";
-    ssm_print "Changes made:              $CHANGES_MADE\n";
-    ssm_print "Outstanding changes:\n";
-    ssm_print "-------------------------------\n";
+#    ssm_print "\n";
+#    ssm_print "Changes made:              $CHANGES_MADE\n";
+#    ssm_print "Outstanding changes:\n";
+#    ssm_print "-------------------------------\n";
 #    ssm_print "- Packages to install:     $OUTSTANDING_PACKAGES_TO_INSTALL\n";
 #    ssm_print "- Packages to upgrade:     $OUTSTANDING_PACKAGES_TO_UPGRADE\n";
 #    ssm_print "- Packages to remove:      $OUTSTANDING_PACKAGES_TO_REMOVE\n";
-    ssm_print "Ask Marc for his opinion here...\n";
-    ssm_print "  how about simply saying:\n";
-    ssm_print "    Outstanding file changes:  Yes (or no)\n";
-    ssm_print "    Outstanding package changes:  Yes (or no)\n";
-    ssm_print "  or simply saying _nothing_...  We say it for each item as we go anyway.\n";
+#    ssm_print "Ask Marc for his opinion here...\n";
+#    ssm_print "  how about simply saying:\n";
+#    ssm_print "    Outstanding file changes:  Yes (or no)\n";
+#    ssm_print "    Outstanding package changes:  Yes (or no)\n";
+#    ssm_print "  or simply saying _nothing_...  We say it for each item as we go anyway.\n";
 #    ssm_print "- File related:            $ERROR_LEVEL\n";
-    ssm_print "\n";
+#    ssm_print "\n";
 
     $ERROR_LEVEL += $OUTSTANDING_PACKAGES_TO_INSTALL;
     $ERROR_LEVEL += $OUTSTANDING_PACKAGES_TO_REMOVE;
@@ -3812,20 +3823,19 @@ sub update_package_repository_info_interactive {
 
     my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
-    my $window = 24;    # update window in number of hours
-
     # Only do pkg stuff on later passes
     if( $main::PASS_NUMBER == 1 ) { return 1; }
 
-    if( $::o{summary} ) { $::o{no_pkg_repo_update} = 'true'; }
+    if( $::o{summary} ) { $::o{pkg_repo_update} = 'no'; }
 
     my $return_code;
-    if( $::o{no_pkg_repo_update} ) {
+    if( $::o{pkg_repo_update} eq 'no' ) {
 
         ssm_print "INFO:    Package repo update -> skipping\n";
         return 1;
 
-    } else {
+    }
+    elsif( $::o{pkg_repo_update} eq 'auto' ) {
 
         if( -e $PKG_REPO_UPDATE_TIMESTAMP_FILE ) {
 
@@ -3834,10 +3844,10 @@ sub update_package_repository_info_interactive {
 
             my $age_of_timestamp = $current_time - $timestamp;
 
-            my $window_in_seconds = $window * 60 * 60;     # hours * minutes * seconds
+            my $window_in_seconds = $::o{pkg_repo_update_window} * 60 * 60;     # hours * minutes * seconds
 
             if( $age_of_timestamp < $window_in_seconds ) {
-                ssm_print "INFO:    Package repo update -> skipping (last update within ${window} hours)\n";
+                ssm_print "INFO:    Package repo update -> skipping (last update within $::o{pkg_repo_update_window} hours)\n";
                 return 1;
             }
         }
