@@ -784,8 +784,26 @@ sub read_config_file {
                     }
 
                 } elsif($key eq 'generator') { 
-                    $generator = $value;
 
+                    # Match HERE documents, but ignore unquoted leading or trailing spaces. -BEF-
+                    if( $value =~ m/^<<\s*(.*)\s*$/ ) {
+
+                        #
+                        # Ok, cool!  We got ourselves a multi-line generator on our hands...
+                        #
+                        my $here_target = $1;
+
+                        # read in the rest of the document.
+                        $generator = "";
+                        $_ = shift @input;
+                        until( m/^$here_target$/ ) {
+                            $generator .= $_;
+                            $_ = shift @input;
+                        }
+
+                    } else {
+                       $generator = $value;
+                    }
                 }
 
                 $_ = shift @input;
@@ -2128,13 +2146,22 @@ sub generated_file_interactive {
         return report_improper_file_definition($file);
     }
 
+    #
+    # Take the generator and write it into an executable file
+    my $generator_script = choose_tmp_file();
+    open(FILE,">$generator_script") or die("Couldn't open $generator_script for writing.");
+    print FILE $GENERATOR{$file};
+    close(FILE);
+    chmod oct(700), $generator_script;
+
     # Generate file and get it's md5sum -- now considered to be the 
     # appropriate md5sum for $file.
     $TMPFILE{$file} = choose_tmp_file();
     open(TMP, "+>$TMPFILE{$file}") or die "Couldn't open tmp file $!";
 
         if( $main::o{debug} ) { print ">>>  The Generator(tm): $GENERATOR{$file}\n"; }
-        open(INPUT,"$GENERATOR{$file}|") or die("Couldn't run $GENERATOR{$file} $!");
+
+        open(INPUT,"$generator_script|") or die("Couldn't run $generator_script $!");
         print TMP (<INPUT>);
         close(INPUT);
 
@@ -2565,12 +2592,18 @@ sub diff_file {
     }
 
     ssm_print "\n";
-
+    ssm_print "           <<<------------------------------------------------------>>>\n";
     ssm_print "           Here's a diff between the file on your system (left side) and the\n";
     ssm_print "           one in the repository (right side).\n";
+    if( ! -e $file ) {
+        print "\n";
+        print "           $file does not yet exist, so diffing against /dev/null.\n";
+        $file = '/dev/null';
+    }
     ssm_print "           <<<------------------------------------------------------>>>\n\n";
 
     my $cmd = "$diff -y $file $tmp_file";
+
     run_cmd($cmd, undef, 1);
 
     ssm_print "\n";
@@ -2931,8 +2964,12 @@ sub report_improper_service_definition {
 
     my $name = shift;
     
+    my ($package, $filename, $line) = caller;
     ssm_print "\n";
-    ssm_print "Improper [service] definition.  Here's what I know about it:\n";
+    ssm_print "Improper [service] definition (called from line $line of $filename)\n";
+    ssm_print "\n";
+    ssm_print "Here's what I know about it:\n";
+    ssm_print "\n";
     ssm_print "  name   = $name\n";
 
     if(defined($DETAILS{$name})) { ssm_print "  mode   = $DETAILS{$name}\n";
@@ -2957,9 +2994,13 @@ sub report_improper_service_definition {
 sub report_improper_file_definition {
 
     my $file = shift;
-    
+
+    my ($package, $filename, $line) = caller;
     ssm_print "\n";
-    ssm_print "Improper [file] definition.  Here's what I know about it:\n";
+    ssm_print "Improper [file] definition (called from line $line of $filename)\n";
+    ssm_print "\n";
+    ssm_print "Here's what I know about it:\n";
+
     if(defined($file)) { ssm_print "  name   = $file\n";
                 } else { ssm_print "  name   =\n"; }
 
@@ -3847,7 +3888,7 @@ sub update_package_repository_info_interactive {
             my $window_in_seconds = $::o{pkg_repo_update_window} * 60 * 60;     # hours * minutes * seconds
 
             if( $age_of_timestamp < $window_in_seconds ) {
-                ssm_print "INFO:    Package repo update -> skipping (last update within $::o{pkg_repo_update_window} hours)\n";
+                ssm_print "INFO:    Package repo update -> skipping (updated within $::o{pkg_repo_update_window} hours)\n";
                 return 1;
             }
         }
