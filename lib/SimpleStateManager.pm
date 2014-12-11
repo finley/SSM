@@ -321,6 +321,22 @@ sub read_config_file {
 
     my @analyze;
 
+    if( $::o{config_file} !~ m|:/| ) {
+        #
+        # Hmm.  No URL prefix indicated.  Guessing that it is a file:// style URL
+        #
+        if( $::o{config_file} !~ m|^/| ) {
+            #
+            # Must be a _relative_ file name.  We can handle that too.
+            #
+            my $cwd     = getcwd();
+            $::o{config_file} = "file://$cwd/$::o{config_file}";
+
+        } else {
+            $::o{config_file} = "file://$::o{config_file}";
+        }
+    }
+
     if( ! defined($main::o{config_file}) ) {
         
         my $file = '/etc/ssm/defaults';
@@ -1384,10 +1400,10 @@ sub run_cmd {
 #
 sub do_you_want_me_to {
 
-    if( $main::o{debug} ) { ssm_print "do_you_want_me_to()\n"; }
-
     my $prompts = shift;
     my $msg = shift;
+
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     if(! defined $prompts) {
         $prompts = 'yn';
@@ -1483,6 +1499,8 @@ sub do_you_want_me_to {
         return 'help';
 
     }
+
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n"; sleep 2; }
 }
 
 
@@ -1511,7 +1529,7 @@ sub ignore_file_interactive {
 }
 
 sub softlink_interactive {
-
+#XXX make it look more like hardlink -- see $needs_fixing
     # 
     # Accept either relative or absolute target, and implement as user
     # specifies.
@@ -1519,7 +1537,7 @@ sub softlink_interactive {
 
     my $file = shift;
 
-    ssm_print ">> softlink_interactive($file)\n" if( $main::o{debug} );
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     #
     # validate input
@@ -1597,6 +1615,33 @@ sub softlink_interactive {
     }
 
     return 1;
+}
+
+
+sub install_hardlink {
+
+    #
+    #   Contemplation:  Should we accept and use owner, group, and mode info
+    #   for hardlinks?
+    #
+    #   If perms and ownership are changed on a hardlink, they are changed for
+    #   the file itself, and this is reflected by all names (links) for the
+    #   file.
+    #
+
+    my $file     = shift;
+
+    if($main::o{debug}) { ssm_print "install_softlink($file)\n"; }
+
+    ssm_print "         FIXING:  Hard link $file -> $TARGET{$file}\n";
+
+    execute_prescript($file);
+    remove_file($file);
+    link($TARGET{$file}, $file) or die "Couldn't link($TARGET{$file}, $file) $!";
+    execute_postscript($file);
+    
+    return 1;
+
 }
 
 
@@ -2130,9 +2175,9 @@ sub directory_interactive {
 
 sub generated_file_interactive {
 
-    if( $main::o{debug} ) { print ">>  generated_file_interactive()\n"; }
-
     my $file   = shift;
+
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     #
     # validate input
@@ -2150,7 +2195,7 @@ sub generated_file_interactive {
     # Take the generator and write it into an executable file
     my $generator_script = choose_tmp_file();
     open(FILE,">$generator_script") or die("Couldn't open $generator_script for writing.");
-    print FILE $GENERATOR{$file};
+        print FILE $GENERATOR{$file};
     close(FILE);
     chmod oct(700), $generator_script;
 
@@ -2162,8 +2207,9 @@ sub generated_file_interactive {
         if( $main::o{debug} ) { print ">>>  The Generator(tm): $GENERATOR{$file}\n"; }
 
         open(INPUT,"$generator_script|") or die("Couldn't run $generator_script $!");
-        print TMP (<INPUT>);
+            print TMP (<INPUT>);
         close(INPUT);
+        unlink $generator_script;
 
         seek(TMP, 0, 0);
         $MD5SUM{$file} = Digest::MD5->new->addfile(*TMP)->hexdigest;
@@ -2238,6 +2284,8 @@ sub generated_file_interactive {
     }
 
     unlink $TMPFILE{$file};
+
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n"; sleep 2; }
 
     return 1;
 }
@@ -2491,6 +2539,7 @@ sub take_file_action {
             my %actions = (
                 'install_file'                  => \&install_file,
                 'install_softlink'              => \&install_softlink,
+                'install_hardlink'              => \&install_hardlink,
                 'remove_file'                   => \&remove_file,
                 'create_directory'              => \&create_directory,
                 'add_file_to_repo'              => \&add_file_to_repo,
@@ -2799,7 +2848,8 @@ sub get_file {
 
     } else {
 
-        ssm_print_always "I don't know how to acquire a file using the specified protocol:\n";
+        ssm_print_always "\n";
+        ssm_print_always "  I don't know how to acquire a file using the specified protocol:\n";
         ssm_print_always "  $file\n";
         ssm_print_always "\n";
         ssm_print_always "  You may want to verify that you have a valid 'base_url' specified\n";
@@ -2820,7 +2870,6 @@ sub choose_tmp_file {
 
     my $count = 0;
     my $file = "/tmp/system-state-manager_tmp_file";
-    #XXX add these to an array that gets unlinked at the end
 
     while( -e "$file.$count" ) {
         $count++;
@@ -2839,6 +2888,8 @@ sub choose_tmp_file {
 sub hardlink_interactive {
 
     my $file   = shift;
+
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     #
     # validate input
@@ -2890,65 +2941,33 @@ sub hardlink_interactive {
 
     #
     # Should we actually fix it?
-    my $fix_it = undef;
     if( defined($needs_fixing) ) {
 
         $main::outstanding{$file} = 'b0rken';
+        if( $main::o{debug} ) { print ">>>  Assigning $file as 'b0rken'\n"; }
 
         ssm_print "Not OK:  Hard link $file -> $TARGET{$file}\n";
+
         unless( $main::o{summary} ) {
+
+            my $action = 'install_hardlink';
+
             ssm_print "         Need to:\n";
             ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
             ssm_print "         - remove pre-existing file $file\n" if( -e $file );
             ssm_print "         - create hard link\n";
             ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
+
+            take_file_action( $file, $action, 'yn#' );
         }
 
-        if($main::o{yes}) {
-            $fix_it = 1;
-        } elsif($main::o{no}) {
-            $fix_it = undef;
-            $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-        } else {
-
-            if( do_you_want_me_to() eq 'yes' ) { 
-                $fix_it = 1;
-            } else {
-                ssm_print "         Ok, skipping this step.\n\n";
-                $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-            }
-        }
     } else {
+
         $main::outstanding{$file} = 'fixed';
         ssm_print "OK:      Hard link $file -> $TARGET{$file}\n";
     }
 
-    #
-    # Take action
-    if( defined($fix_it) and ! $main::o{no} ) {
-
-        ssm_print "         FIXING:  Hard link $file -> $TARGET{$file}\n";
-
-        execute_prescript($file);
-
-        remove_file($file);
-        link($TARGET{$file}, $file) or die "Couldn't link($TARGET{$file}, $file) $!";
-
-        #
-        #   Should we accept and use owner, group, and mode info for hardlinks?
-        #
-        #   If perms and ownership are changed on a hardlink, they are 
-        #   changed for the file itself, and this is reflected by all
-        #   names (links) for the file.
-        #
-
-        execute_postscript($file);
-
-        ssm_print "\n";
-        
-        $main::outstanding{$file} = 'fixed';
-        $CHANGES_MADE++;
-    }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n"; sleep 2; }
 
     return 1;
 }
@@ -3811,6 +3830,7 @@ sub upgrade_packages_interactive {
 
     return 1;
 }
+
 
 sub install_packages_interactive {
 
