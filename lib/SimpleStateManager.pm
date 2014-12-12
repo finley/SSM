@@ -81,8 +81,8 @@ use Cwd 'abs_path';
 #   compare_package_options
 #   contents_unwanted_interactive
 #   copy_file_to_upstream_repo
-#   create_directory
-#   create_special_file
+#   install_directory
+#   install_special_file
 #   diff_file
 #   diff_ownership_and_permissions
 #   directory_interactive
@@ -506,7 +506,7 @@ sub read_config_file {
             #
             unless( ($main::o{pkg_manager} eq 'dpkg'    )
                  or ($main::o{pkg_manager} eq 'aptitude')
-                 or ($main::o{pkg_manager} eq 'apt-get')
+                 or ($main::o{pkg_manager} eq 'apt-get' )
                  or ($main::o{pkg_manager} eq 'yum'     )
                  or ($main::o{pkg_manager} eq 'none'    )
             ) {
@@ -1635,10 +1635,11 @@ sub install_hardlink {
 
     ssm_print "         FIXING:  Hard link $file -> $TARGET{$file}\n";
 
-    execute_prescript($file);
+    my $calling_function = (caller(1))[3];
+    execute_prescript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
     remove_file($file);
     link($TARGET{$file}, $file) or die "Couldn't link($TARGET{$file}, $file) $!";
-    execute_postscript($file);
+    execute_postscript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
     
     return 1;
 
@@ -1653,24 +1654,26 @@ sub install_softlink {
 
     ssm_print "         FIXING:  Soft link $file -> $TARGET{$file}\n";
 
-    execute_prescript($file);
+    my $calling_function = (caller(1))[3];
+    execute_prescript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
     remove_file($file);
     symlink($TARGET{$file}, $file) or die "Couldn't symlink($TARGET{$file}, $file) $!";
-    execute_postscript($file);
+    execute_postscript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
     
     return 1;
 }
 
 
-sub create_special_file {
+sub install_special_file {
 
     my $file = shift;
 
-    if($main::o{debug}) { ssm_print "create_special_file($file)\n"; }
+    if($main::o{debug}) { ssm_print "install_special_file($file)\n"; }
 
     ssm_print qq(         FIXING:  Creating ) . ucfirst($TYPE{$file}) . qq( file $file\n);
 
-    execute_prescript($file);
+    my $calling_function = (caller(1))[3];
+    execute_prescript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
     remove_file($file);
 
     if($TYPE{$file} eq 'fifo') {
@@ -1692,7 +1695,7 @@ sub create_special_file {
     }
 
     set_ownership_and_permissions($file);
-    execute_postscript($file);
+    execute_postscript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
 
     return 1;
 }
@@ -1757,7 +1760,7 @@ sub special_file_interactive {
 
         ssm_print "Not OK:  " . ucfirst($TYPE{$file}) . " file $file\n";
         unless( $main::o{summary} ) {
-            my $action = 'create_special_file';
+            my $action = 'install_special_file';
             ssm_print "         Need to:\n";
             ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
             ssm_print "         - remove pre-existing file $file\n" if( -e $file );
@@ -2151,7 +2154,7 @@ sub directory_interactive {
 
             } else {
 
-                $action = 'create_directory';
+                $action = 'install_directory';
                 ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
                 ssm_print "         - create directory\n";
                 ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
@@ -2537,14 +2540,18 @@ sub take_file_action {
         } elsif( $answer eq 'yes' ) {
 
             my %actions = (
-                'install_file'                  => \&install_file,
-                'install_softlink'              => \&install_softlink,
-                'install_hardlink'              => \&install_hardlink,
-                'remove_file'                   => \&remove_file,
-                'create_directory'              => \&create_directory,
+
                 'add_file_to_repo'              => \&add_file_to_repo,
+
+                'install_directory'             => \&install_directory,
+                'install_file'                  => \&install_file,
+                'install_hardlink'              => \&install_hardlink,
+                'install_softlink'              => \&install_softlink,
+                'install_special_file'          => \&install_special_file,
+
+                'remove_file'                   => \&remove_file,
+
                 'set_ownership_and_permissions' => \&set_ownership_and_permissions,
-                'create_special_file'           => \&create_special_file,
             );
 
             # Keep this function short and sweet by simply passing the name of the
@@ -2724,15 +2731,16 @@ sub execute_postscript {
 }
 
 
-sub create_directory {
+sub install_directory {
 
     my $file = shift;
 
     ssm_print "         FIXING:  Creating: $file\n";
 
-    if($main::o{debug}) { ssm_print "create_directory($file)\n"; }
+    if($main::o{debug}) { ssm_print "install_directory($file)\n"; }
 
-    execute_prescript($file);
+    my $calling_function = (caller(1))[3];
+    execute_prescript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
 
     if(-e $file) { remove_file($file, 'silent'); }
 
@@ -2742,7 +2750,7 @@ sub create_directory {
 
     set_ownership_and_permissions($file);
 
-    execute_postscript($file);
+    execute_postscript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
 
     return 1;
 }
@@ -2782,7 +2790,8 @@ sub install_file {
         return 2;
     }
 
-    execute_prescript($file);
+    my $calling_function = (caller(1))[3];
+    execute_prescript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
     backup($file);
     remove_file($file, 'silent');
     copy($tmp_file, $file) or die "Failed to copy($tmp_file, $file): $!";
@@ -2790,7 +2799,7 @@ sub install_file {
 
     set_ownership_and_permissions($file);
 
-    execute_postscript($file);
+    execute_postscript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
 
     return 1;
 }
@@ -3683,8 +3692,6 @@ sub remove_file {
 
     if($main::o{debug}) { ssm_print "remove_file($file)\n"; }
 
-    my $calling_function = (caller(1))[3];
-
     #
     # remove_file is called by a number of subroutines as a supporting file
     # action, but we don't want to go off running pre and post scripts every
@@ -3695,6 +3702,7 @@ sub remove_file {
     # SimpleStateManager::take_file_action, which indicates it's the primary
     # file action, in which case we should run the pre and post scripts. 
     #
+    my $calling_function = (caller(1))[3];
     execute_prescript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
 
     my $rm = _which("rm");
