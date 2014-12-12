@@ -2693,11 +2693,15 @@ sub execute_prescript {
 
     my $file = shift;
 
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
     if($PRESCRIPT{$file}) {
         my $cmd = $PRESCRIPT{$file};
         ssm_print qq(         RUNNING: $cmd\n);
         run_cmd($cmd);
     }
+
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n"; sleep 2; }
 
     return 1;
 }
@@ -2706,11 +2710,15 @@ sub execute_postscript {
 
     my $file = shift;
 
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
     if($POSTSCRIPT{$file}) {
         my $cmd = $POSTSCRIPT{$file};
         ssm_print qq(         RUNNING: $cmd\n);
         run_cmd($cmd);
     }
+
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n"; sleep 2; }
 
     return 1;
 }
@@ -2776,7 +2784,7 @@ sub install_file {
 
     execute_prescript($file);
     backup($file);
-    remove_file($file, 'silent', 'no_scripts');
+    remove_file($file, 'silent');
     copy($tmp_file, $file) or die "Failed to copy($tmp_file, $file): $!";
     unlink $tmp_file;
 
@@ -3662,29 +3670,38 @@ sub _which {
 }
 
 #
-# Usage: remove_file($file,1,1);
+# Usage: remove_file($file);
 #        remove_file($file,'silent');
-#        remove_file($file,undef,'no_scripts');
-#        remove_file($file,'silent','no_scripts');
 #
-
 sub remove_file {
 
     my $file        = shift;
     my $silent      = shift;
-    my $no_scripts  = shift;
+    my $run_scripts  = shift;
 
     ssm_print "         FIXING:  Removing: $file\n" unless( defined $silent );
 
     if($main::o{debug}) { ssm_print "remove_file($file)\n"; }
 
-    execute_prescript($file) unless(defined $no_scripts);
+    my $calling_function = (caller(1))[3];
+
+    #
+    # remove_file is called by a number of subroutines as a supporting file
+    # action, but we don't want to go off running pre and post scripts every
+    # time it's called.  We only want to do it when it's called as the primary
+    # file action.
+    #
+    # So, we test to see if it was called directly by
+    # SimpleStateManager::take_file_action, which indicates it's the primary
+    # file action, in which case we should run the pre and post scripts. 
+    #
+    execute_prescript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
 
     my $rm = _which("rm");
     my $cmd = "$rm -fr $file";
     !system($cmd) or die("FAILED: $cmd\n $!");
 
-    execute_postscript($file) unless(defined $no_scripts);
+    execute_postscript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
 
     return 1;
 }
