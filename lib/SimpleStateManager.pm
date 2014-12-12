@@ -321,22 +321,6 @@ sub read_config_file {
 
     my @analyze;
 
-    if( $::o{config_file} !~ m|:/| ) {
-        #
-        # Hmm.  No URL prefix indicated.  Guessing that it is a file:// style URL
-        #
-        if( $::o{config_file} !~ m|^/| ) {
-            #
-            # Must be a _relative_ file name.  We can handle that too.
-            #
-            my $cwd     = getcwd();
-            $::o{config_file} = "file://$cwd/$::o{config_file}";
-
-        } else {
-            $::o{config_file} = "file://$::o{config_file}";
-        }
-    }
-
     if( ! defined($main::o{config_file}) ) {
         
         my $file = '/etc/ssm/defaults';
@@ -391,6 +375,22 @@ sub read_config_file {
     if( $main::o{config_file} =~ m,/$, ) {
         # URI ends with a slash.  Is a dir.  Append hostname
         $main::o{config_file} .= get_hostname();
+    }
+
+    if( $::o{config_file} !~ m|:/| ) {
+        #
+        # Hmm.  No URL prefix indicated.  Guessing that it is a file:// style URL
+        #
+        if( $::o{config_file} !~ m|^/| ) {
+            #
+            # Must be a _relative_ file name.  We can handle that too.
+            #
+            my $cwd     = getcwd();
+            $::o{config_file} = "file://$cwd/$::o{config_file}";
+
+        } else {
+            $::o{config_file} = "file://$::o{config_file}";
+        }
     }
 
     ssm_print "\nConfiguration File: $main::o{config_file}\n" unless($main::o{only_this_file});
