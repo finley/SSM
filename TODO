@@ -1,4 +1,19 @@
--- update documentation and sample config files
+-- Allow --add-file to specific bundle
+
+    ssm --add-file filename --bundle bundle.otherfiles
+
+    # Francis Dang request
+
+
+-- verify that all documented pkg repo options work as described
+
+-- change treatment of [services] entries
+    - stop converting them to individual files
+    - use system specific commands to evaluate and manipulate
+        - my $current_settings = get_service_settings($servicename)
+        - apply_service_settings($servicename, $target_settings)
+
+-- make sure options make sense
 
 -- build regression testing harness
 
@@ -21,22 +36,6 @@
     'make test' executes the test script
 
 
--- package management global option
-
-    pkg_specification_style = (minimalist|explicit)
-
-    minimalist -- Only specify the packages you know you need.  Missing
-    packages and their dependencies will automatically be installed.
-    Additional packages are considered OK and are left alone.
-    
-    explicit -- The exact list of packages specified will be used.
-    Missing packages will be installed, and extra packages will be
-    uninstalled.
-
-    Default: minimalist
-
-    
-
 -- add global setting:
 
     max_kernel_pkgs = N (default to 3)
@@ -49,12 +48,6 @@
         four.  After installing the new kernel, the oldest kernel will
         be removed.
 
-
--- change treatment of [services] entries
-    - stop converting them to individual files
-    - use system specific commands to evaluate and manipulate
-        - my $current_settings = get_service_settings($servicename)
-        - apply_service_settings($servicename, $target_settings)
 
 -- add an "a" option for "directories".
 
@@ -71,36 +64,9 @@
 -- Consider adding an option to _not_ update repo metadata when doing
    package operations.
 
--- Allow --add-file to specific bundle
 
-    ssm --add-file filename --bundle bundle.otherfiles
-
-    # Francis Dang request
-
---
-- fix double running of postscripts
-
-    Ie: /etc/modprobe.d/gssIB.conf
-
---
 -- directory+contents-unwanted
     Allow "a" option to add unwanted files to config
-
---
-- contemplate multi-line generators
-
-    [file]
-    name       = /tmp/my-file.generated
-    type       = generated
-    generator  = <<EOF
-    this
-    that
-    the other all 
-    EOF
-    owner      = root
-    group      = root
-    mode       = 0644
-    depends    = /my/external-generator
 
 --
 
@@ -120,16 +86,10 @@ Add a --not-ok option like "GSS"
 
     "Everything is OK -- no need to panic."
 
---
-make sure postscripts run at appropriate times
+    --
 
-    install /etc/rc.d/init.d/lsf
-    (no postscript was run)
-
---
-
-Convert all functions using 'do_you_want_me_to()' to use 'take_action()'
-instead.
+    Sounds good, but lower priority.  Current --summary output is pretty
+    easy to parse with the eyes or with a parser.
 
 --
 
