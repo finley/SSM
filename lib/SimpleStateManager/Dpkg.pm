@@ -289,7 +289,7 @@ sub get_pkgs_we_need_to_install {
 #
 #   my %pending_pkg_changes = get_pending_pkg_changes($action);
 #   
-#       Where $action is one of 'install', 'remove', or 'upgrade'
+#       Where $action is one of 'install', 'remove', or 'upgrade'.
 #
 sub get_pending_pkg_changes {
 
@@ -305,7 +305,7 @@ sub get_pending_pkg_changes {
     my %pending_pkg_changes;
 
     if($action eq 'upgrade') {
-        %pending_pkg_changes = do_apt_get_dry_run($action);
+        %pending_pkg_changes = do_apt_get_dry_run('dist-upgrade');
 
     } else {
         foreach my $pkg (keys %::PKGS_FROM_STATE_DEFINITION) {
@@ -364,7 +364,7 @@ sub get_pending_pkg_changes {
 #   Usage:  my %hash = do_apt_get_dry_run("upgrade");
 #
 #       Returns a hash of $pkg = $pending_state;
-#       Where $pending_state may be one of 'install', 'upgrade', or 'remove'.
+#       Where $pending_state may be one of 'install', 'upgrade', 'dist-upgrade', or 'remove'.
 #
 sub do_apt_get_dry_run {
 
@@ -376,7 +376,7 @@ sub do_apt_get_dry_run {
     my %pending_pkg_changes;
 
     if(! $space_delimited_pkg_list) {
-        if($action eq 'upgrade') {
+        if($action eq 'upgrade' or $action eq 'dist-upgrade') {
             #
             # make sure we have some value in this variable to feed the
             # function below...
