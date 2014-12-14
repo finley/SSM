@@ -76,7 +76,7 @@ my $pkg_changes_made;
 
 sub upgrade_ssm {
 
-    ssm_print "upgrade_ssm()\n" if( $main::o{debug} );
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     my $pkg = 'ssm';
 
@@ -99,7 +99,7 @@ sub upgrade_ssm {
 
 sub upgrade_pkgs {
 
-    ssm_print "upgrade_pkgs()\n" if( $main::o{debug} );
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     $pkg_changes_made = 'yes';
     return install_pkgs(@_);    
@@ -108,7 +108,7 @@ sub upgrade_pkgs {
 
 sub install_pkgs {
 
-    ssm_print "install_pkgs()\n" if( $main::o{debug} );
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     my @pkgs = @_;
 
@@ -269,7 +269,7 @@ sub get_pkgs_we_need_to_upgrade {
 
 sub get_pkgs_we_need_to_install {
 
-    ssm_print "get_pkgs_we_need_to_install()\n" if( $main::o{debug} );
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     my %pkgs_currently_installed = get_pkgs_currently_installed();
 
@@ -440,7 +440,7 @@ sub do_apt_get_dry_run {
 
 sub get_pkgs_that_pkg_manager_says_to_upgrade {
 
-    ssm_print "get_pkgs_that_pkg_manager_says_to_upgrade()\n" if( $main::o{debug} );
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     my %pkgs_we_need_to_upgrade = get_pkgs_we_need_to_upgrade();
 
@@ -456,7 +456,7 @@ sub get_pkgs_that_pkg_manager_says_to_upgrade {
 #
 sub get_pkg_dependencies_old {
 
-    ssm_print "get_pkg_dependencies_old()\n" if( $main::o{debug} );
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     my @packages = @_;
 
@@ -499,7 +499,7 @@ sub get_pkg_dependencies_old {
 
 sub get_pkg_dependencies {
 
-    ssm_print "get_pkg_dependencies()\n" if( $main::o{debug} );
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     my @packages = @_;
 
@@ -541,7 +541,7 @@ sub get_pkg_dependencies {
 
 sub get_pkg_reverse_dependencies {
 
-    ssm_print "get_pkg_reverse_dependencies()\n" if( $main::o{debug} );
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     my @packages = @_;
 
@@ -605,14 +605,14 @@ sub get_pkg_reverse_dependencies {
 
 sub get_pkgs_from_state_definition {
 
-    ssm_print "get_pkgs_provided_by_pkgs_from_state_definition()\n" if( $main::o{debug} );
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     return get_pkg_provides(keys %::PKGS_FROM_STATE_DEFINITION);
 }
 
 sub get_pkgs_provided_by_pkgs_from_state_definition {
 
-    ssm_print "get_pkgs_provided_by_pkgs_from_state_definition()\n" if( $main::o{debug} );
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     return get_pkg_provides(keys %::PKGS_FROM_STATE_DEFINITION);
 }
@@ -626,9 +626,9 @@ sub get_pkgs_provided_by_pkgs_from_state_definition {
 #
 sub get_pkg_provides {
 
-    ssm_print "get_pkg_provides()\n" if( $main::o{debug} );
-
     my @packages = @_;
+
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     my $cmd = 'apt-cache show';
     foreach my $pkg (@packages) {
@@ -658,7 +658,7 @@ sub get_pkg_provides {
 
 sub get_running_kernel_pkg_name {
 
-    ssm_print "get_running_kernel_pkg_name()\n" if( $main::o{debug} );
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     use POSIX;
     my $release = (uname())[2];
