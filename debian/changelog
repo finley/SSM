@@ -1,3 +1,58 @@
+simple-state-manager (0.5.1) stable; urgency=medium
+
+  * 6806fa1 - use 'dist-upgrade' instead of just 'upgrade' for upgrading
+    packages with apt-get.
+  * 5287258 - Use new method to print function name if debug
+  * 849936f .
+  * 5d0a71f - detect config file URLs that don't have a protocol
+    specified and   attempt to prepend them appropriately.
+  * fab4d35 - Ensure we avoid double-running of pre and post scripts in
+    the future   for all other functions that invoke them using the same
+    method as with   remove_file().
+  * 8b12d2c - Fix double-running of pre and post scripts.  Root cause
+    was that   remove_file() was being re-used in many other functions,
+    but also   works as a standalone function that _should_ run it's own
+    post   scripts.  We now make sure that it only invokes pre/post
+    scripts if it   is being called by the take_file_action()
+    subroutine, which means it's   the _primary_ function, and not just
+    a _supporting_ function.
+  * abe23b3 - Convert hard link routines to use the new style
+    w/take_file_action() - Rename demo files to all live in /tmp/ and be
+    prefixed with "demo_" - Improve comments and readability of the
+    safe_to_run_example_config_file.conf file
+  * 892cec1 - Support multi-line generators.  Closes request from Marc
+    Roskow.  Good   suggestion, Marc!
+  * 5db2f38 - Document package repo options in sample conf file - Remove
+    package repo options from command line (for now at least)
+  * 175a171 - Improve pkg operations performance:     - Only do pkg repo
+    updates if last update over 24hours ago     - 24 is variablized and
+    could be a config setting later if desired - rename get_timestamp() -
+    > get_current_time_as_timestamp() - add get_file_timestamp()
+    function
+  * 5e6f133 .
+  * 8d0d208 .
+  * 167e210 - package management now supports minimalist mode (now the
+    default)     - minimalist mode will use pkg manager auto-depends to
+    pull in       dependencies
+  * 8cfd963 prepping for next feature release (v5)
+  * 3d71188 minor perl command line arg change
+  * c273bce .
+  * 29897e5 - When adding a regular file to the repo, include a
+    datestamp after it's md5sum on the same line - When adding a _new_
+    version of a regular file in the repo, comment out the existing
+    md5sum in-place, providing an easy history for backing out of
+    changes. - Create get_hostname() function and consolidate hostname
+    calls.
+  * ad8c5e1 Consolidate time stamping code into one function ->
+    get_timestamp() for a consistent format of '2014-06-04 13:11:55'
+  * 1155d34 .
+  * e4a7242 - don't say 'mkdir dirname' when adding files to repos of
+    type file:///
+  * 937a3b1 - Update verbiage from 'definition file' to 'configuration
+    file'
+
+ -- Brian Elliott Finley <brian@thefinleys.com>  Sun, 14 Dec 2014 19:55:23 -0600
+
 simple-state-manager (0.4.64) stable; urgency=medium
 
   * 520bffd - gracefully handle when user omits --config, but specifies
