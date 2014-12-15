@@ -10,7 +10,7 @@ Provides: ssm
 Conflicts: ssm (<< 0.4.54)
 Replaces: ssm (<< 0.4.54)
 Architecture: all
-Depends: ${shlibs:Depends}, ${misc:Depends}, libunix-mknod-perl | unix-mknod, libwww-perl, wget, colordiff | diff, libmailtools-perl, bu
+Depends: ${shlibs:Depends}, ${misc:Depends}, libunix-mknod-perl | unix-mknod, libwww-perl, wget, colordiff | diff, libmailtools-perl, bu, libapt-pkg-perl
 Suggests: libmail-mboxparser-perl, fetchmail
 Description: Manage the state of specific files and packages on a system.
  Simple State Manager (ssm) allows you to define a desired state for
