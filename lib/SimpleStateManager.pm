@@ -1472,6 +1472,8 @@ sub do_you_want_me_to {
 
     $_ = <STDIN>;
 
+    $_ =~ s/['"]//g;
+
     if( $main::o{yes} ) { 
         return 'yes';
 
@@ -3933,7 +3935,7 @@ sub update_package_repository_info_interactive {
             my $window_in_seconds = $::o{pkg_repo_update_window} * 60 * 60;     # hours * minutes * seconds
 
             if( $age_of_timestamp < $window_in_seconds ) {
-                ssm_print "INFO:    Package repo update -> skipping (updated within $::o{pkg_repo_update_window} hours)\n";
+                ssm_print "INFO:    Package repo update -> skipping (updated in the last $::o{pkg_repo_update_window} hours)\n";
                 return 1;
             }
         }
