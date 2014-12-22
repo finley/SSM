@@ -14,7 +14,7 @@ BuildRoot:    %{_tmppath}/%{name}-%{version}-build
 #
 # Filter out requirements for Debian specific perl libraries on RPM
 # based distros. -BEF-
-Source1:      rpm/find-requires-filter.sh
+Source1:      %{buildroot}/rpm/find-requires-filter.sh
 %define       __find_requires %{Source1}
 
 
