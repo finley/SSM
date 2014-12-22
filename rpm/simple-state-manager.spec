@@ -11,6 +11,12 @@ URL:          http://download.systemimager.org/pub/ssm/
 Source:       http://download.systemimager.org/pub/ssm/%{name}-%{version}.tar.bz2
 BuildRoot:    %{_tmppath}/%{name}-%{version}-build
 # buildrequires:    rpm-build, tar, make, rsync
+#
+# Filter out requirements for Debian specific perl libraries on RPM
+# based distros. -BEF-
+Source1:      rpm/find-requires-filter.sh
+%define       __find_requires %{Source1}
+
 
 %description
 Simple State Manager (ssm) allows you to define a desired state for
