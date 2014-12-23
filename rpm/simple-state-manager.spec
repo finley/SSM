@@ -44,6 +44,7 @@ http://download.systemimager.org/pub/ssm/
 
 %prep
 %setup -n %{name}-%{version}
+ln -s rpm/find-requires-filter.sh
 
 
 %build
