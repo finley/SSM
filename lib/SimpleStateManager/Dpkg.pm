@@ -413,7 +413,7 @@ sub do_apt_get_dry_run {
             my $pkg = $1;
 
             my $pkg_ref = $pkg_cache->{$pkg};
-            if ($pkg_ref->{CurrentState} eq 'Installed') {
+            if ($pkg_ref->{CurrentState} and $pkg_ref->{CurrentState} eq 'Installed') {
 
                 # Ok, upgrading existing package
                 $pending_pkg_changes{$pkg} = 'upgrade';
