@@ -91,13 +91,13 @@ release:
 test_release:  tarball debs rpms
 	@echo 
 	@echo "I'm about to upload the following files to:"
-	@echo "  ~/src/www.systemimager.org/testing/ssm/"
+	@echo "  ~/src/www.systemimager.org/testing/simple-state-manager/"
 	@echo "-----------------------------------------------------------------------"
 	@/bin/ls -1 $(TOPDIR)/tmp/${package}[-_]$(VERSION)*.*
 	@echo
 	@echo "Hit <Enter> to continue..."
 	@read i
-	rsync -av --progress $(TOPDIR)/tmp/${package}[-_]$(VERSION)*.* ~/src/www.systemimager.org/testing/ssm/
+	rsync -av --progress $(TOPDIR)/tmp/${package}[-_]$(VERSION)*.* ~/src/www.systemimager.org/testing/simple-state-manager/
 	@echo
 	@echo "Now run:   cd ~/src/www.systemimager.org/ && make upload"
 	@echo
@@ -106,13 +106,13 @@ test_release:  tarball debs rpms
 stable_release:  tarball debs rpms
 	@echo 
 	@echo "I'm about to upload the following files to:"
-	@echo "  ~/src/www.systemimager.org/stable/ssm/"
+	@echo "  ~/src/www.systemimager.org/stable/simple-state-manager/"
 	@echo "-----------------------------------------------------------------------"
 	@/bin/ls -1 $(TOPDIR)/tmp/${package}[-_]$(VERSION)*.*
 	@echo
 	@echo "Hit <Enter> to continue..."
 	@read i
-	rsync -av --progress $(TOPDIR)/tmp/${package}[-_]$(VERSION)*.* ~/src/www.systemimager.org/stable/ssm/
+	rsync -av --progress $(TOPDIR)/tmp/${package}[-_]$(VERSION)*.* ~/src/www.systemimager.org/stable/simple-state-manager/
 	@echo
 	@echo "Now run:   cd ~/src/www.systemimager.org/ && make upload"
 	@echo
