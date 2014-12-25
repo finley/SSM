@@ -13,9 +13,17 @@ BuildRoot:    %{_tmppath}/%{name}-%{version}-build
 # buildrequires:    rpm-build, tar, make, rsync
 #
 # Filter out requirements for Debian specific perl libraries on RPM
-# based distros. -BEF-
-Source1:      rpm_find-requires_New--Now-with-filter.sh
-%define       __find_requires %{Source1}
+# based distros. In this case, we want to filter out the following:
+#
+#   perl(AptPkg::Cache)
+#   perl(AptPkg::Config)
+#   perl(AptPkg::System)
+#
+# For more info, see:
+#   http://fedoraproject.org/wiki/Packaging:AutoProvidesAndRequiresFiltering#Filtering_provides_and_requires_after_scanning
+# 
+# cat lib/SimpleStateManager/Dpkg.pm | /usr/lib/rpm/find-requires 
+%global __requires_exclude perl\\(VMS|perl\\(AptPkg::
 
 
 %description
