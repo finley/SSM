@@ -4,6 +4,12 @@
 
     # Francis Dang request
 
+-- Allow --add-file to support other file types
+
+    -- symlink
+    -- hardlink
+    -- directory
+    -- special
 
 -- verify that all documented pkg repo options work as described
 

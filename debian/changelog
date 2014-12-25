@@ -1,3 +1,65 @@
+simple-state-manager (0.5.2) stable; urgency=medium
+
+  * d35ac5b - Hopefully this rpm building auto-requires filter method
+    will work properly.
+  * d9e332e - Verify install state is defined before testing for the
+    value
+  * 5924f41 - Add rpm/find-requires-filter.sh to filter out AptPkg perl
+    library requires for RPM based distros.
+  * c53a006 - Add rpm/find-requires-filter.sh to filter out AptPkg perl
+    library requires for RPM based distros.
+  * 45bbcb3 - Add rpm/find-requires-filter.sh to filter out AptPkg perl
+    library requires for RPM based distros.
+  * 8a7d074 - Add rpm/find-requires-filter.sh to filter out AptPkg perl
+    library requires for RPM based distros.
+  * c055c5e - Add rpm/find-requires-filter.sh to filter out AptPkg perl
+    library requires for RPM based distros.
+  * fef6644 - Add rpm/find-requires-filter.sh to filter out AptPkg perl
+    library requires for RPM based distros.
+  * bc228a5 - Add rpm/find-requires-filter.sh to filter out AptPkg perl
+    library requires for RPM based distros.
+  * c4a4aa2 - Add rpm/find-requires-filter.sh to filter out AptPkg perl
+    library requires for RPM based distros.
+  * eee7fef - Add rpm/find-requires-filter.sh to filter out AptPkg perl
+    library requires for RPM based distros.
+  * bf565e5 - Add rpm/find-requires-filter.sh to filter out AptPkg perl
+    library requires for RPM based distros.
+  * 3b37d29 - minor verbiage tweak
+  * cef71be - Add deb package dependency: libapt-pkg-perl
+
+ -- Brian Elliott Finley <brian@thefinleys.com>  Thu, 25 Dec 2014 12:37:24 -0600
+
+simple-state-manager (0.5.2) stable; urgency=medium
+
+  * d35ac5b - Hopefully this rpm building auto-requires filter method
+    will work properly.
+  * d9e332e - Verify install state is defined before testing for the
+    value
+  * 5924f41 - Add rpm/find-requires-filter.sh to filter out AptPkg perl
+    library requires for RPM based distros.
+  * c53a006 - Add rpm/find-requires-filter.sh to filter out AptPkg perl
+    library requires for RPM based distros.
+  * 45bbcb3 - Add rpm/find-requires-filter.sh to filter out AptPkg perl
+    library requires for RPM based distros.
+  * 8a7d074 - Add rpm/find-requires-filter.sh to filter out AptPkg perl
+    library requires for RPM based distros.
+  * c055c5e - Add rpm/find-requires-filter.sh to filter out AptPkg perl
+    library requires for RPM based distros.
+  * fef6644 - Add rpm/find-requires-filter.sh to filter out AptPkg perl
+    library requires for RPM based distros.
+  * bc228a5 - Add rpm/find-requires-filter.sh to filter out AptPkg perl
+    library requires for RPM based distros.
+  * c4a4aa2 - Add rpm/find-requires-filter.sh to filter out AptPkg perl
+    library requires for RPM based distros.
+  * eee7fef - Add rpm/find-requires-filter.sh to filter out AptPkg perl
+    library requires for RPM based distros.
+  * bf565e5 - Add rpm/find-requires-filter.sh to filter out AptPkg perl
+    library requires for RPM based distros.
+  * 3b37d29 - minor verbiage tweak
+  * cef71be - Add deb package dependency: libapt-pkg-perl
+
+ -- Brian Elliott Finley <brian@thefinleys.com>  Thu, 25 Dec 2014 12:37:22 -0600
+
 simple-state-manager (0.5.1) stable; urgency=medium
 
   * 6806fa1 - use 'dist-upgrade' instead of just 'upgrade' for upgrading
