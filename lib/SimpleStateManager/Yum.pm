@@ -1,8 +1,7 @@
 #  
-#   Copyright (C) 2006-2008 Brian Elliott Finley
+#   Copyright (C) 2006-2014 Brian Elliott Finley
 #
-#   $Id: SimpleStateManager.pm 234 2008-10-16 02:06:06Z finley $
-#    vi: set filetype=perl tw=0:
+#    vi: set et ai ts=4 filetype=perl tw=0 number:
 # 
 
 package SimpleStateManager::Yum;
@@ -10,11 +9,13 @@ package SimpleStateManager::Yum;
 use Exporter;
 @ISA = qw(Exporter);
 @EXPORT = qw(
+		get_pending_pkg_changes
+                get_pkgs_that_pkg_manager_says_to_upgrade
                 remove_pkgs
                 upgrade_pkgs
                 install_pkgs
-                get_pkgs_that_pkg_manager_says_to_upgrade
                 upgrade_ssm
+		update_pkg_availability_data
                 get_pkgs_provided_by_pkgs_from_state_definition
                 get_pkgs_currently_installed
                 get_pkg_dependencies
@@ -51,6 +52,114 @@ use SimpleStateManager qw(ssm_print run_cmd choose_tmp_file);
 #
 #   Subroutines
 #
+
+#
+#   my %pending_pkg_changes = get_pending_pkg_changes($action);
+#   
+#       Where $action is one of 'install', 'remove', or 'upgrade'.
+#
+sub get_pending_pkg_changes {
+
+    my $action = shift;
+
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
+    my %pkgs_already_installed = get_pkgs_currently_installed();
+
+    my $basearch = get_basearch();
+
+    my %space_delimited_pkg_list;
+    my %pending_pkg_changes;
+#//XXX
+    if($action eq 'upgrade') {
+        %pending_pkg_changes = do_apt_get_dry_run('dist-upgrade');
+
+    } else {
+        foreach my $pkg (keys %::PKGS_FROM_STATE_DEFINITION) {
+
+            my $options = $::PKGS_FROM_STATE_DEFINITION{$pkg};
+
+            if($options =~ m/\bunwanted\b/i) {
+
+                $space_delimited_pkg_list{'remove'}  .= " $pkg";
+
+            } else {
+
+                #
+                # If the package is already installed, no need to try and install it
+                # again, so skip it.
+                #
+                next if( $pkgs_already_installed{"$pkg:$basearch"} );
+                next if( $pkgs_already_installed{"$pkg"} );
+
+                $space_delimited_pkg_list{'install'}  .= " $pkg";
+            }
+        }
+
+        %pending_pkg_changes = do_apt_get_dry_run($action, $space_delimited_pkg_list{$action});
+    }
+
+    #
+    # Help user to make sure they don't try to remove something they want to keep
+    #
+    foreach my $pkg (sort keys %pending_pkg_changes) {
+
+        if( $pending_pkg_changes{$pkg} eq 'remove' ) {
+
+            if ($::PKGS_TARGET_STATE{$pkg} and ($::PKGS_TARGET_STATE{$pkg} ne 'remove')) {
+                ssm_print "WARNING: Package $pkg is now marked as $pending_pkg_changes{$pkg}, but was already marked as $::PKGS_TARGET_STATE{$pkg}\n";
+
+            } elsif ($::PKGS_FROM_STATE_DEFINITION{$pkg} and $::PKGS_FROM_STATE_DEFINITION{$pkg} !~ m/\bunwanted\b/i ) {
+                ssm_print "WARNING: Package $pkg is now marked as $pending_pkg_changes{$pkg}, but is marked for install in the config.\n";
+            }
+
+        } else {
+            $::PKGS_TARGET_STATE{$pkg} = $pending_pkg_changes{$pkg};
+        }
+    }
+
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+
+    return %pending_pkg_changes;
+}
+
+
+sub get_basearch {
+
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
+    my $basearch = `rpm -q --qf "%{arch}" -f /`;
+    chomp $basearch;
+
+    ssm_print "$debug_prefix $basearch\n" if( $main::o{debug} );
+
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+
+    return $basearch;
+}
+
+
+sub update_pkg_availability_data {
+
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
+    if( $::o{no_pkg_repo_update} ) {
+        ssm_print "INFO:    Not updating package repo info\n";
+        return 1;
+    }
+
+    #
+    # Get the latest updates
+    my $cmd = 'yum check-update >/dev/null';
+    #
+    # Run even if --no so that we don't get 'Unable to locate package X'
+    # errors. -BEF-
+    run_cmd($cmd, undef, 1);
+
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+
+    return 1;
+}
 
 sub remove_pkgs {
     ssm_print ">>\n>> remove_pkgs()\n" if( $main::o{debug} );
@@ -129,7 +238,8 @@ sub install_pkgs {
 
 
 sub get_pkgs_that_pkg_manager_says_to_upgrade {
-    ssm_print ">>\n>> get_pkgs_that_pkg_manager_says_to_upgrade()\n" if( $main::o{debug} );
+
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     # In this hash, 'pkg' is the key, and 'version' is the value.
     my %hash;
@@ -137,7 +247,7 @@ sub get_pkgs_that_pkg_manager_says_to_upgrade {
 
     #
     # Get a list of packages that would be upgraded
-    $cmd = 'yum check-update';
+    $cmd = 'yum check-update --cacheonly';
     ssm_print ">> $cmd\n" if( $main::o{debug} );
 
     #
@@ -157,7 +267,7 @@ sub get_pkgs_that_pkg_manager_says_to_upgrade {
     open(OUTPUT,"$cmd|");
         while(<OUTPUT>) {
             if( m/^(\S+)\s+\d\S+-\d(\s+|\S+)\s+\S+/ ) {
-                #ssm_print ">>   $1\n" if( $main::o{debug} );
+                ssm_print "$debug_prefix  $1\n" if( $main::o{debug} );
                 $hash{$1} = 1;
             }
         }
@@ -188,7 +298,8 @@ sub upgrade_ssm {
 }
 
 sub get_pkgs_currently_installed {
-    ssm_print ">>\n>> get_pkgs_currently_installed()\n" if( $main::o{debug} );
+    
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     #
     # returns a hash: package => version
@@ -199,7 +310,7 @@ sub get_pkgs_currently_installed {
     if( $main::o{pkg_manager} eq 'yum' ) {
 
         my $cmd = 'rpm -qa --queryformat "%{NAME}.%{ARCH}\t%{VERSION}\tinstalled\n"';
-        ssm_print ">> SYSTEM: $cmd\n" if( $main::o{debug} );
+        ssm_print "$debug_prefix system($cmd)\n" if( $main::o{debug} );
         open(FILE,"$cmd|") or die("couldn't open $cmd for reading");
         while (<FILE>) {
     
@@ -230,11 +341,13 @@ sub get_pkgs_currently_installed {
                     # This skips over them. -BEF-
                     next if($pkg =~ m/^gpg-pubkey\.\(none\)$/);
                     $hash{$pkg} = $version;
-                    ssm_print ">>   Currently Installed:  $pkg = $version\n" if( $main::o{debug} );
+                    ssm_print "$debug_prefix $pkg = $version\n" if( $main::o{debug} );
                 }
         }
         close(FILE);
     }
+
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
 
     return %hash;
 }

@@ -161,7 +161,7 @@ sub remove_pkgs {
 
     $pkg_changes_made = 'yes';
 
-    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n"; sleep 2; }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
 
     return 1;
 }
@@ -193,7 +193,7 @@ sub get_pkgs_currently_installed {
         }
     }
 
-    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n"; sleep 2; }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
 
     return %pkgs_currently_installed;
 }
@@ -216,7 +216,7 @@ sub update_pkg_availability_data {
     # errors. -BEF-
     run_cmd($cmd, undef, 1);
 
-    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n"; sleep 2; }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
 
     return 1;
 }
@@ -261,7 +261,7 @@ sub get_pkgs_we_need_to_upgrade {
     #    }
     #}
 
-    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n"; sleep 2; }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
 
     return %pkgs_we_need_to_upgrade;
 }
@@ -351,7 +351,7 @@ sub get_pending_pkg_changes {
         }
     }
 
-    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n"; sleep 2; }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
 
     return %pending_pkg_changes;
 }
@@ -432,7 +432,7 @@ sub do_apt_get_dry_run {
     }
     close(INPUT);
 
-    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n"; sleep 2; }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
 
     return %pending_pkg_changes;
 }
@@ -679,7 +679,7 @@ sub get_native_arch {
 
     ssm_print "$debug_prefix $native_arch\n" if( $main::o{debug} );
 
-    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n"; sleep 2; }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
 
     return $native_arch;
 }
