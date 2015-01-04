@@ -210,8 +210,8 @@ sub ssm_print_always {
 # ssm_print "thing to print";
 sub ssm_print {
 
-    if( $main::PASS_NUMBER == 1 ) {
-        return 1 unless($main::o{debug}); 
+    if( $::PASS_NUMBER == 1 ) {
+        return 1 unless($::o{debug}); 
     }
 
     my $content = shift;
@@ -301,7 +301,7 @@ sub _initialize_log_file {
     #
     # Can't write output to log file until we've initilized it... -BEF-
     #
-    if( $main::o{debug} ) { ssm_print "_initialize_log_file()\n"; }
+    if( $::o{debug} ) { ssm_print "_initialize_log_file()\n"; }
 
     return 1;
 }
@@ -317,11 +317,11 @@ sub read_config_file {
     # reference to the log file is defined before we try to print to it, eh.
     # ;-) -BEF-
     #
-    if( $main::o{debug} ) { ssm_print "read_config_file()\n"; }
+    if( $::o{debug} ) { ssm_print "read_config_file()\n"; }
 
     my @analyze;
 
-    if( ! defined($main::o{config_file}) ) {
+    if( ! defined($::o{config_file}) ) {
         
         my $file = '/etc/ssm/defaults';
 
@@ -347,17 +347,17 @@ sub read_config_file {
         open(FILE,"<$file") or die("Couldn't open $file for reading. $!\n");
             while(<FILE>) {
                 if(m/^config_file\s+(.*)(\s|#|$)/) {
-                    $main::o{config_file} = $1;
+                    $::o{config_file} = $1;
                 }
                 elsif(m/^definition_file\s+(.*)(\s|#|$)/) {
                     # support deprecated definition_file name
-                    $main::o{config_file} = $1;
+                    $::o{config_file} = $1;
                 }
             }
         close(FILE);
     }
 
-    if( ! defined($main::o{config_file}) ) {
+    if( ! defined($::o{config_file}) ) {
         # still not defined?
 
         &main::usage();
@@ -372,9 +372,9 @@ sub read_config_file {
         exit 1;
     }
 
-    if( $main::o{config_file} =~ m,/$, ) {
+    if( $::o{config_file} =~ m,/$, ) {
         # URI ends with a slash.  Is a dir.  Append hostname
-        $main::o{config_file} .= get_hostname();
+        $::o{config_file} .= get_hostname();
     }
 
     if( $::o{config_file} !~ m|:/| ) {
@@ -393,22 +393,22 @@ sub read_config_file {
         }
     }
 
-    ssm_print "\nConfiguration File: $main::o{config_file}\n" unless($main::o{only_this_file});
+    ssm_print "\nConfiguration File: $::o{config_file}\n" unless($::o{only_this_file});
 
-    my $tmp_file = get_file($main::o{config_file}, 'error');
+    my $tmp_file = get_file($::o{config_file}, 'error');
 
     #
     # We assume base_url should be the same as the main configuration file url, sans
     # the filename itself. This will be overridden if specified in a [global]
     # section. -BEF-
     #
-    $main::o{base_url}  = dirname( $main::o{config_file} );
+    $::o{base_url}  = dirname( $::o{config_file} );
 
     #
     # And let's let the bundlefile name simply be the file (no URL).
     #
-    my $bundlefile      = $main::o{config_file};
-    $bundlefile         =~ s|^$main::o{base_url}/+||;
+    my $bundlefile      = $::o{config_file};
+    $bundlefile         =~ s|^$::o{base_url}/+||;
 
     # For --analyze-config purposes, prefix the input data from the
     # main configuration file with it's own name as a BundleFile. -BEF-
@@ -452,22 +452,22 @@ sub read_config_file {
                 # Allow "key = value" or "key=value" type definitions.
                 s/\s*=\s*/ /o;
 
-                if( m/^pkg_manager\s+(.*)(\s|#|$)/ )                { $main::o{pkg_manager} = lc($1); }
-                if( m/^base_ur[il]\s+(.*)(\s|#|$)/ )                { $main::o{base_url} = $1; }
-                if( m/^upload_url\s+(.*)(\s|#|$)/ )                 { $main::o{upload_url} = $1; }
-                if( m/^email_log_to\s+(.*)(\s|#|$)/ )               { $main::o{email_log_to} = $1; }
-                if( m/^log_file_perms\s+(.*)(\s|#|$)/ )             { $main::o{log_file_perms} = $1; }
-                if( m/^remove_running_kernel\s+(.*)(\s|#|$)/ )      { $main::o{remove_running_kernel} = $1; }
-                if( m/^upgrade_ssm_before_sync\s+(.*)(\s|#|$)/ )    { $main::o{upgrade_ssm_before_sync} = $1; }
-                if( m/^pkg_repo_update\s+(.*)(\s|#|$)/ )            { $main::o{pkg_repo_update} = $1; }
-                if( m/^pkg_repo_update_window\s+(.*)(\s|#|$)/ )     { $main::o{pkg_repo_update_window} = $1; }
+                if( m/^pkg_manager\s+(.*)(\s|#|$)/ )                { $::o{pkg_manager} = lc($1); }
+                if( m/^base_ur[il]\s+(.*)(\s|#|$)/ )                { $::o{base_url} = $1; }
+                if( m/^upload_url\s+(.*)(\s|#|$)/ )                 { $::o{upload_url} = $1; }
+                if( m/^email_log_to\s+(.*)(\s|#|$)/ )               { $::o{email_log_to} = $1; }
+                if( m/^log_file_perms\s+(.*)(\s|#|$)/ )             { $::o{log_file_perms} = $1; }
+                if( m/^remove_running_kernel\s+(.*)(\s|#|$)/ )      { $::o{remove_running_kernel} = $1; }
+                if( m/^upgrade_ssm_before_sync\s+(.*)(\s|#|$)/ )    { $::o{upgrade_ssm_before_sync} = $1; }
+                if( m/^pkg_repo_update\s+(.*)(\s|#|$)/ )            { $::o{pkg_repo_update} = $1; }
+                if( m/^pkg_repo_update_window\s+(.*)(\s|#|$)/ )     { $::o{pkg_repo_update_window} = $1; }
 
                 ###############################################################################
                 #
                 # BEGIN  deprecated, but leave in for warning messages, etc.
                 #
-                if( m/^git_ur[il]\s+(.*)(\s|#|$)/ )                 { $main::o{git_url} = $1; }  
-                if( m/^svn_ur[il]\s+(.*)(\s|#|$)/ )                 { $main::o{svn_url} = $1; }  
+                if( m/^git_ur[il]\s+(.*)(\s|#|$)/ )                 { $::o{git_url} = $1; }  
+                if( m/^svn_ur[il]\s+(.*)(\s|#|$)/ )                 { $::o{svn_url} = $1; }  
                 #
                 # END  deprecated
                 #
@@ -480,8 +480,8 @@ sub read_config_file {
             # If base_url is using the file:// style URL, then we can assume that
             # upload_url should be the same, unless explicitly specified. -BEF-
             #
-            if(! $main::o{upload_url}) {
-                $main::o{upload_url} = $main::o{base_url};
+            if(! $::o{upload_url}) {
+                $::o{upload_url} = $::o{base_url};
             }
 
             # default to 'auto'
@@ -497,29 +497,29 @@ sub read_config_file {
             #
             # Make sure we have a package manager defined
             #
-            if( ! defined $main::o{pkg_manager} ) {
-                $main::o{pkg_manager} = 'none';
+            if( ! defined $::o{pkg_manager} ) {
+                $::o{pkg_manager} = 'none';
             }
 
             #
             # Make sure it's one we support
             #
-            unless( ($main::o{pkg_manager} eq 'dpkg'    )
-                 or ($main::o{pkg_manager} eq 'aptitude')
-                 or ($main::o{pkg_manager} eq 'apt-get' )
-                 or ($main::o{pkg_manager} eq 'yum'     )
-                 or ($main::o{pkg_manager} eq 'none'    )
+            unless( ($::o{pkg_manager} eq 'dpkg'    )
+                 or ($::o{pkg_manager} eq 'aptitude')
+                 or ($::o{pkg_manager} eq 'apt-get' )
+                 or ($::o{pkg_manager} eq 'yum'     )
+                 or ($::o{pkg_manager} eq 'none'    )
             ) {
 
                 please_specify_a_valid_pkg_manager();
 
             }
 
-            ssm_print "INFO:    Package manager -> $main::o{pkg_manager}\n" unless($main::o{only_this_file}); 
+            ssm_print "INFO:    Package manager -> $::o{pkg_manager}\n" unless($::o{only_this_file}); 
 
-            if( ! defined $main::o{remove_running_kernel} ) { 
+            if( ! defined $::o{remove_running_kernel} ) { 
                 # Default to "no"
-                $main::o{remove_running_kernel} = 'no';
+                $::o{remove_running_kernel} = 'no';
             }
         } 
 
@@ -562,10 +562,10 @@ sub read_config_file {
                         $::PKGS_FROM_STATE_DEFINITION{$pkg} = $options;
                     } else {
                         $::PKGS_FROM_STATE_DEFINITION{$pkg} = compare_package_options($pkg, $options);
-                        ssm_print ">> Winning options:  $pkg $::PKGS_FROM_STATE_DEFINITION{$pkg}\n\n" if($main::o{debug});
+                        ssm_print ">> Winning options:  $pkg $::PKGS_FROM_STATE_DEFINITION{$pkg}\n\n" if($::o{debug});
                     }
 
-                    if($main::o{debug}) { 
+                    if($::o{debug}) { 
                         ssm_print "[packages]: $pkg";
                         ssm_print ", $options" if($options);
                         ssm_print "\n";
@@ -637,7 +637,7 @@ sub read_config_file {
                 ssm_print_always "\n";
 
                 $ERROR_LEVEL++;
-                if($main::o{debug}) { ssm_print_always "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+                if($::o{debug}) { ssm_print_always "ERROR_LEVEL: $ERROR_LEVEL\n"; }
 
                 # We go ahead and exit here to be super conservative.
                 ssm_print_always "\n";
@@ -655,16 +655,16 @@ sub read_config_file {
             my $unsatisfied = check_depends($name);
             if($unsatisfied ne "1") {
                 ssm_print "Not OK:  Service $name -> Unmet Dependencies";
-                unless( $main::o{summary} ) {
+                unless( $::o{summary} ) {
                     ssm_print ":\n";
                     ssm_print "         $unsatisfied";
                 }
                 ssm_print "\n";
-                if($main::o{debug}) { ssm_print "read_config_file(): before $name is $main::outstanding{$name}\n"; }
-                $main::outstanding{$name} = 'b0rken';
-                if($main::o{debug}) { ssm_print "read_config_file(): after $name is $main::outstanding{$name}\n"; }
+                if($::o{debug}) { ssm_print "read_config_file(): before $name is $::outstanding{$name}\n"; }
+                $::outstanding{$name} = 'b0rken';
+                if($::o{debug}) { ssm_print "read_config_file(): after $name is $::outstanding{$name}\n"; }
 
-                $ERROR_LEVEL++; if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+                $ERROR_LEVEL++; if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
 
             } else {
 
@@ -735,7 +735,7 @@ sub read_config_file {
                 if($key eq 'name') { 
                     $name = $value; 
 
-                    #if($main::o{debug}) { ssm_print "name before: $name\n"; }
+                    #if($::o{debug}) { ssm_print "name before: $name\n"; }
 
                     # Turn double slashes into single slashes so that
                     # tests for conflicting host names work properly.
@@ -746,7 +746,7 @@ sub read_config_file {
                     # directory names are treated properly.
                     $name =~ s|/$||go;
 
-                    #if($main::o{debug}) { ssm_print "name after:  $name\n"; }
+                    #if($::o{debug}) { ssm_print "name after:  $name\n"; }
 
 
                 } elsif($key eq 'type')       { 
@@ -855,7 +855,7 @@ sub read_config_file {
                 ssm_print_always "\n";
 
                 $ERROR_LEVEL++;
-                if($main::o{debug}) { ssm_print_always "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+                if($::o{debug}) { ssm_print_always "ERROR_LEVEL: $ERROR_LEVEL\n"; }
 
                 # We go ahead and exit here to be super conservative.
                 ssm_print_always "\n";
@@ -886,7 +886,7 @@ sub read_config_file {
 
                     # And we start with a status of unknown, later to be
                     # determined as broken or fixed as appropriate.
-                    $main::outstanding{$name} = 'unknown' unless(defined $main::outstanding{$name}); 
+                    $::outstanding{$name} = 'unknown' unless(defined $::outstanding{$name}); 
                 }
             }
 
@@ -896,7 +896,7 @@ sub read_config_file {
         }
     }  
 
-    if( $main::o{analyze_config} ) {
+    if( $::o{analyze_config} ) {
 
         @analyze = sort multisort @analyze;
 
@@ -943,12 +943,12 @@ sub read_config_file {
 
 sub please_specify_a_valid_pkg_manager {
 
-    if( $main::o{debug} ) { ssm_print "please_specify_a_valid_pkg_manager()\n"; }
+    if( $::o{debug} ) { ssm_print "please_specify_a_valid_pkg_manager()\n"; }
 
     ssm_print qq(WARNING: A valid pkg_manager is not defined in the configuration.\n);
     ssm_print qq(WARNING: Assuming "pkg_manager = none".\n);
     ssm_print qq(WARNING: See /usr/share/doc/simple-state-manager/examples/safe_to_run_example_config_file.conf\n);
-    $main::o{pkg_manager} = 'none';
+    $::o{pkg_manager} = 'none';
 
     return 1;
 }
@@ -987,7 +987,7 @@ sub print_pad {
 
 sub turn_usernames_into_uids {
 
-    #if( $main::o{debug} ) { ssm_print "turn_usernames_into_uids()\n"; }
+    #if( $::o{debug} ) { ssm_print "turn_usernames_into_uids()\n"; }
 
     foreach(keys %OWNER) {
         $OWNER{$_} = user_to_uid($OWNER{$_});
@@ -998,7 +998,7 @@ sub turn_usernames_into_uids {
 
 sub turn_groupnames_into_gids {
 
-    #if( $main::o{debug} ) { ssm_print "turn_groupnames_into_gids()\n"; }
+    #if( $::o{debug} ) { ssm_print "turn_groupnames_into_gids()\n"; }
 
     foreach(keys %GROUP) {
         $GROUP{$_} = group_to_gid($GROUP{$_});
@@ -1011,7 +1011,7 @@ sub user_to_uid {
 
     my $user = shift;
 
-    #if( $main::o{debug} ) { ssm_print "user_to_uid($user)\n"; }
+    #if( $::o{debug} ) { ssm_print "user_to_uid($user)\n"; }
 
     if($user =~ m/^\d+$/) {
         # it's already all-numeric; as in, a uid was specified in the definition
@@ -1026,7 +1026,7 @@ sub group_to_gid {
 
     my $group = shift;
 
-    #if( $main::o{debug} ) { ssm_print "group_to_gid($group)\n"; }
+    #if( $::o{debug} ) { ssm_print "group_to_gid($group)\n"; }
 
     if($group =~ m/^\d+$/) {
         # it's already all-numeric; as in, a gid was specified in the definition
@@ -1039,65 +1039,65 @@ sub group_to_gid {
 
 sub sync_state {
 
-    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     $CHANGES_MADE = 0;
 
-    unless($main::o{only_files}) {
+    unless($::o{only_files}) {
 
-        if( ! $main::o{pkg_manager} ) {
-            $main::o{pkg_manager} = 'none';
+        if( ! $::o{pkg_manager} ) {
+            $::o{pkg_manager} = 'none';
         }
 
-        if( $main::o{pkg_manager} eq "dpkg" 
-         or $main::o{pkg_manager} eq "aptitude"
-         or $main::o{pkg_manager} eq "apt-get") {
-            ssm_print "$debug_prefix require SimpleStateManager::Dpkg;\n" if($main::o{debug});
+        if( $::o{pkg_manager} eq "dpkg" 
+         or $::o{pkg_manager} eq "aptitude"
+         or $::o{pkg_manager} eq "apt-get") {
+            ssm_print "$debug_prefix require SimpleStateManager::Dpkg;\n" if($::o{debug});
             require SimpleStateManager::Dpkg;
             SimpleStateManager::Dpkg->import();
         }
-        elsif( $main::o{pkg_manager} eq "yum" ) {
-            ssm_print "$debug_prefix require SimpleStateManager::Yum;\n" if($main::o{debug});
+        elsif( $::o{pkg_manager} eq "yum" ) {
+            ssm_print "$debug_prefix require SimpleStateManager::Yum;\n" if($::o{debug});
             require SimpleStateManager::Yum;
             SimpleStateManager::Yum->import();
         }
-        elsif( $main::o{pkg_manager} eq "none" ) {
-            ssm_print "$debug_prefix require SimpleStateManager::None;\n" if($main::o{debug});
+        elsif( $::o{pkg_manager} eq "none" ) {
+            ssm_print "$debug_prefix require SimpleStateManager::None;\n" if($::o{debug});
             require SimpleStateManager::None;
             SimpleStateManager::None->import();
         }
 
-        if( defined $main::o{upgrade_ssm_before_sync} and $main::o{upgrade_ssm_before_sync} eq "yes" ) {
-            upgrade_ssm() unless($main::o{no});
+        if( defined $::o{upgrade_ssm_before_sync} and $::o{upgrade_ssm_before_sync} eq "yes" ) {
+            upgrade_ssm() unless($::o{no});
         }
     }
 
     #
     # Files
     my %only_this_file_hash;
-    if( $main::o{only_this_file} ) {
-        foreach my $file ( @{$main::o{only_this_file}} ) {
+    if( $::o{only_this_file} ) {
+        foreach my $file ( @{$::o{only_this_file}} ) {
             $only_this_file_hash{$file} = 1;
         }
     }
 
     foreach my $file (sort keys %TYPE) {
 
-        next if( $main::o{only_this_file} and !defined($only_this_file_hash{$file}) );
+        next if( $::o{only_this_file} and !defined($only_this_file_hash{$file}) );
 
-        last if($main::o{only_packages});
+        last if($::o{only_packages});
 
         # my $unsatisfied = check_depends($file);
         # if($unsatisfied ne "1") {
         #     ssm_print "Not OK:  File $file -> Unmet Dependencies";
-        #     unless( $main::o{summary} ) {
+        #     unless( $::o{summary} ) {
         #         ssm_print ":\n";
         #         ssm_print "         $unsatisfied";
         #     }
         #     ssm_print "\n";
-        #     $main::outstanding{$file} = 'unmet_deps';
+        #     $::outstanding{$file} = 'unmet_deps';
         #     $ERROR_LEVEL++;
-        #     if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+        #     if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
         # }
 
         # elsif( ($TYPE{$file} eq 'ignore') or ($TYPE{$file} eq 'ignored') ) {
@@ -1144,15 +1144,15 @@ sub sync_state {
         ssm_print "OK:      Packages -> No [packages] defined in the configuration.\n";
         return ($ERROR_LEVEL, $CHANGES_MADE);
     }
-    elsif( $main::o{pkg_manager} eq 'none' ) {
+    elsif( $::o{pkg_manager} eq 'none' ) {
         ssm_print "WARNING: Packages -> [packages] defined, but 'pkg_manager = none'.\n";
         return ($ERROR_LEVEL, $CHANGES_MADE);
     } 
-    elsif( $main::o{only_this_file} ) {
+    elsif( $::o{only_this_file} ) {
         # Don't print anything to keep output minimalist in this case.
         return ($ERROR_LEVEL, $CHANGES_MADE);
     }
-    elsif( $main::o{only_files} ) {
+    elsif( $::o{only_files} ) {
         ssm_print "OK:      Option --only-files specified.  Skipping [packages] sections.\n"; 
         return ($ERROR_LEVEL, $CHANGES_MADE);
     } 
@@ -1193,7 +1193,7 @@ sub sync_state {
     $ERROR_LEVEL += $OUTSTANDING_PACKAGES_TO_REMOVE;
     $ERROR_LEVEL += $OUTSTANDING_PACKAGES_TO_UPGRADE;
 
-    if( $main::o{debug} ) { 
+    if( $::o{debug} ) { 
         ssm_print "lib/SimpleStateManager.pm:sync_state() returning:\n";
         ssm_print "  \$ERROR_LEVEL:  $ERROR_LEVEL\n";
         ssm_print "  \$CHANGES_MADE: $CHANGES_MADE\n";
@@ -1219,14 +1219,14 @@ sub check_depends_interactive {
     } else {
 
         ssm_print "Not OK:  File $file -> Unmet Dependencies";
-        unless( $main::o{summary} ) {
+        unless( $::o{summary} ) {
             ssm_print ":\n";
             ssm_print "         $check_depends_results";
             ssm_print "\n";
         }
-        $main::outstanding{$file} = 'unmet_deps';
+        $::outstanding{$file} = 'unmet_deps';
         $ERROR_LEVEL++;
-        if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+        if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
 
         my $action = 'null';
         take_file_action( $file, $action, 'n#' );
@@ -1238,13 +1238,13 @@ sub check_depends_interactive {
 
 sub close_log_file {
 
-    if( $main::o{debug} ) { ssm_print "close_log_file()\n"; }
+    if( $::o{debug} ) { ssm_print "close_log_file()\n"; }
 
     close($LOGFILE) or die("Couldn't close $LOGFILE");
 
     my $log_file = "/var/log/" . basename($0);
-    if( $main::o{log_file_perms} ) {
-        chmod oct($main::o{log_file_perms}), $log_file;
+    if( $::o{log_file_perms} ) {
+        chmod oct($::o{log_file_perms}), $log_file;
     }
 
     return 1;
@@ -1252,11 +1252,11 @@ sub close_log_file {
 
 sub email_log_file {
 
-    if( $main::o{debug} ) { ssm_print "email_log_file()\n"; }
+    if( $::o{debug} ) { ssm_print "email_log_file()\n"; }
 
     close_log_file();
 
-    unless($main::o{email_log_to}) {
+    unless($::o{email_log_to}) {
         return 1;
     }
     
@@ -1267,7 +1267,7 @@ sub email_log_file {
     my $subject = "SSM: " . get_hostname();
 
     $msg = Mail::Send->new;
-    $msg = Mail::Send->new(Subject => $subject, To => $main::o{email_log_to} );
+    $msg = Mail::Send->new(Subject => $subject, To => $::o{email_log_to} );
     $fh = $msg->open;
     open(FILE,"<$file") or die("Couldn't open $file for reading!");
         while(<FILE>) {
@@ -1282,14 +1282,14 @@ sub email_log_file {
 
 #sub get_pkgs_to_be_removed {
 #
-#    if( $main::o{debug} ) { ssm_print "get_pkgs_to_be_removed()\n"; }
+#    if( $::o{debug} ) { ssm_print "get_pkgs_to_be_removed()\n"; }
 #
 #    my %pkgs_currently_installed = get_pkgs_currently_installed();
 #
 #    my @array;
 #    foreach my $pkg ( keys %pkgs_currently_installed ) {
 #        if( ! defined($::PKGS_FROM_STATE_DEFINITION{$pkg}) or ($::PKGS_FROM_STATE_DEFINITION{$pkg} =~ m/\bunwanted\b/i )) {
-#        ssm_print ">>> remove: $pkg\n" if( $main::o{debug} );
+#        ssm_print ">>> remove: $pkg\n" if( $::o{debug} );
 #            push @array, $pkg;
 #        }
 #    }
@@ -1305,7 +1305,7 @@ sub email_log_file {
 #
 sub get_pkgs_to_be_installed {
 
-    if( $main::o{debug} ) { ssm_print "get_pkgs_to_be_installed()\n"; }
+    if( $::o{debug} ) { ssm_print "get_pkgs_to_be_installed()\n"; }
 
     my %pkgs_currently_installed = get_pkgs_currently_installed();
 
@@ -1325,7 +1325,7 @@ sub get_pkgs_to_be_installed {
 
 sub version {
 
-    if( $main::o{debug} ) { print "version()\n"; }
+    if( $::o{debug} ) { print "version()\n"; }
 
     # Can't use ssm_print in here -- not initialiased yet. -BEF-
     my $PROGNAME = basename($0);
@@ -1342,7 +1342,7 @@ EOF
 #
 sub _get_arch {
 
-    if( $main::o{debug} ) { ssm_print "_get_arch()\n"; }
+    if( $::o{debug} ) { ssm_print "_get_arch()\n"; }
 
     use POSIX;
 
@@ -1379,10 +1379,10 @@ sub run_cmd {
     my $add_newline       = shift;
     my $even_if_no        = shift;
     
-    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
-    if( ! $main::o{no} or defined($even_if_no) ) { 
-        ssm_print "$debug_prefix $cmd\n" if( $main::o{debug} );
+    if( ! $::o{no} or defined($even_if_no) ) { 
+        ssm_print "$debug_prefix $cmd\n" if( $::o{debug} );
         open(INPUT,"$cmd|") or die("FAILED: $cmd\n $!");
         while(<INPUT>) {
             ssm_print $_;
@@ -1407,7 +1407,7 @@ sub do_you_want_me_to {
     my $prompts = shift;
     my $msg = shift;
 
-    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     if(! defined $prompts) {
         $prompts = 'yn';
@@ -1420,7 +1420,7 @@ sub do_you_want_me_to {
             next if( $prompt =~ m/N/i );             # If we were passed an N or n, skip it -- we auto-include one
             $prompt = lc($prompt);      # Make each option lowercase
 
-            if($main::o{debug}) { ssm_print "do_you_want_me_to(): $prompt\n"; }
+            if($::o{debug}) { ssm_print "do_you_want_me_to(): $prompt\n"; }
             $msg .= "/$prompt";
         }
         $msg .= "/?]: ";
@@ -1429,38 +1429,38 @@ sub do_you_want_me_to {
     my $i_had_to_explain_something = undef;
     my $explanation = "\n";
 
-    if($prompts =~ m/n/ and ! defined $main::o{answer_implications_explained}{n}) {
+    if($prompts =~ m/n/ and ! defined $::o{answer_implications_explained}{n}) {
         $explanation .= qq/           N -> No, don't do anything.  [The default]\n/;
-        $main::o{answer_implications_explained}{n} = 'yes';
+        $::o{answer_implications_explained}{n} = 'yes';
         $i_had_to_explain_something = 1;
         }
-    if($prompts =~ m/y/ and ! defined $main::o{answer_implications_explained}{y}) {
+    if($prompts =~ m/y/ and ! defined $::o{answer_implications_explained}{y}) {
         $explanation .= qq/           y -> Yes, execute all of the "Need to" actions above.\n/;
-        $main::o{answer_implications_explained}{y} = 'yes';
+        $::o{answer_implications_explained}{y} = 'yes';
         $i_had_to_explain_something = 1;
         }
-    if($prompts =~ m/d/ and ! defined $main::o{answer_implications_explained}{d}) {
+    if($prompts =~ m/d/ and ! defined $::o{answer_implications_explained}{d}) {
         $explanation .= qq/           d -> Show me the differences between the repo version and the\n/;
         $explanation .= qq/                local version, then ask me again.\n/;
-        $main::o{answer_implications_explained}{d} = 'yes';
+        $::o{answer_implications_explained}{d} = 'yes';
         $i_had_to_explain_something = 1;
         }
-    if($prompts =~ m/a/ and ! defined $main::o{answer_implications_explained}{a}) {
+    if($prompts =~ m/a/ and ! defined $::o{answer_implications_explained}{a}) {
         $explanation .= qq/           a -> Add the local version of this file to your repo and\n/;
         $explanation .= qq/                update the configuration to use it.\n/;
-        $main::o{answer_implications_explained}{a} = 'yes';
+        $::o{answer_implications_explained}{a} = 'yes';
         $i_had_to_explain_something = 1;
         }
-    if($prompts =~ m/#/ and ! defined $main::o{answer_implications_explained}{'#'}) {
+    if($prompts =~ m/#/ and ! defined $::o{answer_implications_explained}{'#'}) {
         $explanation .= qq/           # -> Comment out this entry in the configuration, but\n/;
         $explanation .= qq/                preserve any files it references in the repo.\n/;
-        $main::o{answer_implications_explained}{'#'} = 'yes';
+        $::o{answer_implications_explained}{'#'} = 'yes';
         $i_had_to_explain_something = 1;
         }
 
-    if(! defined $main::o{answer_implications_explained}{help}) {
+    if(! defined $::o{answer_implications_explained}{help}) {
         $explanation .= qq/           ? -> Show help info for each of these options.\n/;
-        $main::o{answer_implications_explained}{help} = 'yes';
+        $::o{answer_implications_explained}{help} = 'yes';
         $i_had_to_explain_something = 1;
         }
 
@@ -1534,7 +1534,7 @@ sub ignore_file_interactive {
         return report_improper_file_definition($file);
     }
 
-    $main::outstanding{$file} = 'fixed';
+    $::outstanding{$file} = 'fixed';
     ssm_print "OK:      Ignoring $file\n";
 
     return 1;
@@ -1549,7 +1549,7 @@ sub softlink_interactive {
 
     my $file = shift;
 
-    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     #
     # validate input
@@ -1575,7 +1575,7 @@ sub softlink_interactive {
     if( ! -e $TARGET{$file} ) {
 
         ssm_print "WARNING: Soft link $file -> $TARGET{$file} (target doesn't exist).\n";
-        $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+        $ERROR_LEVEL++;  if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
     }
     chdir $cwd;
 
@@ -1599,12 +1599,12 @@ sub softlink_interactive {
     #
     unless( (defined $current_target) and ($current_target eq $TARGET{$file}) ) {
 
-        $main::outstanding{$file} = 'b0rken';
-        if( $main::o{debug} ) { print ">>>  Assigning $file as 'b0rken'\n"; }
+        $::outstanding{$file} = 'b0rken';
+        if( $::o{debug} ) { print ">>>  Assigning $file as 'b0rken'\n"; }
 
         ssm_print "Not OK:  Soft link $file -> $TARGET{$file}\n";
 
-        unless( $main::o{summary} ) {
+        unless( $::o{summary} ) {
 
             my $action = 'install_softlink';
 
@@ -1622,7 +1622,7 @@ sub softlink_interactive {
 
     } else {
 
-        $main::outstanding{$file} = 'fixed';
+        $::outstanding{$file} = 'fixed';
         ssm_print "OK:      Soft link $file -> $TARGET{$file}\n";
     }
 
@@ -1643,7 +1643,7 @@ sub install_hardlink {
 
     my $file     = shift;
 
-    if($main::o{debug}) { ssm_print "install_softlink($file)\n"; }
+    if($::o{debug}) { ssm_print "install_softlink($file)\n"; }
 
     ssm_print "         FIXING:  Hard link $file -> $TARGET{$file}\n";
 
@@ -1662,7 +1662,7 @@ sub install_softlink {
 
     my $file     = shift;
 
-    if($main::o{debug}) { ssm_print "install_softlink($file)\n"; }
+    if($::o{debug}) { ssm_print "install_softlink($file)\n"; }
 
     ssm_print "         FIXING:  Soft link $file -> $TARGET{$file}\n";
 
@@ -1680,7 +1680,7 @@ sub install_special_file {
 
     my $file = shift;
 
-    if($main::o{debug}) { ssm_print "install_special_file($file)\n"; }
+    if($::o{debug}) { ssm_print "install_special_file($file)\n"; }
 
     ssm_print qq(         FIXING:  Creating ) . ucfirst($TYPE{$file}) . qq( file $file\n);
 
@@ -1768,10 +1768,10 @@ sub special_file_interactive {
     my $fix_it = undef;
     if( defined($needs_fixing) ) {
 
-        $main::outstanding{$file} = 'b0rken';
+        $::outstanding{$file} = 'b0rken';
 
         ssm_print "Not OK:  " . ucfirst($TYPE{$file}) . " file $file\n";
-        unless( $main::o{summary} ) {
+        unless( $::o{summary} ) {
             my $action = 'install_special_file';
             ssm_print "         Need to:\n";
             ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
@@ -1787,7 +1787,7 @@ sub special_file_interactive {
 
     } else {
 
-        $main::outstanding{$file} = 'fixed';
+        $::outstanding{$file} = 'fixed';
         ssm_print "OK:      " . ucfirst($TYPE{$file}) . " file $file\n";
     }
 
@@ -1901,11 +1901,11 @@ sub set_ownership_and_permissions {
 
 sub contents_unwanted_interactive {
 
-    ssm_print ">> contents_unwanted_interactive()\n" if( $main::o{debug} );
+    ssm_print ">> contents_unwanted_interactive()\n" if( $::o{debug} );
 
     my $dir   = shift;
 
-    $main::outstanding{$dir} = 'fixed';
+    $::outstanding{$dir} = 'fixed';
 
     #
     # validate input
@@ -1917,16 +1917,16 @@ sub contents_unwanted_interactive {
 
     if( ! -e $dir ) {
         #ssm_print "Not OK: Contents-unwanted directory $dir doesn't exist\n";
-        $main::outstanding{$dir} = 'does not exist';
+        $::outstanding{$dir} = 'does not exist';
         return 1;
     }
     elsif( ! -d $dir ) {
         #ssm_print "Not OK: Contents-unwanted directory $dir is not a directory\n";
-        $main::outstanding{$dir} = 'not a directory';
+        $::outstanding{$dir} = 'not a directory';
         return 1;
     }
 
-    ssm_print "INFO:    Processing contents-unwanted directory $dir\n" unless($main::o{summary});
+    ssm_print "INFO:    Processing contents-unwanted directory $dir\n" unless($::o{summary});
 
     # state what we're doing
     # get list of files in directory
@@ -1943,26 +1943,26 @@ sub contents_unwanted_interactive {
         while (defined ($file = readdir DIR) ) {
             next if $file =~ /^\.\.?$/;
             $file = "$dir/$file";
-            ssm_print ">>> in_directory: $file\n" if( $main::o{debug} );
+            ssm_print ">>> in_directory: $file\n" if( $::o{debug} );
             unless (defined $TYPE{$file}) {
                 #
                 # For each file that isn't defined:  unwanted_file_interactive($file);
                 #
                 $TYPE{$file} = 'unwanted';
                 unwanted_file_interactive($file);
-                if($main::outstanding{$file} ne 'fixed') {
-                    $main::outstanding{$dir} = 'unwanted file(s) still exist(s)';
+                if($::outstanding{$file} ne 'fixed') {
+                    $::outstanding{$dir} = 'unwanted file(s) still exist(s)';
                 }
             }
         }
     closedir(DIR);
 
     #
-    # As per the top of this subroutine, $main::outstanding{$dir} will be set
+    # As per the top of this subroutine, $::outstanding{$dir} will be set
     # to 'fixed' unless we leave something unresolved in the middle of the
     # routine. -BEF-
     #
-    if($main::outstanding{$dir} eq 'fixed') {
+    if($::outstanding{$dir} eq 'fixed') {
         ssm_print "OK:      Contents-unwanted $dir\n";
     } else {
         ssm_print "Not OK:  Contents-unwanted $dir\n";
@@ -1998,8 +1998,8 @@ sub unwanted_file_interactive {
     # Should we actually fix it?
     if(defined($needs_fixing)) {
 
-        $main::outstanding{$file} = 'b0rken';
-        if( $main::o{debug} ) { print ">>>  Assigning $file as 'b0rken'\n"; }
+        $::outstanding{$file} = 'b0rken';
+        if( $::o{debug} ) { print ">>>  Assigning $file as 'b0rken'\n"; }
 
         if( -d $file ) {
             ssm_print "Not OK:  Unwanted directory exists: $file\n";
@@ -2007,7 +2007,7 @@ sub unwanted_file_interactive {
             ssm_print "Not OK:  Unwanted file exists: $file\n";
         }
 
-        unless( $main::o{summary} ) {
+        unless( $::o{summary} ) {
             my $action = 'remove_file';
             if( -d $file ) {
                 ssm_print "         Need to:\n";
@@ -2030,7 +2030,7 @@ sub unwanted_file_interactive {
 
     } else {
 
-        $main::outstanding{$file} = 'fixed';
+        $::outstanding{$file} = 'fixed';
         ssm_print "OK:      Unwanted $file doesn't exist\n";
 
     }
@@ -2071,12 +2071,12 @@ sub chown_and_chmod_interactive {
     # Should we actually fix it?
     if( defined($needs_fixing) ) {
 
-        $main::outstanding{$file} = 'b0rken';
-        if( $main::o{debug} ) { print ">>>  Assigning $file as 'b0rken'\n"; }
+        $::outstanding{$file} = 'b0rken';
+        if( $::o{debug} ) { print ">>>  Assigning $file as 'b0rken'\n"; }
 
         ssm_print "Not OK:  Chown+Chmod target $file\n";
 
-        unless( $main::o{summary} ) {
+        unless( $::o{summary} ) {
             my $action = 'set_ownership_and_permissions';
             if( ! -e $file ) {
                 ssm_print "         Need to:\n";
@@ -2101,7 +2101,7 @@ sub chown_and_chmod_interactive {
 
     } else {
 
-        $main::outstanding{$file} = 'fixed';
+        $::outstanding{$file} = 'fixed';
         ssm_print "OK:      Chown+Chmod target $file\n";
 
     }
@@ -2148,12 +2148,12 @@ sub directory_interactive {
     # Should we actually fix it?
     if( defined($needs_fixing) ) {
 
-        $main::outstanding{$file} = 'b0rken';
-        if( $main::o{debug} ) { print ">>>  Assigning $file as 'b0rken'\n"; }
+        $::outstanding{$file} = 'b0rken';
+        if( $::o{debug} ) { print ">>>  Assigning $file as 'b0rken'\n"; }
 
         ssm_print "Not OK:  Directory $file\n";
 
-        unless( $main::o{summary} ) {
+        unless( $::o{summary} ) {
             
             my $action;
 
@@ -2180,7 +2180,7 @@ sub directory_interactive {
         }
 
     } else {
-        $main::outstanding{$file} = 'fixed';
+        $::outstanding{$file} = 'fixed';
         ssm_print "OK:      Directory $file\n";
     }
 
@@ -2192,7 +2192,7 @@ sub generated_file_interactive {
 
     my $file   = shift;
 
-    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     #
     # validate input
@@ -2219,7 +2219,7 @@ sub generated_file_interactive {
     $TMPFILE{$file} = choose_tmp_file();
     open(TMP, "+>$TMPFILE{$file}") or die "Couldn't open tmp file $!";
 
-        if( $main::o{debug} ) { print ">>>  The Generator(tm): $GENERATOR{$file}\n"; }
+        if( $::o{debug} ) { print ">>>  The Generator(tm): $GENERATOR{$file}\n"; }
 
         open(INPUT,"$generator_script|") or die("Couldn't run $generator_script $!");
             print TMP (<INPUT>);
@@ -2259,12 +2259,12 @@ sub generated_file_interactive {
     # Should we actually fix it?
     if( defined($needs_fixing) ) {
 
-        $main::outstanding{$file} = 'b0rken';
-        if( $main::o{debug} ) { print ">>>  Assigning $file as 'b0rken'\n"; }
+        $::outstanding{$file} = 'b0rken';
+        if( $::o{debug} ) { print ">>>  Assigning $file as 'b0rken'\n"; }
 
         ssm_print "Not OK:  Generated file $file\n";
 
-        unless( $main::o{summary} ) {
+        unless( $::o{summary} ) {
 
             my $action;
 
@@ -2293,8 +2293,8 @@ sub generated_file_interactive {
         }
 
     } else {
-        $main::outstanding{$file} = 'fixed';
-        if( $main::o{debug} ) { print ">>>  Assigning $file as 'fixed'\n"; }
+        $::outstanding{$file} = 'fixed';
+        if( $::o{debug} ) { print ">>>  Assigning $file as 'fixed'\n"; }
         ssm_print "OK:      Generated file $file\n";
     }
 
@@ -2310,7 +2310,7 @@ sub regular_file_interactive {
 
     my $file   = shift;
 
-    ssm_print ">> regular_file_interactive($file)\n" if( $main::o{debug} );
+    ssm_print ">> regular_file_interactive($file)\n" if( $::o{debug} );
 
     #
     # validate input
@@ -2350,12 +2350,12 @@ sub regular_file_interactive {
     # Should we actually fix it?
     if( defined($needs_fixing) ) {
 
-        $main::outstanding{$file} = 'b0rken';
-        if( $main::o{debug} ) { print ">>>  Assigning $file as 'b0rken'\n"; }
+        $::outstanding{$file} = 'b0rken';
+        if( $::o{debug} ) { print ">>>  Assigning $file as 'b0rken'\n"; }
 
         ssm_print "Not OK:  Regular file $file\n";
 
-        unless( $main::o{summary} ) {
+        unless( $::o{summary} ) {
 
             my $action;
 
@@ -2386,7 +2386,7 @@ sub regular_file_interactive {
         }
             
     } else {
-        $main::outstanding{$file} = 'fixed';
+        $::outstanding{$file} = 'fixed';
         ssm_print "OK:      Regular file $file\n";
     }
 
@@ -2402,7 +2402,7 @@ sub take_pkg_action {
     #
     # First pass is observation only.
     #
-    if( $main::PASS_NUMBER == 1 ) { 
+    if( $::PASS_NUMBER == 1 ) { 
 
         ssm_print ">>> Skipping take_pkg_action as this is the first PASS\n\n";
         return 1; 
@@ -2414,7 +2414,7 @@ sub take_pkg_action {
     my $prompts  = 'yn';
     my $return_code = 0;
 
-    if($main::o{debug}) { 
+    if($::o{debug}) { 
         ssm_print "take_pkg_action( $action, ";
         foreach my $pkg (@packages) {
             ssm_print "$pkg ";
@@ -2451,11 +2451,11 @@ sub take_pkg_action {
             # action as the subroutine to execute from the list of allowable
             # subroutine actions listed above. -BEF-
             if(defined $actions{$action}) {
-                if($main::o{debug}) { ssm_print "return_code = $actions{$action}(@packages);\n"; }
+                if($::o{debug}) { ssm_print "return_code = $actions{$action}(@packages);\n"; }
                 $return_code = $actions{$action}(@packages);
 
                 if($return_code eq 1) {
-                    $main::outstanding{$action} = 'fixed'; #XXX is it really?  verify return code
+                    $::outstanding{$action} = 'fixed'; #XXX is it really?  verify return code
                     $CHANGES_MADE++;
                 }
 
@@ -2466,7 +2466,7 @@ sub take_pkg_action {
             }
 
         } else {
-                if($main::o{debug}) { ssm_print "take_pkg_action() >> PEBKAC ERROR: '$answer' is not a valid answer\n"; }
+                if($::o{debug}) { ssm_print "take_pkg_action() >> PEBKAC ERROR: '$answer' is not a valid answer\n"; }
                 $return_code = 7;
         }
 
@@ -2555,12 +2555,12 @@ sub take_file_action {
 
         } elsif( $answer eq 'a' ) {
             $return_code = add_file_to_repo($file);
-            $main::outstanding{$file} = 'fixed';
+            $::outstanding{$file} = 'fixed';
             $CHANGES_MADE++;
 
         } elsif( $answer eq '#' ) {
             $return_code = update_bundle_file_comment_out_entry($file);
-            $main::outstanding{$file} = 'fixed';
+            $::outstanding{$file} = 'fixed';
             $CHANGES_MADE++;
 
         } elsif( $answer eq 'y' ) {
@@ -2584,10 +2584,10 @@ sub take_file_action {
             # action as the subroutine to execute from the list of allowable
             # subroutine actions listed above. -BEF-
             if(defined $actions{$action}) {
-                if($main::o{debug}) { ssm_print "return_code = $actions{$action}($file);\n"; }
+                if($::o{debug}) { ssm_print "return_code = $actions{$action}($file);\n"; }
                 $return_code = $actions{$action}($file);
 
-                $main::outstanding{$file} = 'fixed'; #XXX is it really?  verify return code
+                $::outstanding{$file} = 'fixed'; #XXX is it really?  verify return code
                 $CHANGES_MADE++;
 
             } else {
@@ -2597,7 +2597,7 @@ sub take_file_action {
             }
 
         } else {
-                if($main::o{debug}) { ssm_print "take_file_action() >> PEBKAC ERROR: '$answer' is not a valid answer\n"; }
+                if($::o{debug}) { ssm_print "take_file_action() >> PEBKAC ERROR: '$answer' is not a valid answer\n"; }
                 $return_code = 7;
         }
 
@@ -2628,7 +2628,7 @@ sub md5sum_match {
 
 sub diff_file {
 
-    if( $main::o{summary} ) {
+    if( $::o{summary} ) {
         # Don't do diffs in --summary mode
         return 1;
     }
@@ -2638,7 +2638,7 @@ sub diff_file {
 
     ssm_print "         DIFFING:  $file\n";
 
-    if($main::o{debug}) { ssm_print "diff_file($file)\n"; }
+    if($::o{debug}) { ssm_print "diff_file($file)\n"; }
 
     my $unlink = 'no';
 
@@ -2649,7 +2649,7 @@ sub diff_file {
             $tmp_file = $TMPFILE{$file};
 
         } else {
-            $url = qq($main::o{base_url}/$file/$MD5SUM{$file});
+            $url = qq($::o{base_url}/$file/$MD5SUM{$file});
             $tmp_file = get_file($url, 'warn');
             $unlink = 'yes';
         }
@@ -2662,7 +2662,7 @@ sub diff_file {
     }
 
     my $diff;
-    if( $main::o{no} or $main::o{yes}) {
+    if( $::o{no} or $::o{yes}) {
         # Never use colordiff if non-interactive
         foreach( "diff") {
             $diff = _which($_);
@@ -2728,7 +2728,7 @@ sub execute_prescript {
 
     my $file = shift;
 
-    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     if($PRESCRIPT{$file}) {
         my $cmd = $PRESCRIPT{$file};
@@ -2745,7 +2745,7 @@ sub execute_postscript {
 
     my $file = shift;
 
-    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     if($POSTSCRIPT{$file}) {
         my $cmd = $POSTSCRIPT{$file};
@@ -2765,7 +2765,7 @@ sub install_directory {
 
     ssm_print "         FIXING:  Creating: $file\n";
 
-    if($main::o{debug}) { ssm_print "install_directory($file)\n"; }
+    if($::o{debug}) { ssm_print "install_directory($file)\n"; }
 
     my $calling_function = (caller(1))[3];
     execute_prescript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
@@ -2789,7 +2789,7 @@ sub install_file {
     my $file     = shift;
     my $tmp_file = shift;
 
-    if($main::o{debug}) { ssm_print "install_file($file)\n"; }
+    if($::o{debug}) { ssm_print "install_file($file)\n"; }
 
     ssm_print "         FIXING:  Installing: $file\n";
 
@@ -2807,7 +2807,7 @@ sub install_file {
 
         } else {
 
-            $url = qq($main::o{base_url}/$file/$MD5SUM{$file});
+            $url = qq($::o{base_url}/$file/$MD5SUM{$file});
             $tmp_file = get_file($url, 'warn');
         }
     }
@@ -2862,7 +2862,7 @@ sub get_file {
                 exit 1;
             } else {
                 ssm_print "WARNING: $file doesn't exist...\n";
-                $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+                $ERROR_LEVEL++;  if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
                 return undef;
             }
         } else {
@@ -2875,7 +2875,7 @@ sub get_file {
            ) {
 
         my $cmd = "wget -q $file -O $tmp_file";
-        if($main::o{debug}) { ssm_print "$cmd\n"; }
+        if($::o{debug}) { ssm_print "$cmd\n"; }
         unless( !system($cmd) ) {
             #
             # !system() should produce a positive result on success.  If we get
@@ -2886,7 +2886,7 @@ sub get_file {
                 exit 1;
             } else {
                 ssm_print "WARNING: $file doesn't exist...\n";
-                $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+                $ERROR_LEVEL++;  if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
                 return undef;
             }
         }
@@ -2934,7 +2934,7 @@ sub hardlink_interactive {
 
     my $file   = shift;
 
-    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     #
     # validate input
@@ -2956,7 +2956,7 @@ sub hardlink_interactive {
         # Target ain't there
         ssm_print "WARNING: Hard link $file -> $TARGET{$file} (target doesn't exist).\n";
         ssm_print "WARNING: Hard link $file -> Skipping this step.\n";
-        $ERROR_LEVEL++;  if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+        $ERROR_LEVEL++;  if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
 
         return 1;
     } 
@@ -2988,12 +2988,12 @@ sub hardlink_interactive {
     # Should we actually fix it?
     if( defined($needs_fixing) ) {
 
-        $main::outstanding{$file} = 'b0rken';
-        if( $main::o{debug} ) { print ">>>  Assigning $file as 'b0rken'\n"; }
+        $::outstanding{$file} = 'b0rken';
+        if( $::o{debug} ) { print ">>>  Assigning $file as 'b0rken'\n"; }
 
         ssm_print "Not OK:  Hard link $file -> $TARGET{$file}\n";
 
-        unless( $main::o{summary} ) {
+        unless( $::o{summary} ) {
 
             my $action = 'install_hardlink';
 
@@ -3008,7 +3008,7 @@ sub hardlink_interactive {
 
     } else {
 
-        $main::outstanding{$file} = 'fixed';
+        $::outstanding{$file} = 'fixed';
         ssm_print "OK:      Hard link $file -> $TARGET{$file}\n";
     }
 
@@ -3047,7 +3047,7 @@ sub report_improper_service_definition {
     ssm_print "\n";
 
     $ERROR_LEVEL++;
-    if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+    if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
 
     sleep 1;
 
@@ -3115,7 +3115,7 @@ sub report_improper_file_definition {
     ssm_print "\n";
 
     $ERROR_LEVEL++;
-    if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+    if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
 
     sleep 1;
 
@@ -3153,12 +3153,12 @@ sub update_bundle_file_comment_out_entry {
 
     my $file = shift;
 
-    if(! $main::o{"upload_url"} ) {
+    if(! $::o{"upload_url"} ) {
 
         _specify_an_upload_url();
 
         $ERROR_LEVEL++;
-        if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+        if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
         ssm_print "\n";
 
         return 3;
@@ -3166,7 +3166,7 @@ sub update_bundle_file_comment_out_entry {
 
     my @newfile;
 
-    my $url  = "$main::o{base_url}/$BUNDLEFILE{$file}";
+    my $url  = "$::o{base_url}/$BUNDLEFILE{$file}";
     my $bundle_file = get_file($url, 'error');
 
     open(FILE, "<$bundle_file") or die("Couldn't open $bundle_file for reading");
@@ -3254,10 +3254,10 @@ sub update_bundlefile_type_regular {
         # it won't be associated with a specific bundle file, so we default to
         # using the configuration file itself. -BEF-
         #
-        $BUNDLEFILE{$name} = basename( $main::o{config_file} );
+        $BUNDLEFILE{$name} = basename( $::o{config_file} );
     }
 
-    my $url  = "$main::o{base_url}/$BUNDLEFILE{$name}";
+    my $url  = "$::o{base_url}/$BUNDLEFILE{$name}";
     my $file = get_file($url, 'error');
 
     open(FILE, "<$file") or die("Couldn't open $file for reading");
@@ -3396,7 +3396,7 @@ sub check_depends {
 
     my $name = shift;
     if(! defined $TYPE{$name}) {
-        ssm_print ">> name: $name\n" if( $main::o{debug} );
+        ssm_print ">> name: $name\n" if( $::o{debug} );
         return 1;
     }
 
@@ -3416,7 +3416,7 @@ sub check_depends {
     # Singularize spaces
     $DEPENDS{$name} =~ s/^\s+//;
 
-    if( $main::o{debug} ) { print ">>> Dependencies for $name: $DEPENDS{$name}\n"; }
+    if( $::o{debug} ) { print ">>> Dependencies for $name: $DEPENDS{$name}\n"; }
     
     #
     # Only check for pkgs if there's a pkg in the dependency list.  pkg
@@ -3427,7 +3427,7 @@ sub check_depends {
 
     foreach( split(/\s+/, $DEPENDS{$name}) ) {
         if( /^\// ) {
-            if( $main::o{debug} ) { print ">>>> Checking on status of $_\n"; }
+            if( $::o{debug} ) { print ">>>> Checking on status of $_\n"; }
             #
             # Must be a file.  
             #
@@ -3435,9 +3435,9 @@ sub check_depends {
             if( ! -e $file) {  
                 # If it doesn't exist, fail dep check.
                 $unsatisfied .= "$file "; 
-                if( $main::o{debug} ) { print ">>>>>  $_ doesn't exist\n"; }
+                if( $::o{debug} ) { print ">>>>>  $_ doesn't exist\n"; }
 
-            } elsif( defined $main::outstanding{$file} and $main::outstanding{$file} ne 'fixed') {
+            } elsif( defined $::outstanding{$file} and $::outstanding{$file} ne 'fixed') {
 
                 if($file =~ m|^$name|) {
                     ssm_print "WARNING: You have $file specified as a dependency of $name, which is probably\n";
@@ -3447,10 +3447,10 @@ sub check_depends {
                 }
 
                 $unsatisfied .= "$file "; 
-                if( $main::o{debug} ) { print ">>>>>  $_ exists, but isn't considered 'fixed'\n"; }
+                if( $::o{debug} ) { print ">>>>>  $_ exists, but isn't considered 'fixed'\n"; }
 
             } else {
-                if( $main::o{debug} ) { 
+                if( $::o{debug} ) { 
                     print ">>>>>  $_ exists, and isn't defined so it's mere existence makes it OK.\n"; 
                 }
             }
@@ -3478,7 +3478,7 @@ sub _include_bundle {
     my @array;
 
     chomp($file);
-    ssm_print "Bundle:  $file\n" unless($main::o{only_this_file});
+    ssm_print "Bundle:  $file\n" unless($::o{only_this_file});
 
     # For --analyze-config purposes, prefix the input data from this
     # bundle file with it's own name as a BundleFile. -BEF-
@@ -3492,7 +3492,7 @@ sub _include_bundle {
         or ($file =~ m#^https://#) 
         or ($file =~ m#^ftp://#)) {
 
-        $file = $main::o{base_url} . '/' . $file;
+        $file = $::o{base_url} . '/' . $file;
     }
 
     my $tmp_file = get_file($file, 'error');
@@ -3525,7 +3525,7 @@ sub backup {
 
 sub add_new_files {
 
-    foreach my $file ( @{$main::o{add_file}} ) {
+    foreach my $file ( @{$::o{add_file}} ) {
 
         my $abs_path = abs_path($file);
         $file = $abs_path;
@@ -3590,18 +3590,18 @@ sub add_file_to_repo {
     my $abs_path = abs_path($file);
     $file = $abs_path;
 
-    if(defined $main::o{upload_url}) {
+    if(defined $::o{upload_url}) {
 
         my $local_file;
         my $repo_file;
 
-        $main::o{file_to_add} = $file;
+        $::o{file_to_add} = $file;
 
         my $type = get_file_type($file);
         if($type eq 'non-existent') {
             $ERROR_LEVEL++;
         }
-        ssm_print "TYPE: $type\n" if($main::o{debug});
+        ssm_print "TYPE: $type\n" if($::o{debug});
 
         my $name   = $file;
         my $md5sum = get_md5sum($file);
@@ -3613,7 +3613,7 @@ sub add_file_to_repo {
         # Copy the file itself into the repo
         #
         $repo_file = "$file/$md5sum";
-        ssm_print "copy_file_to_upstream_repo($file, $repo_file)\n" if($main::o{debug});
+        ssm_print "copy_file_to_upstream_repo($file, $repo_file)\n" if($::o{debug});
         copy_file_to_upstream_repo($file, $repo_file);
 
         #
@@ -3621,18 +3621,18 @@ sub add_file_to_repo {
         #
         my $tmp_file = update_bundlefile_type_regular( $name, $md5sum, $owner, $group, $mode );
         $repo_file = "$BUNDLEFILE{$file}";
-        ssm_print "copy_file_to_upstream_repo($tmp_file, $repo_file)\n" if($main::o{debug});
+        ssm_print "copy_file_to_upstream_repo($tmp_file, $repo_file)\n" if($::o{debug});
         copy_file_to_upstream_repo($tmp_file, $repo_file);
         unlink $tmp_file;
 
-        $main::outstanding{$file} = 'fixed';
+        $::outstanding{$file} = 'fixed';
 
     } else {
 
         _specify_an_upload_url();
 
         $ERROR_LEVEL++;
-        if($main::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+        if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
         ssm_print "\n";
         return 3;
     }
@@ -3650,7 +3650,7 @@ sub add_file_to_repo {
 #
 sub rotate_log_file {
 
-    if( $main::o{debug} ) { print "rotate_log_file()\n"; }
+    if( $::o{debug} ) { print "rotate_log_file()\n"; }
 
     my $file                = shift;
     my $starting_lognumber  = shift;
@@ -3664,7 +3664,7 @@ sub rotate_log_file {
         my $file_new = "$file." . $i;
 
         if( -e $file_old ) {
-            #if( $main::o{debug} ) { print " rename($file_old, $file_new)\n"; }
+            #if( $::o{debug} ) { print " rename($file_old, $file_new)\n"; }
             rename($file_old, $file_new) or die("Couldn't rename $file_old to $file_new");
         }
 
@@ -3675,7 +3675,7 @@ sub rotate_log_file {
     my $file_new = "$file.$starting_lognumber";
 
     if( -e $file_old ) {
-        if( $main::o{debug} ) { print " rename($file_old, $file_new)\n"; }
+        if( $::o{debug} ) { print " rename($file_old, $file_new)\n"; }
         rename($file_old, $file_new) or die("Couldn't rename $file_old to $file_new");
     }
 
@@ -3718,7 +3718,7 @@ sub remove_file {
 
     ssm_print "         FIXING:  Removing: $file\n" unless( defined $silent );
 
-    if($main::o{debug}) { ssm_print "remove_file($file)\n"; }
+    if($::o{debug}) { ssm_print "remove_file($file)\n"; }
 
     #
     # remove_file is called by a number of subroutines as a supporting file
@@ -3747,13 +3747,13 @@ sub compare_package_options {
     my $pkg                 = shift;
     my $challenger_options  = shift;
 
-    ssm_print "compare_package_options()\n" if( $main::o{debug} );
+    ssm_print "compare_package_options()\n" if( $::o{debug} );
 
     my $incumbent_options   = $::PKGS_FROM_STATE_DEFINITION{$pkg};
 
-    ssm_print "compare_package_options() >> pkg: $pkg\n" if( $main::o{debug} );
-    ssm_print "compare_package_options() >> challenger_options: $challenger_options\n" if( $main::o{debug} );
-    ssm_print "compare_package_options() >> incumbent_options:  $incumbent_options\n" if( $main::o{debug} );
+    ssm_print "compare_package_options() >> pkg: $pkg\n" if( $::o{debug} );
+    ssm_print "compare_package_options() >> challenger_options: $challenger_options\n" if( $::o{debug} );
+    ssm_print "compare_package_options() >> incumbent_options:  $incumbent_options\n" if( $::o{debug} );
 
     if($incumbent_options eq '') {
         return $challenger_options;
@@ -3768,7 +3768,7 @@ sub compare_package_options {
     } else {
         $incumbent_priority = 0;
     }
-    #ssm_print "compare_package_options() >> incumbent_priority:  $incumbent_priority\n" if( $main::o{debug} );
+    #ssm_print "compare_package_options() >> incumbent_priority:  $incumbent_priority\n" if( $::o{debug} );
 
     my $challenger_priority;
     if($challenger_options =~ m/\bpriority=(\d+)/i) {
@@ -3776,7 +3776,7 @@ sub compare_package_options {
     } else {
         $challenger_priority = 0;
     }
-    #ssm_print "compare_package_options() >> challenger_priority:  $challenger_priority\n" if( $main::o{debug} );
+    #ssm_print "compare_package_options() >> challenger_priority:  $challenger_priority\n" if( $::o{debug} );
 
     my $winning_options;
     if($challenger_priority > $incumbent_priority) {
@@ -3784,7 +3784,7 @@ sub compare_package_options {
     } else {
         $winning_options = $incumbent_options;
     }
-    ssm_print "compare_package_options() >> winning_options:  $winning_options\n" if( $main::o{debug} );
+    ssm_print "compare_package_options() >> winning_options:  $winning_options\n" if( $::o{debug} );
 
     return $winning_options;
 }
@@ -3792,10 +3792,10 @@ sub compare_package_options {
 
 sub remove_packages_interactive {
 
-    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     # Only do pkg stuff on later passes
-    return 1 if( $main::PASS_NUMBER == 1 );
+    return 1 if( $::PASS_NUMBER == 1 );
 
     my %pkg_changes = get_pending_pkg_changes('remove');
 
@@ -3839,10 +3839,10 @@ sub remove_packages_interactive {
 
 sub upgrade_packages_interactive {
 
-    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     # Only do pkg stuff on later passes
-    return 1 if( $main::PASS_NUMBER == 1 );
+    return 1 if( $::PASS_NUMBER == 1 );
 
     my %pkg_changes = get_pending_pkg_changes('upgrade');
 
@@ -3887,10 +3887,10 @@ sub upgrade_packages_interactive {
 
 sub install_packages_interactive {
 
-    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     # Only do pkg stuff on later passes
-    return 1 if( $main::PASS_NUMBER == 1 );
+    return 1 if( $::PASS_NUMBER == 1 );
 
     my %pkg_changes = get_pending_pkg_changes('install');
 
@@ -3935,10 +3935,10 @@ sub install_packages_interactive {
 
 sub update_package_repository_info_interactive {
 
-    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     # Only do pkg stuff on later passes
-    if( $main::PASS_NUMBER == 1 ) { return 1; }
+    if( $::PASS_NUMBER == 1 ) { return 1; }
 
     if( $::o{summary} ) { $::o{pkg_repo_update} = 'no'; }
 
@@ -4022,12 +4022,12 @@ sub copy_file_to_upstream_repo {
     my $local_file = shift;
     my $repo_file  = shift;
 
-    ssm_print "copy_file_to_upstream_repo($local_file, $repo_file)\n" if($main::o{debug});
+    ssm_print "copy_file_to_upstream_repo($local_file, $repo_file)\n" if($::o{debug});
 
     #
     # For URL's of type "ssh://"
     #
-    if( $main::o{upload_url} =~ m|^ssh://([^/]*)(/.*)| ) {
+    if( $::o{upload_url} =~ m|^ssh://([^/]*)(/.*)| ) {
         #                                 ^^^^^  ^^^ 
         #                                   |     |---------- Match the path to the repository
         #                                   |
@@ -4035,8 +4035,8 @@ sub copy_file_to_upstream_repo {
         #
         my $repo_host = $1;
         my $repo_dir  = $2;
-        if($main::o{debug}) { ssm_print "\$repo_host $repo_host\n"; }
-        if($main::o{debug}) { ssm_print "\$repo_dir $repo_dir\n"; }
+        if($::o{debug}) { ssm_print "\$repo_host $repo_host\n"; }
+        if($::o{debug}) { ssm_print "\$repo_dir $repo_dir\n"; }
 
         my $cmd;
 
@@ -4044,17 +4044,17 @@ sub copy_file_to_upstream_repo {
 
         my $path = "$repo_dir/$dir";
         $path =~ s|/+|/|g;
-        if($main::o{debug}) { ssm_print "\$path $path\n"; }
+        if($::o{debug}) { ssm_print "\$path $path\n"; }
 
         my $destination_file   = "$repo_dir/$repo_file";
         $destination_file =~ s|/+|/|g;
-        if($main::o{debug}) { ssm_print "\$destination_file $destination_file\n"; }
+        if($::o{debug}) { ssm_print "\$destination_file $destination_file\n"; }
 
         #
         # Make sure the dir exists
         #
         $cmd = qq(ssh $repo_host mkdir -p -m 775 $path);
-        if($main::o{debug}) { ssm_print qq(\n\$cmd: $cmd\n); }
+        if($::o{debug}) { ssm_print qq(\n\$cmd: $cmd\n); }
         !system($cmd) or die("Couldn't run $cmd\n");
         $repo_access_verified = 'yes';
 
@@ -4062,7 +4062,7 @@ sub copy_file_to_upstream_repo {
         # Copy up the contents
         #
         $cmd = qq(scp $local_file $repo_host:$destination_file >/dev/null);
-        if($main::o{debug}) { ssm_print qq(\n\$cmd: $cmd\n); }
+        if($::o{debug}) { ssm_print qq(\n\$cmd: $cmd\n); }
         !system($cmd) or die("Couldn't run $cmd\n");
 
         #
@@ -4075,7 +4075,7 @@ sub copy_file_to_upstream_repo {
     #
     # For URL's of type "file://"
     #
-    elsif( $main::o{upload_url} =~ m|^file://(/.*)| ) {
+    elsif( $::o{upload_url} =~ m|^file://(/.*)| ) {
 
         my $repo_dir = $1;
 
@@ -4087,7 +4087,7 @@ sub copy_file_to_upstream_repo {
         my $path = "$repo_dir/$dir";
         $path =~ s|/+|/|g;
         eval { mkpath("$path", 0, 0775) };
-        if($main::o{debug}) { ssm_print qq(mkpath "$path", 0, 0775); }
+        if($::o{debug}) { ssm_print qq(mkpath "$path", 0, 0775); }
         if($@) { ssm_print "Couldn’t create $dir: $@"; }
 
         #
@@ -4095,12 +4095,12 @@ sub copy_file_to_upstream_repo {
         #
         my $destination_file   = "$repo_dir/$repo_file";
         $destination_file =~ s|/+|/|g;
-        if($main::o{debug}) { ssm_print qq(copy $local_file, $destination_file \n); }
+        if($::o{debug}) { ssm_print qq(copy $local_file, $destination_file \n); }
         copy($local_file, $destination_file) or die "Failed to copy($local_file, $destination_file): $!";
         chmod oct(644), $destination_file;
 
     }
-    elsif( $main::o{upload_url} =~ m|^([^/]+)://| ) {
+    elsif( $::o{upload_url} =~ m|^([^/]+)://| ) {
         my $unknown_protocol = $1;
         ssm_print "If you'd like $unknown_protocol to be supported, please let me know.\n";
         ssm_print '  - Brian Elliott Finley <brian@thefinleys.com>' . "\n";
