@@ -1,7 +1,7 @@
 #  
 #   Copyright (C) 2006-2014 Brian Elliott Finley
 #
-#    vi: set filetype=perl tw=0:
+#    vi: set filetype=perl tw=0 number:
 #
 # 2008.09.12 Brian Elliott Finley
 #   * ssm_print function added -- print output to screen and logfile
@@ -1478,31 +1478,37 @@ sub do_you_want_me_to {
 
     $_ =~ s/['"]//g;
 
+    # Make sure the response matches one of the valid prompt options presented...
+    # Either any one of the given prompts, the ?, or if the user just hit <Enter>.
+    unless( $_ =~ m/(^[${prompts}\?]$|^$)/i ) {
+        return 'undef';
+    }
+
     if( $main::o{yes} ) { 
-        return 'yes';
+        return 'y';
 
     } elsif( $main::o{no} ) { 
-        return 'no';
+        return 'n';
 
     } elsif( m/^n$/i or m/^$/ ) {
         # either a no or an empty response (user just hit <Enter>)
-        return 'no';
+        return 'n';
 
     } elsif( m/^y$/i ) {
-        return 'yes';
+        return 'y';
 
     } elsif( m/^d$/i ) {
-        return 'diff';
+        return 'd';
 
     } elsif( m/^a$/i ) {
-        return 'add';
+        return 'a';
 
     } elsif( m/^#$/i ) {
-        return 'comment out';
+        return '#';
 
     } elsif( m/^\?$/i ) {
         $::o{answer_implications_explained} = undef;
-        return 'help';
+        return '?';
 
     }
 
@@ -1662,7 +1668,7 @@ sub install_softlink {
 
     my $calling_function = (caller(1))[3];
     execute_prescript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
-    remove_file($file);
+    remove_file($file,'silent');
     symlink($TARGET{$file}, $file) or die "Couldn't symlink($TARGET{$file}, $file) $!";
     execute_postscript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
     
@@ -2421,19 +2427,19 @@ sub take_pkg_action {
         my $answer;
         
         if($main::o{no}) {
-            $answer = 'no';
+            $answer = 'n';
         } 
         elsif($main::o{yes}) {
-            $answer = 'yes';
+            $answer = 'y';
         } 
         else {
             $answer = do_you_want_me_to($prompts);
         }   
 
-        if( $answer eq 'no' ) {
+        if( $answer eq 'n' ) {
             $return_code = 1;
 
-        } elsif( $answer eq 'yes' ) {
+        } elsif( $answer eq 'y' ) {
 
             my %actions = (
                 'install_pkgs'  => \&install_pkgs,
@@ -2485,19 +2491,11 @@ sub take_pkg_action {
 #
 sub take_file_action {
 
-    #
-    # First pass is observation only.
-    #
-    if( $main::PASS_NUMBER == 1 ) { 
-
-        ssm_print ">>> Skipping action as this is the first PASS\n\n";
-        return 1; 
-    }
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     #
-    # test for --yes and --no and --summary right here
+    # test for --yes and --no and --summary right here. Hmm...
     #
-
     my $file    = shift;
     my $action  = shift;
     my $prompts = shift;
@@ -2505,8 +2503,17 @@ sub take_file_action {
 
     my $return_code = 0;
 
+    #
+    # First pass is observation only.
+    #
+    if( $main::PASS_NUMBER == 1 ) { 
+
+        ssm_print ">>> Skipping action as this is the first PASS\n\n";
+        $return_code = 1; 
+    }
+
     if($main::o{debug}) { 
-        ssm_print "take_file_action( $file, $action"; 
+        ssm_print "$debug_prefix ( $file, $action"; 
         ssm_print ", $prompts"  if(defined $prompts);
         ssm_print ", $msg"      if(defined $msg);
         ssm_print " )\n"; 
@@ -2517,33 +2524,46 @@ sub take_file_action {
         my $answer;
         
         if($main::o{no}) {
-            $answer = 'no';
+            $answer = 'n';
         } 
         elsif($main::o{yes}) {
-            $answer = 'yes';
+            $answer = 'y';
         } 
         else {
+
+            my $unsatisfied = check_depends($file);
+            if($unsatisfied ne "1") {
+                #
+                # $prompts should be limited to N and # if depends are not met, so we
+                # strip out all prompt characters except for "n" for no, and "#" for
+                # comment out. -BEF-
+                #
+                $prompts =~ s/[^n#]//g;
+                ssm_print "\n";
+                ssm_print "           NOTE: Options limited due to Unmet Dependencies\n";
+            }
+
             $answer = do_you_want_me_to($prompts);
         }   
 
-        if( $answer eq 'no' ) {
+        if( $answer eq 'n' ) {
             $return_code = 1;
 
-        } elsif( $answer eq 'diff' ) {
+        } elsif( $answer eq 'd' ) {
             diff_file($file);
             $return_code = 2;  # we did our diff, but don't want to exit the higher level loop yet
 
-        } elsif( $answer eq 'add' ) {
+        } elsif( $answer eq 'a' ) {
             $return_code = add_file_to_repo($file);
             $main::outstanding{$file} = 'fixed';
             $CHANGES_MADE++;
 
-        } elsif( $answer eq 'comment out' ) {
+        } elsif( $answer eq '#' ) {
             $return_code = update_bundle_file_comment_out_entry($file);
             $main::outstanding{$file} = 'fixed';
             $CHANGES_MADE++;
 
-        } elsif( $answer eq 'yes' ) {
+        } elsif( $answer eq 'y' ) {
 
             my %actions = (
 
@@ -2584,6 +2604,8 @@ sub take_file_action {
     }
 
     ssm_print "\n";
+
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
 
     return $return_code;
 }
