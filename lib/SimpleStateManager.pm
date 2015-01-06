@@ -489,9 +489,9 @@ sub read_config_file {
                 $::o{pkg_repo_update} = 'auto';
             }
 
-            # default to '24' hours
+            # default to '12' hours
             if(! $::o{pkg_repo_update_window}) {
-                $::o{pkg_repo_update_window} = 24;
+                $::o{pkg_repo_update_window} = 12;
             }
 
             #
