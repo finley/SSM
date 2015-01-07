@@ -126,7 +126,7 @@ rpms:  tarball
 	# Quick hack to get rpmbuild to work on Lucid -- was failing w/bzip2 archive
 	# Turn it into a gz archive instead of just tar to avoid confusion about canonical archive -BEF-
 	bzcat $(TOPDIR)/tmp/${package}-$(VERSION).tar.bz2 | gzip > $(TOPDIR)/tmp/${package}-$(VERSION).tar.gz 
-	rpmbuild -ta $(TOPDIR)/tmp/${package}-$(VERSION).tar.gz
+	rpmbuild -ta --sign $(TOPDIR)/tmp/${package}-$(VERSION).tar.gz
 	/bin/cp -i ${rpmbuild}/RPMS/*/${package}-$(VERSION)-*.rpm $(TOPDIR)/tmp/
 	/bin/cp -i ${rpmbuild}/SRPMS/${package}-$(VERSION)-*.rpm	$(TOPDIR)/tmp/
 	
