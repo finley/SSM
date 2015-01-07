@@ -3797,26 +3797,26 @@ sub remove_packages_interactive {
     # Only do pkg stuff on later passes
     return 1 if( $::PASS_NUMBER == 1 );
 
-    my %pkg_changes = get_pending_pkg_changes('remove');
+    my %pending_pkg_changes = get_pending_pkg_changes('remove');
 
-    if(%pkg_changes) {
+    if(%pending_pkg_changes) {
 
         ssm_print "Not OK:  Package removes\n";
         ssm_print "\n";
         ssm_print "         Need to:\n";
 
         my $max_length = 0;
-        foreach my $pkg (sort keys %pkg_changes) {
-            my $length = length $pkg_changes{$pkg};
+        foreach my $pkg (sort keys %pending_pkg_changes) {
+            my $length = length $pending_pkg_changes{$pkg};
             if($length > $max_length) {
                 $max_length = $length;
             }
         }
 
         my @sort_list;
-        foreach my $pkg (sort keys %pkg_changes) {
+        foreach my $pkg (sort keys %pending_pkg_changes) {
 
-            my $action = lc( $pkg_changes{$pkg} );
+            my $action = lc( $pending_pkg_changes{$pkg}{action} );
             my $pad = get_pad($max_length - length($action));
 
             push @sort_list, "- ${action}${pad} $pkg";
@@ -3826,7 +3826,7 @@ sub remove_packages_interactive {
             ssm_print "         $line\n";
         }
 
-        take_pkg_action('remove_pkgs', (keys %pkg_changes) );
+        take_pkg_action('remove_pkgs', (keys %pending_pkg_changes) );
 
     } else {
         ssm_print "OK:      Package removes\n";
@@ -3844,36 +3844,40 @@ sub upgrade_packages_interactive {
     # Only do pkg stuff on later passes
     return 1 if( $::PASS_NUMBER == 1 );
 
-    my %pkg_changes = get_pending_pkg_changes('upgrade');
+    my %pending_pkg_changes = get_pending_pkg_changes('upgrade');
 
-    if(%pkg_changes) {
+    if(%pending_pkg_changes) {
 
         ssm_print "Not OK:  Package upgrades\n";
         ssm_print "\n";
         ssm_print "         Need to:\n";
 
         my $max_length = 0;
-        foreach my $pkg (sort keys %pkg_changes) {
-            my $length = length $pkg_changes{$pkg};
+        foreach my $pkg (sort keys %pending_pkg_changes) {
+            my $length = length $pending_pkg_changes{$pkg};
             if($length > $max_length) {
                 $max_length = $length;
             }
         }
 
         my @sort_list;
-        foreach my $pkg (sort keys %pkg_changes) {
+        foreach my $pkg (sort keys %pending_pkg_changes) {
 
-            my $action = lc( $pkg_changes{$pkg} );
+            my $action = lc( $pending_pkg_changes{$pkg}{action} );
             my $pad = get_pad($max_length - length($action));
 
-            push @sort_list, "- ${action}${pad} $pkg";
+            if($pending_pkg_changes{$pkg}{current_version} and $pending_pkg_changes{$pkg}{target_version}) {
+                push @sort_list, "- ${action}${pad} $pkg from $pending_pkg_changes{$pkg}{current_version} to $pending_pkg_changes{$pkg}{target_version}";
+            } else {
+                push @sort_list, "- ${action}${pad} $pkg";
+            }
         }
 
         foreach my $line (sort @sort_list) {
             ssm_print "         $line\n";
         }
 
-        take_pkg_action('upgrade_pkgs', (keys %pkg_changes) );
+        take_pkg_action('upgrade_pkgs', (keys %pending_pkg_changes) );
 
     } else {
         ssm_print "OK:      Package upgrades\n";
@@ -3892,26 +3896,26 @@ sub install_packages_interactive {
     # Only do pkg stuff on later passes
     return 1 if( $::PASS_NUMBER == 1 );
 
-    my %pkg_changes = get_pending_pkg_changes('install');
+    my %pending_pkg_changes = get_pending_pkg_changes('install');
 
-    if(%pkg_changes) {
+    if(%pending_pkg_changes) {
 
         ssm_print "Not OK:  Package installs\n";
         ssm_print "\n";
         ssm_print "         Need to:\n";
 
         my $max_length = 0;
-        foreach my $pkg (sort keys %pkg_changes) {
-            my $length = length $pkg_changes{$pkg};
+        foreach my $pkg (sort keys %pending_pkg_changes) {
+            my $length = length $pending_pkg_changes{$pkg};
             if($length > $max_length) {
                 $max_length = $length;
             }
         }
 
         my @sort_list;
-        foreach my $pkg (sort keys %pkg_changes) {
+        foreach my $pkg (sort keys %pending_pkg_changes) {
 
-            my $action = lc( $pkg_changes{$pkg} );
+            my $action = lc( $pending_pkg_changes{$pkg}{action} );
             my $pad = get_pad($max_length - length($action));
 
             push @sort_list, "- ${action}${pad} $pkg";
@@ -3921,7 +3925,7 @@ sub install_packages_interactive {
             ssm_print "         $line\n";
         }
 
-        take_pkg_action('install_pkgs', (keys %pkg_changes) );
+        take_pkg_action('install_pkgs', (keys %pending_pkg_changes) );
 
     } else {
         ssm_print "OK:      Package installs\n";
