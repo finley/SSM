@@ -1,3 +1,23 @@
+simple-state-manager (0.5.3) stable; urgency=medium
+
+  * 74d5b24 - sign RPMs at build time
+  * 87fbf07 Merge branch 'master' of github.com:finley/SSM
+  * 444fe84 .
+  * 73de192 - adapt Yum.pm to new minimalist pkg definition model
+  * 1751098 - Normalize variable names
+  * ee7c3f7 - default pkg repo refresh to 12hours
+  * 78c8301 - change ::varable references to more concise $::variable
+    style
+  * e25083e - Have do_you_want_me_to() validate that user responses
+    match one of the   offered prompts before returning the result. -
+    Have take_file_action() limit user options if dependencies not met
+  * 2e8532d - more debug output improvements; - halfway through updating
+    Yum.pm to new minimalist model
+  * 16b388e - example script output improvements
+  * 25cc9a7 Update dir names in repo from ssm to simple-state-manager.
+
+ -- Brian Elliott Finley <brian@thefinleys.com>  Tue, 06 Jan 2015 22:12:09 -0600
+
 simple-state-manager (0.5.2) stable; urgency=medium
 
   * d35ac5b - Hopefully this rpm building auto-requires filter method
