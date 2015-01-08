@@ -1,3 +1,5 @@
+-- Improve diff function
+
 -- If --add-file, then only show minimal info.  
 
     Current info is:
@@ -140,25 +142,6 @@ don't pull explicit path.
         /etc/rc.d/init.d/script
 
         If /etc/init.d/script is specified.
-
-
---
-
-Not OK:  Regular file /usr/bin/set_dma_latency
-         Need to:
-         - copy version from repo
-         DIFFING:  /usr/bin/set_dma_latency
-
-           Here's a diff between the file on your system (left side) and the
-           one in the repository (right side).
-           <<<------------------------------------------------------>>>
-
-/usr/bin/diff: /usr/bin/set_dma_latency: No such file or directory
-
-           ------------------------------------------------------------
-            Currently on This Machine   <-- | -->   Repository Version
-           ------------------------------------------------------------
-
 
 
 --
