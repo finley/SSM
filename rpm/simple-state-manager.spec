@@ -203,7 +203,7 @@ perl -pi -e "s|share/doc/%{name}|share/doc/%{name}-%{version}|" $RPM_BUILD_ROOT/
 - Make sure files added to repo have accessible perms
 * Mon Oct 29 2012 - brian@thefinleys.com
 - Auto push changes to git repos of type "file://"
-* Wed Oct 22 2012 - brian@thefinleys.com
+* Mon Oct 22 2012 - brian@thefinleys.com
 - Add git support.
 * Wed Oct 10 2012 - brian@thefinleys.com
 - Prep for move to new repo.
@@ -235,7 +235,7 @@ perl -pi -e "s|share/doc/%{name}|share/doc/%{name}-%{version}|" $RPM_BUILD_ROOT/
 - Break out package remove, upgrade, install, and reinstall into
   subroutines
 - change order of comment and name in check-in output
-* Mon Dec 01 2009 - brian@thefinleys.com
+* Tue Dec 01 2009 - brian@thefinleys.com
 - Add directory+contents-unwanted file type.  Create directory and
   maintain permissions and ownership on the directory, just like a
   simple "type = directory".  Plus, any contents of this directory that
@@ -334,5 +334,5 @@ perl -pi -e "s|share/doc/%{name}|share/doc/%{name}-%{version}|" $RPM_BUILD_ROOT/
   length output issue -- was truncating certain long package names
 * Wed Oct 29 2008 - brian@thefinleys.com
 - new release. 0.4.17
-* Sun Oct 28 2008 - brian@thefinleys.com
+* Tue Oct 28 2008 - brian@thefinleys.com
 - initial package
