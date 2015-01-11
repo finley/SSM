@@ -1,5 +1,5 @@
 #  
-#   Copyright (C) 2006-2014 Brian Elliott Finley
+#   Copyright (C) 2006-2015 Brian Elliott Finley
 #
 #    vi: set filetype=perl tw=0 number:
 #
@@ -3854,6 +3854,9 @@ sub upgrade_packages_interactive {
 
         my $max_length = 0;
         foreach my $pkg (sort keys %pending_pkg_changes) {
+
+            ssm_print "$debug_prefix PKG $pkg\n" if($o::{debug});
+
             my $length = length $pending_pkg_changes{$pkg};
             if($length > $max_length) {
                 $max_length = $length;
