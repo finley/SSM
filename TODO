@@ -1,5 +1,7 @@
 -- Improve diff function
 
+-- ssm -ap or --add-package "pkg pkg pkg pkg"
+
 -- If --add-file, then only show minimal info.  
 
     Current info is:
