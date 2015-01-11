@@ -1,5 +1,5 @@
 #  
-#   Copyright (C) 2006-2014 Brian Elliott Finley
+#   Copyright (C) 2006-2015 Brian Elliott Finley
 #
 #    vi: set et ai ts=4 filetype=perl tw=0 number:
 # 
@@ -337,17 +337,17 @@ sub get_pending_pkg_changes {
     #
     foreach my $pkg (sort keys %pending_pkg_changes) {
 
-        if( $pending_pkg_changes{$pkg} eq 'remove' ) {
+        if( $pending_pkg_changes{$pkg}{action} eq 'remove' ) {
 
             if ($::PKGS_TARGET_STATE{$pkg} and ($::PKGS_TARGET_STATE{$pkg} ne 'remove')) {
-                ssm_print "WARNING: Package $pkg is now marked as $pending_pkg_changes{$pkg}, but was already marked as $::PKGS_TARGET_STATE{$pkg}\n";
+                ssm_print "WARNING: Package $pkg is now marked as $pending_pkg_changes{$pkg}{action}, but was already marked as $::PKGS_TARGET_STATE{$pkg}\n";
 
             } elsif ($::PKGS_FROM_STATE_DEFINITION{$pkg} and $::PKGS_FROM_STATE_DEFINITION{$pkg} !~ m/\bunwanted\b/i ) {
-                ssm_print "WARNING: Package $pkg is now marked as $pending_pkg_changes{$pkg}, but is marked for install in the config.\n";
+                ssm_print "WARNING: Package $pkg is now marked as $pending_pkg_changes{$pkg}{action}, but is marked for install in the config.\n";
             }
 
         } else {
-            $::PKGS_TARGET_STATE{$pkg} = $pending_pkg_changes{$pkg};
+            $::PKGS_TARGET_STATE{$pkg} = $pending_pkg_changes{$pkg}{action};
         }
     }
 
@@ -407,7 +407,6 @@ sub do_apt_get_dry_run {
         #   Remv libgl1-mesa-dri:i386 [10.1.3-0ubuntu0.1]
         #   [snip]
         #
-
         if(m/^Inst\s+(\S+)\s+/) { 
 
             my $pkg = $1;
@@ -416,18 +415,24 @@ sub do_apt_get_dry_run {
             if ($pkg_ref->{CurrentState} and $pkg_ref->{CurrentState} eq 'Installed') {
 
                 # Ok, upgrading existing package
-                $pending_pkg_changes{$pkg} = 'upgrade';
+                $pending_pkg_changes{$pkg}{action} = 'upgrade';
+                $pending_pkg_changes{$pkg}{current_version} = $pkg_ref->{CurrentVer}{VerStr};
+                if (my $candidate_pkg_ref = $policy->candidate($pkg_ref))
+                {
+                    $pending_pkg_changes{$pkg}{target_version} = $candidate_pkg_ref->{VerStr};
+                }
 
             } else {
 
                 # Not an upgrade, must be a fresh install
-                $pending_pkg_changes{$pkg} = 'install';
+                $pending_pkg_changes{$pkg}{action} = 'install';
+
             }
 
         } elsif(m/^Remv\s+(\S+)\s+/) {
 
             my $pkg = $1;
-            $pending_pkg_changes{$pkg} = 'remove';
+            $pending_pkg_changes{$pkg}{action} = 'remove';
         }
     }
     close(INPUT);
