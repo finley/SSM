@@ -2928,7 +2928,7 @@ sub choose_tmp_file {
         print FILE "I am a little tmp file created by System State Manager.\n";
     close(FILE);
 
-    ssm_print "$debug_prefix FILE $file\n";
+    ssm_print "$debug_prefix FILE $file\n" if( $::o{debug} );
     
     return $file;
 }
