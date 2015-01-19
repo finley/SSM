@@ -2913,6 +2913,8 @@ sub get_file {
 #
 sub choose_tmp_file {
 
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(1))[3] . ":" . (caller(1))[2] . "() " . (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
     my $count = 0;
     my $file = "/tmp/system-state-manager_tmp_file";
 
@@ -2925,6 +2927,8 @@ sub choose_tmp_file {
     open(FILE,">$file") or die "Couldn't open $file for writing";
         print FILE "I am a little tmp file created by System State Manager.\n";
     close(FILE);
+
+    ssm_print "$debug_prefix FILE $file\n";
     
     return $file;
 }
@@ -3153,6 +3157,8 @@ sub update_bundle_file_comment_out_entry {
 
     my $file = shift;
 
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
     if(! $::o{"upload_url"} ) {
 
         _specify_an_upload_url();
@@ -3223,6 +3229,8 @@ sub update_bundle_file_comment_out_entry {
     copy_file_to_upstream_repo($tmp_bundle_file, $BUNDLEFILE{$file});
     unlink $tmp_bundle_file;
 
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+
     return 1;
 }
 
@@ -3258,11 +3266,12 @@ sub update_bundlefile_type_regular {
     }
 
     my $url  = "$::o{base_url}/$BUNDLEFILE{$name}";
-    my $file = get_file($url, 'error');
 
+    my $file = get_file($url, 'error');
     open(FILE, "<$file") or die("Couldn't open $file for reading");
     push my @input, (<FILE>);
     close(FILE);
+    unlink $file;
 
     my $stanza_terminator = '^(\s+|$)';
 
@@ -4094,7 +4103,7 @@ sub copy_file_to_upstream_repo {
         my $path = "$repo_dir/$dir";
         $path =~ s|/+|/|g;
         eval { mkpath("$path", 0, 0775) };
-        if($::o{debug}) { ssm_print qq(mkpath "$path", 0, 0775); }
+        if($::o{debug}) { ssm_print qq(mkpath "$path", 0, 0775\n); }
         if($@) { ssm_print "Couldn’t create $dir: $@"; }
 
         #
