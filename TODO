@@ -1,5 +1,22 @@
 -- add global setting:
 
+    Consider this instead of max_kernel_pkgs --  less coding effort,
+    could still add the below later if deemed necessary:
+
+    apt-get_autoremove = true
+
+    Example apt-get upgrade output...
+
+            The following packages were automatically installed and are no longer required:
+              linux-headers-3.16.0-23 linux-headers-3.16.0-23-generic
+              linux-headers-3.16.0-25 linux-headers-3.16.0-25-generic
+              linux-image-3.16.0-23-generic linux-image-3.16.0-25-generic
+              linux-image-extra-3.16.0-23-generic linux-image-extra-3.16.0-25-generic
+              linux-signed-image-3.16.0-25-generic
+            Use 'apt-get autoremove' to remove them.
+
+    --
+
     max_kernel_pkgs = N (default to 3)
 
         Maximum number of kernel packages to keep on a system.  Prevents
@@ -18,6 +35,8 @@
             - or a regex to match the file name that belongs in the
               package, then a pkg_mgr function
               get_name_of_pkg_that_owns_this_file(FILE);
+
+
 
 -- Improve diff function
 
