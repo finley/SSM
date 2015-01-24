@@ -2628,13 +2628,15 @@ sub md5sum_match {
 
 sub diff_file {
 
+    my $file     = shift;
+    my $tmp_file = shift;
+
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
     if( $::o{summary} ) {
         # Don't do diffs in --summary mode
         return 1;
     }
-
-    my $file     = shift;
-    my $tmp_file = shift;
 
     ssm_print "         DIFFING:  $file\n";
 
@@ -2696,6 +2698,9 @@ sub diff_file {
     ssm_print "           ------------------------------------------------------------\n";
     ssm_print "\n";
 
+    #
+    #   apt-get install libtext-diff-perl
+    #
     # use Text::Diff;
     # 
     # 
@@ -2720,6 +2725,8 @@ sub diff_file {
     if( $unlink eq 'yes' ) {
         unlink $tmp_file;
     }
+
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
 
     return 1;
 }
@@ -4044,10 +4051,10 @@ sub copy_file_to_upstream_repo {
     # For URL's of type "ssh://"
     #
     if( $::o{upload_url} =~ m|^ssh://([^/]*)(/.*)| ) {
-        #                                 ^^^^^  ^^^ 
-        #                                   |     |---------- Match the path to the repository
-        #                                   |
-        #                                   |---------------- Match the repo_host ( host.example.com or bobby@host.example.com )
+        #                             ^^^^^  ^^^ 
+        #                               |     |---------- Match the path to the repository
+        #                               |
+        #                               |---------------- Match the repo_host ( host.example.com or bobby@host.example.com )
         #
         my $repo_host = $1;
         my $repo_dir  = $2;
