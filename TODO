@@ -1,3 +1,14 @@
+-- Improve diff function
+
+-- ssm -ap or --add-package "pkg pkg pkg pkg"
+
+-- Allow --add-file to support other file types
+
+    -- symlink
+    -- hardlink
+    -- directory
+    -- special
+
 -- add global setting:
 
     Consider this instead of max_kernel_pkgs --  less coding effort,
@@ -37,52 +48,6 @@
               get_name_of_pkg_that_owns_this_file(FILE);
 
 
-
--- Improve diff function
-
--- ssm -ap or --add-package "pkg pkg pkg pkg"
-
--- If --add-file, then only show minimal info.  
-
-    Current info is:
-
-        ┌─[bfinley@xbob] ~/
-        └─[$] sudo ssm -af /etc/krb5.conf      
-        
-        Configuration File: file:///home/bfinley/src/ssm_repo/xbob
-        INFO:    Package manager -> apt-get
-        Bundle:  bundle.common
-        Bundle:  bundle.postfix
-        Bundle:  file://dev/null
-        Adding:  /etc/krb5.conf to repository.
-        Adding:  Entry for "/etc/krb5.conf" in configuration file "xbob".
-        -------------------------------
-        Added 1 files.
-        Encountered 0 errors.
-        
-    Target info is:
-
-        ┌─[bfinley@xbob] ~/
-        └─[$] sudo ssm -af /etc/krb5.conf      
-        
-        Adding entry for "/etc/krb5.conf" to configuration file "xbob".
-        Adding entry for "/etc/alalalal.conf" to configuration file "other".
-        -------------------------------
-        Added 2 files.
-        
-
--- Allow --add-file to specific bundle
-
-    ssm --add-file filename --bundle bundle.otherfiles
-
-    # Francis Dang request
-
--- Allow --add-file to support other file types
-
-    -- symlink
-    -- hardlink
-    -- directory
-    -- special
 
 -- verify that all documented pkg repo options work as described
 

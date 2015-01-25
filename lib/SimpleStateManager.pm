@@ -73,6 +73,7 @@ use Cwd 'abs_path';
 #   add_file_to_repo
 #   add_new_files
 #   backup
+#   bundlefile_is_in_the_config
 #   check_depends
 #   check_depends_interactive
 #   choose_tmp_file
@@ -81,8 +82,6 @@ use Cwd 'abs_path';
 #   compare_package_options
 #   contents_unwanted_interactive
 #   copy_file_to_upstream_repo
-#   install_directory
-#   install_special_file
 #   diff_file
 #   diff_ownership_and_permissions
 #   directory_interactive
@@ -92,7 +91,9 @@ use Cwd 'abs_path';
 #   execute_prescript
 #   generated_file_interactive
 #   _get_arch
+#   get_current_time_as_timestamp
 #   get_file
+#   get_file_timestamp
 #   get_file_type
 #   get_gid
 #   get_hostname
@@ -100,7 +101,6 @@ use Cwd 'abs_path';
 #   get_mode
 #   get_pad
 #   get_pkgs_to_be_installed
-#   get_current_time_as_timestamp
 #   get_uid
 #   group_to_gid
 #   hardlink_interactive
@@ -108,9 +108,12 @@ use Cwd 'abs_path';
 #   _include_bundle
 #   _initialize_log_file
 #   _initialize_variables
+#   install_directory
 #   install_file
+#   install_hardlink
 #   install_packages_interactive
 #   install_softlink
+#   install_special_file
 #   md5sum_match
 #   multisort
 #   please_specify_a_valid_pkg_manager
@@ -2842,7 +2845,8 @@ sub install_file {
 
 #
 # my $tmp_file = get_file($file, 'warn');
-# my $tmp_file = get_file($file, 'error');  # the default
+# my $tmp_file = get_file($file, 'error');              # the default
+# my $tmp_file = get_file($file, 'error', 'silent'); 
 #
 sub get_file {
 
@@ -2851,6 +2855,9 @@ sub get_file {
 
     my $file = shift;
     my $failure_behavior = shift;
+    my $silent = shift;
+
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(1))[3] . ":" . (caller(1))[2] . "() " . (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     $failure_behavior = 'error' if( ! defined $failure_behavior );
 
@@ -2865,15 +2872,15 @@ sub get_file {
         $file =~ s/(\s+|#).*//;
         if( ! -e $file ) {
             if( $failure_behavior eq 'error' ) {
-                ssm_print_always "ERROR: $file doesn't exist...\n\n";
+                ssm_print_always "ERROR: $file doesn't exist...\n\n" unless($silent);
                 exit 1;
             } else {
-                ssm_print "WARNING: $file doesn't exist...\n";
+                ssm_print "WARNING: $file doesn't exist...\n" unless($silent);
                 $ERROR_LEVEL++;  if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
                 return undef;
             }
         } else {
-            copy($file, $tmp_file) or die "get_file(): Failed to copy($file, $tmp_file): $!";
+            copy($file, $tmp_file) or die "$debug_prefix Failed to copy($file, $tmp_file): $!";
         }
 
     } elsif(    ($file =~ m#^http://# ) 
@@ -2910,6 +2917,8 @@ sub get_file {
 
         exit 1;
     }
+
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
 
     return $tmp_file;
 }
@@ -3263,22 +3272,12 @@ sub update_bundlefile_type_regular {
     my $hostname  = get_hostname();
     my $comment   = "From $hostname on $timestamp";
 
-    if(! defined $BUNDLEFILE{$name}) {
-        #
-        # If this is a new file, that doesn't yet exist in the definition, then
-        # it won't be associated with a specific bundle file, so we default to
-        # using the configuration file itself. -BEF-
-        #
-        $BUNDLEFILE{$name} = basename( $::o{config_file} );
-    }
-
     my $url  = "$::o{base_url}/$BUNDLEFILE{$name}";
-
-    my $file = get_file($url, 'error');
-    open(FILE, "<$file") or die("Couldn't open $file for reading");
+    my $bundlefile = get_file($url, 'error');
+    open(FILE, "<$bundlefile") or die("Couldn't open $bundlefile for reading");
     push my @input, (<FILE>);
     close(FILE);
-    unlink $file;
+    unlink $bundlefile;
 
     my $stanza_terminator = '^(\s+|$)';
 
@@ -3350,7 +3349,7 @@ sub update_bundlefile_type_regular {
 
     }
 
-    $file = choose_tmp_file();
+    my $file = choose_tmp_file();
     open(FILE, ">$file") or die("Couldn't open $file for writing");
     print FILE @newfile;
     close(FILE);
@@ -3599,6 +3598,8 @@ sub add_file_to_repo {
 
     my $file = shift;
 
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
     #
     # Verify absolute path here even if it's been done elsewhere for other
     # purposes.
@@ -3629,16 +3630,99 @@ sub add_file_to_repo {
         # Copy the file itself into the repo
         #
         $repo_file = "$file/$md5sum";
-        ssm_print "copy_file_to_upstream_repo($file, $repo_file)\n" if($::o{debug});
         copy_file_to_upstream_repo($file, $repo_file);
 
-        #
-        # Update the bundle file with a new or updated entry for the file above
-        #
+        if(! defined $BUNDLEFILE{$name}) {
+            #
+            # This must be a new file, not yet in the definition.  
+            #
+            if($::o{bundlefile}) {
+
+                if( ! bundlefile_is_in_the_config( $::o{bundlefile} ) ) {
+                    #
+                    # Hmm.  The specified bundlefile doesn't exist in this config.  
+                    #
+                
+                    #
+                    # Check to see if it exists in the repo.  
+                    #
+                    my $url  = "$::o{base_url}/$::o{bundlefile}";
+                    my $tmpfile = get_file($url, 'warn', 'silent');
+
+                    if($tmpfile) {
+                        # It does exist!  Let's bail. -BEF-
+                        ssm_print "\n";
+                        ssm_print "ERROR: The bundlefile you specified, $::o{bundlefile}, exists in the\n";
+                        ssm_print "       repository, but is not currently referenced by this config.  It \n";
+                        ssm_print "       might be used by a different config, in which case it could be \n";
+                        ssm_print "       dangerous to the other config if we change it, and it's existing\n";
+                        ssm_print "       contents could be dangerous to this config.\n";
+                        ssm_print "\n";
+                        ssm_print "       Please specify either a totally new bundlefile or one that is \n";
+                        ssm_print "       already in use by this config. -The Mgmt\n";
+                        ssm_print "\n";
+                
+                        unlink $tmpfile;
+
+                        exit 1;
+                
+                    } else {
+                
+                        #
+                        # The user has specified a new bundlefile.  At some point we'll
+                        # handle this, but for now we'll just ask them to specify an
+                        # existing bundlefile.
+                        #
+                
+                        ssm_print "\n";
+                        ssm_print "ERROR: The bundlefile you specified, $::o{bundlefile}, doesn't yet exist\n";
+                        ssm_print "       in the repository.  Please specify one of the following bundlefiles \n";
+                        ssm_print "       that are already referenced by this config:\n";
+                        ssm_print "\n";
+                
+                        my %tmp;
+                        foreach (values %BUNDLEFILE) {
+                            # uniquify the bundlefile names
+                            $tmp{$_} = 1;
+                        }
+                        foreach (sort keys %tmp) {
+                            # print them out
+                            print "           $_\n";
+                        }
+                
+                        ssm_print "\n";
+                        ssm_print "       If you'd like to make a feature request for this to add a bundlefile\n";
+                        ssm_print "       to the repo in such situations, please email <brian\@thefinleys.com>\n";
+                        ssm_print "\n";
+                
+                        exit 1;
+                    }
+                }
+
+                #
+                # Ok, it's passed the test.  It exists and it's already in the config.  Let's use it.
+                #
+                $BUNDLEFILE{$name} = $::o{bundlefile};
+                ssm_print "$debug_prefix assigning $name to bundlefile specified with --bundlefile $::o{bundlefile}\n" if($::o{debug});
+
+            } else {
+                #
+                # And no bundlefile preference was specified, so we default to
+                # adding it to the main configuration file. -BEF-
+                #
+                $BUNDLEFILE{$name} = basename( $::o{config_file} );
+                ssm_print "$debug_prefix assigning $name to default bundlefile $BUNDLEFILE{$name}\n" if($::o{debug});
+            }
+        }
+
+
+
+        ssm_print "$debug_prefix bundlefile $BUNDLEFILE{$name} is the target for $name\n" if($::o{debug});
+
+        my $bundlefile = "$BUNDLEFILE{$file}";
         my $tmp_file = update_bundlefile_type_regular( $name, $md5sum, $owner, $group, $mode );
-        $repo_file = "$BUNDLEFILE{$file}";
-        ssm_print "copy_file_to_upstream_repo($tmp_file, $repo_file)\n" if($::o{debug});
-        copy_file_to_upstream_repo($tmp_file, $repo_file);
+        ssm_print "copy_file_to_upstream_repo($tmp_file, $bundlefile)\n" if($::o{debug});
+        copy_file_to_upstream_repo($tmp_file, $bundlefile);
         unlink $tmp_file;
 
         $::outstanding{$file} = 'fixed';
@@ -3652,6 +3736,8 @@ sub add_file_to_repo {
         ssm_print "\n";
         return 3;
     }
+
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
 
     return 1;
 }
@@ -4045,7 +4131,7 @@ sub copy_file_to_upstream_repo {
     my $local_file = shift;
     my $repo_file  = shift;
 
-    ssm_print "copy_file_to_upstream_repo($local_file, $repo_file)\n" if($::o{debug});
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     #
     # For URL's of type "ssh://"
@@ -4110,7 +4196,7 @@ sub copy_file_to_upstream_repo {
         my $path = "$repo_dir/$dir";
         $path =~ s|/+|/|g;
         eval { mkpath("$path", 0, 0775) };
-        if($::o{debug}) { ssm_print qq(mkpath "$path", 0, 0775\n); }
+        if($::o{debug}) { ssm_print qq($debug_prefix mkpath "$path", 0, 0775\n); }
         if($@) { ssm_print "Couldn’t create $dir: $@"; }
 
         #
@@ -4118,7 +4204,7 @@ sub copy_file_to_upstream_repo {
         #
         my $destination_file   = "$repo_dir/$repo_file";
         $destination_file =~ s|/+|/|g;
-        if($::o{debug}) { ssm_print qq(copy $local_file, $destination_file \n); }
+        if($::o{debug}) { ssm_print qq($debug_prefix copy $local_file, $destination_file \n); }
         copy($local_file, $destination_file) or die "Failed to copy($local_file, $destination_file): $!";
         chmod oct(644), $destination_file;
 
@@ -4129,7 +4215,38 @@ sub copy_file_to_upstream_repo {
         ssm_print '  - Brian Elliott Finley <brian@thefinleys.com>' . "\n";
     }
 
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+
     return 1;
+}
+
+
+#
+# Test to see if BUNDLEFILE exists in the aggregate config
+#
+# Usage:
+#   if( bundlefile_is_in_the_config("$BUNDLEFILE") ) { then; }
+#
+sub bundlefile_is_in_the_config {
+
+    my $file_to_test = shift;
+    my $result = undef;
+
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
+    foreach my $file_from_config (values %BUNDLEFILE) {
+        ssm_print "$debug_prefix testing if $file_to_test eq $file_from_config\n" if($::o{debug});
+        if( $file_from_config eq $file_to_test ) {
+            ssm_print "$debug_prefix returning 1\n" if($::o{debug});
+            return 1;
+        }
+    }
+
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+
+    ssm_print "$debug_prefix returning undef\n" if($::o{debug});
+
+    return undef;
 }
 
 

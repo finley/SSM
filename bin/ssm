@@ -71,6 +71,7 @@ GetOptions(
     "of|only-files"                     => \$o{only_files},
     "otf|only-this-file=s@"             => \$o{only_this_file},
     "af|add-file=s@"                    => \$o{add_file},
+    "bf|bundlefile=s"                   => \$o{bundlefile},
     "analyze-config"                    => \$o{analyze_config},
 ) or usage() and exit(1);
 
@@ -360,6 +361,15 @@ OPTIONS
         times to specify multiple files.
 
         Example:  --af /etc/file1.txt --af /etc/file2.txt
+
+    --bf, --bundlefile BUNDLEFILE
+
+        Works with the --add-file option.  Specifies the BUNDLEFILE in
+        the repo to which all files specified by --add-file should be
+        added.  While --add-file may be specified multiple times,
+        only one --bundlefile may be specified.
+
+        Defaults to the main config file.
 
     --config URL
 
