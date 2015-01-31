@@ -3545,7 +3545,7 @@ sub add_new_files {
         my $abs_path = abs_path($file);
         $file = $abs_path;
 
-        ssm_print "Adding:  $file to repository.\n";
+        ssm_print "Adding:  FILE $file to repository.\n";
 
         add_file_to_repo($file);
         $CHANGES_MADE++;
