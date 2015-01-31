@@ -3565,6 +3565,8 @@ sub get_file_type {
     
     my $file = shift;
 
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
     if( ! -e $file ) { return 'non-existent'; } 
 
     if( -d $file ) { return 'directory'; } 
@@ -3595,132 +3597,7 @@ sub add_file_to_repo {
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
-    if( $file !~ m|^/| ) {
-        ssm_print "$debug_prefix Finding absolute path for $file" if($::o{debug});
-        my $abs_path = abs_path($file);
-        $file = $abs_path;
-        ssm_print " => $file\n" if($::o{debug});
-    }
-
-    if(defined $::o{upload_url}) {
-
-        my $local_file;
-        my $repo_file;
-
-        $::o{file_to_add} = $file;
-
-        my $type = get_file_type($file);
-        if($type eq 'non-existent') {
-            $ERROR_LEVEL++;
-        }
-        ssm_print "TYPE: $type\n" if($::o{debug});
-
-        my $name   = $file;
-        my $md5sum = get_md5sum($file);
-        my $owner  = get_uid($file);
-        my $group  = get_gid($file);
-        my $mode   = get_mode($file);
-
-        #
-        # Copy the file itself into the repo
-        #
-        $repo_file = "$file/$md5sum";
-        copy_file_to_upstream_repo($file, $repo_file);
-
-        if(! defined $BUNDLEFILE{$name}) {
-            #
-            # This must be a new file, not yet in the definition.  
-            #
-            if($::o{bundlefile}) {
-
-                if( ! bundlefile_is_in_the_config( $::o{bundlefile} ) ) {
-                    #
-                    # Hmm.  The specified bundlefile doesn't exist in this config.  
-                    #
-                
-                    #
-                    # Check to see if it exists in the repo.  
-                    #
-                    my $url  = "$::o{base_url}/$::o{bundlefile}";
-                    my $tmpfile = get_file($url, 'warn', 'silent');
-
-                    if($tmpfile) {
-                        # It does exist!  Let's bail. -BEF-
-                        ssm_print "\n";
-                        ssm_print "ERROR: The bundlefile you specified, $::o{bundlefile}, exists in the\n";
-                        ssm_print "       repository, but is not currently referenced by this config.  It \n";
-                        ssm_print "       might be used by a different config, in which case it could be \n";
-                        ssm_print "       dangerous to the other config if we change it, and it's existing\n";
-                        ssm_print "       contents could be dangerous to this config.\n";
-                        ssm_print "\n";
-                        ssm_print "       Please specify either a totally new bundlefile or one that is \n";
-                        ssm_print "       already in use by this config. -The Mgmt\n";
-                        ssm_print "\n";
-                
-                        unlink $tmpfile;
-
-                        exit 1;
-                
-                    } else {
-                
-                        #
-                        # The user has specified a new bundlefile.  At some point we'll
-                        # handle this, but for now we'll just ask them to specify an
-                        # existing bundlefile.
-                        #
-                
-                        ssm_print "\n";
-                        ssm_print "ERROR: The bundlefile you specified, $::o{bundlefile}, doesn't yet exist\n";
-                        ssm_print "       in the repository.  Please specify one of the following bundlefiles \n";
-                        ssm_print "       that are already referenced by this config:\n";
-                        ssm_print "\n";
-                
-                        my %tmp;
-                        foreach (values %BUNDLEFILE) {
-                            # uniquify the bundlefile names
-                            $tmp{$_} = 1;
-                        }
-                        foreach (sort keys %tmp) {
-                            # print them out
-                            print "           $_\n";
-                        }
-                
-                        ssm_print "\n";
-                        ssm_print "       If you'd like to make a feature request for this to add a bundlefile\n";
-                        ssm_print "       to the repo in such situations, please email <brian\@thefinleys.com>\n";
-                        ssm_print "\n";
-                
-                        exit 1;
-                    }
-                }
-
-                #
-                # Ok, it's passed the test.  It exists and it's already in the config.  Let's use it.
-                #
-                $BUNDLEFILE{$name} = $::o{bundlefile};
-                ssm_print "$debug_prefix assigning $name to bundlefile specified with --bundlefile $::o{bundlefile}\n" if($::o{debug});
-
-            } else {
-                #
-                # And no bundlefile preference was specified, so we default to
-                # adding it to the main configuration file. -BEF-
-                #
-                $BUNDLEFILE{$name} = basename( $::o{config_file} );
-                ssm_print "$debug_prefix assigning $name to default bundlefile $BUNDLEFILE{$name}\n" if($::o{debug});
-            }
-        }
-
-        ssm_print "$debug_prefix bundlefile $BUNDLEFILE{$name} is the target for $name\n" if($::o{debug});
-
-        my $bundlefile = "$BUNDLEFILE{$file}";
-        my $tmp_file = update_bundlefile_type_regular( $name, $md5sum, $owner, $group, $mode );
-        ssm_print "copy_file_to_upstream_repo($tmp_file, $bundlefile)\n" if($::o{debug});
-        copy_file_to_upstream_repo($tmp_file, $bundlefile);
-        unlink $tmp_file;
-
-        $::outstanding{$file} = 'fixed';
-
-    } else {
+    if(! defined $::o{upload_url}) {
 
         _specify_an_upload_url();
 
@@ -3730,7 +3607,151 @@ sub add_file_to_repo {
         return 3;
     }
 
+    if( $file !~ m|^/| ) {
+        ssm_print "$debug_prefix Finding absolute path for $file" if($::o{debug});
+        $file = abs_path($file);
+        ssm_print " => $file\n" if($::o{debug});
+    }
+
+    choose_bundlefile_for_file($file);
+    
+    my $type = get_file_type($file);
+    if($type eq 'non-existent') {
+        $ERROR_LEVEL++;
+    }
+    ssm_print "$debug_prefix FILE $file is of TYPE $type\n" if($::o{debug});
+
+    if($type eq 'regular') {
+        add_file_to_repo_type_regular($file);
+    }
+
     if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+
+    return 1;
+}
+
+
+sub add_file_to_repo_type_regular {
+
+    my $file   = shift;
+
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
+    my $md5sum = get_md5sum($file);
+    my $owner  = get_uid($file);
+    my $group  = get_gid($file);
+    my $mode   = get_mode($file);
+
+    #
+    # Copy the file itself into the repo
+    #
+    my $filename_in_repo = "$file/$md5sum";
+    copy_file_to_upstream_repo($file, $filename_in_repo);
+
+    my $bundlefile = "$BUNDLEFILE{$file}";
+    my $tmp_file = update_bundlefile_type_regular( $file, $md5sum, $owner, $group, $mode );
+    ssm_print "copy_file_to_upstream_repo($tmp_file, $bundlefile)\n" if($::o{debug});
+    copy_file_to_upstream_repo($tmp_file, $bundlefile);
+    unlink $tmp_file;
+
+    $::outstanding{$file} = 'fixed';
+
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+
+    return 1;
+}
+
+
+sub choose_bundlefile_for_file {
+
+    my $file_on_system = shift;
+
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
+    if(! defined $BUNDLEFILE{$file_on_system}) {
+        #
+        # This must be a new file, not yet in the definition.  
+        #
+        if($::o{bundlefile}) {
+
+            if( ! bundlefile_is_in_the_config( $::o{bundlefile} ) ) {
+                #
+                # Hmm.  The specified bundlefile doesn't exist in this config.  
+                #
+            
+                #
+                # Check to see if it exists in the repo.  
+                #
+                my $url  = "$::o{base_url}/$::o{bundlefile}";
+                my $tmpfile = get_file($url, 'warn', 'silent');
+
+                if($tmpfile) {
+                    # It does exist!  Let's bail. -BEF-
+                    ssm_print "\n";
+                    ssm_print "ERROR: The bundlefile you specified, $::o{bundlefile}, exists in the\n";
+                    ssm_print "       repository, but is not currently referenced by this config.  It \n";
+                    ssm_print "       might be used by a different config, in which case it could be \n";
+                    ssm_print "       dangerous to the other config if we change it, and it's existing\n";
+                    ssm_print "       contents could be dangerous to this config.\n";
+                    ssm_print "\n";
+                    ssm_print "       Please specify either a totally new bundlefile or one that is \n";
+                    ssm_print "       already in use by this config. -The Mgmt\n";
+                    ssm_print "\n";
+            
+                    unlink $tmpfile;
+
+                    exit 1;
+            
+                } else {
+            
+                    #
+                    # The user has specified a new bundlefile.  At some point we'll
+                    # handle this, but for now we'll just ask them to specify an
+                    # existing bundlefile.
+                    #
+            
+                    ssm_print "\n";
+                    ssm_print "ERROR: The bundlefile you specified, $::o{bundlefile}, doesn't yet exist\n";
+                    ssm_print "       in the repository.  Please specify one of the following bundlefiles \n";
+                    ssm_print "       that are already referenced by this config:\n";
+                    ssm_print "\n";
+            
+                    my %tmp;
+                    foreach (values %BUNDLEFILE) {
+                        # uniquify the bundlefile names
+                        $tmp{$_} = 1;
+                    }
+                    foreach (sort keys %tmp) {
+                        # print them out
+                        print "           $_\n";
+                    }
+            
+                    ssm_print "\n";
+                    ssm_print "       If you'd like to make a feature request for this to add a bundlefile\n";
+                    ssm_print "       to the repo in such situations, please email <brian\@thefinleys.com>\n";
+                    ssm_print "\n";
+            
+                    exit 1;
+                }
+            }
+
+            #
+            # Ok, it's passed the test.  It exists and it's already in the config.  Let's use it.
+            #
+            $BUNDLEFILE{$file_on_system} = $::o{bundlefile};
+            ssm_print "$debug_prefix assigning $file_on_system to bundlefile specified with --bundlefile $::o{bundlefile}\n" if($::o{debug});
+
+        } else {
+            #
+            # And no bundlefile preference was specified, so we default to
+            # adding it to the main configuration file. -BEF-
+            #
+            $BUNDLEFILE{$file_on_system} = basename( $::o{config_file} );
+            ssm_print "$debug_prefix assigning $file_on_system to default bundlefile $BUNDLEFILE{$file_on_system}\n" if($::o{debug});
+        }
+    }
+
+    ssm_print "$debug_prefix bundlefile $BUNDLEFILE{$file_on_system} is the target for $file_on_system\n" if($::o{debug});
 
     return 1;
 }
@@ -3744,8 +3765,6 @@ sub add_file_to_repo {
 #   rotate_log_file($file, $starting_lognumber, $ending_lognumber);
 #
 sub rotate_log_file {
-
-    if( $::o{debug} ) { print "rotate_log_file()\n"; }
 
     my $file                = shift;
     my $starting_lognumber  = shift;
@@ -4112,17 +4131,17 @@ sub _specify_an_upload_url {
 
 
 #
-#   Usage:  copy_file_to_upstream_repo($local_file, $repo_file);
+#   Usage:  copy_file_to_upstream_repo($filename_on_system, $filename_in_repo);
 #             Where: 
-#               $local_file => file on this system, can be a temp file, or of any name
-#               $repo_file  => the name of the file as it _should_ be in the repo
+#               $filename_on_system => file on this system, can be a temp file, or of any name
+#               $filename_in_repo   => the name of the file as it _should_ be in the repo
 #
 #   Example:  copy_file_to_upstream_repo("/tmp/mytmp_file.2931", "/etc/ssm/defaults/bf40cf4d09789b92acc43775c8ed43f5");
 #
 sub copy_file_to_upstream_repo {
 
-    my $local_file = shift;
-    my $repo_file  = shift;
+    my $filename_on_system = shift;
+    my $filename_in_repo  = shift;
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
@@ -4142,13 +4161,13 @@ sub copy_file_to_upstream_repo {
 
         my $cmd;
 
-        my $dir  = dirname($repo_file);
+        my $dir  = dirname($filename_in_repo);
 
         my $path = "$repo_dir/$dir";
         $path =~ s|/+|/|g;
         if($::o{debug}) { ssm_print "\$path $path\n"; }
 
-        my $destination_file   = "$repo_dir/$repo_file";
+        my $destination_file   = "$repo_dir/$filename_in_repo";
         $destination_file =~ s|/+|/|g;
         if($::o{debug}) { ssm_print "\$destination_file $destination_file\n"; }
 
@@ -4163,7 +4182,7 @@ sub copy_file_to_upstream_repo {
         #
         # Copy up the contents
         #
-        $cmd = qq(scp $local_file $repo_host:$destination_file >/dev/null);
+        $cmd = qq(scp $filename_on_system $repo_host:$destination_file >/dev/null);
         if($::o{debug}) { ssm_print qq(\n\$cmd: $cmd\n); }
         !system($cmd) or die("Couldn't run $cmd\n");
 
@@ -4184,7 +4203,7 @@ sub copy_file_to_upstream_repo {
         #
         # Make sure the dir exists
         #
-        my $dir  = dirname($repo_file);
+        my $dir  = dirname($filename_in_repo);
         umask 000;
         my $path = "$repo_dir/$dir";
         $path =~ s|/+|/|g;
@@ -4195,10 +4214,10 @@ sub copy_file_to_upstream_repo {
         #
         # Copy up the contents
         #
-        my $destination_file   = "$repo_dir/$repo_file";
+        my $destination_file   = "$repo_dir/$filename_in_repo";
         $destination_file =~ s|/+|/|g;
-        if($::o{debug}) { ssm_print qq($debug_prefix copy $local_file, $destination_file \n); }
-        copy($local_file, $destination_file) or die "Failed to copy($local_file, $destination_file): $!";
+        if($::o{debug}) { ssm_print qq($debug_prefix copy $filename_on_system, $destination_file \n); }
+        copy($filename_on_system, $destination_file) or die "Failed to copy($filename_on_system, $destination_file): $!";
         chmod oct(644), $destination_file;
 
     }
