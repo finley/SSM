@@ -3542,11 +3542,6 @@ sub add_new_files {
 
     foreach my $file ( @{$::o{add_file}} ) {
 
-        my $abs_path = abs_path($file);
-        $file = $abs_path;
-
-        ssm_print "Adding:  FILE $file to repository.\n";
-
         add_file_to_repo($file);
         $CHANGES_MADE++;
     }
@@ -3600,12 +3595,12 @@ sub add_file_to_repo {
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
-    #
-    # Verify absolute path here even if it's been done elsewhere for other
-    # purposes.
-    #
-    my $abs_path = abs_path($file);
-    $file = $abs_path;
+    if( $file !~ m|^/| ) {
+        ssm_print "$debug_prefix Finding absolute path for $file" if($::o{debug});
+        my $abs_path = abs_path($file);
+        $file = $abs_path;
+        ssm_print " => $file\n" if($::o{debug});
+    }
 
     if(defined $::o{upload_url}) {
 
@@ -3714,8 +3709,6 @@ sub add_file_to_repo {
                 ssm_print "$debug_prefix assigning $name to default bundlefile $BUNDLEFILE{$name}\n" if($::o{debug});
             }
         }
-
-
 
         ssm_print "$debug_prefix bundlefile $BUNDLEFILE{$name} is the target for $name\n" if($::o{debug});
 
