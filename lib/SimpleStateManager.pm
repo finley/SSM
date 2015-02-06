@@ -57,7 +57,7 @@ use File::stat qw(:FIELDS);
 # need to limit which functions Fcntl exports by explicitly listing the ones
 # we need. -BEF-
 use POSIX qw(mkfifo);
-use Fcntl qw( S_IFBLK S_IFCHR );
+use Fcntl qw( :mode );
 use Digest::MD5;
 use LWP::Simple;
 use Mail::Send;
@@ -71,11 +71,15 @@ use Cwd 'abs_path';
 #       % egrep '^sub ' lib/SimpleStateManager.pm | perl -p -e 's/^sub /#   /; s/ {//;' | sort
 #
 #   add_file_to_repo
+#   add_file_to_repo_type_regular
+#   add_file_to_repo_type_softlink
 #   add_new_files
+#   autoremove_packages_interactive
 #   backup
 #   bundlefile_is_in_the_config
 #   check_depends
 #   check_depends_interactive
+#   choose_bundlefile_for_file
 #   choose_tmp_file
 #   chown_and_chmod_interactive
 #   close_log_file
@@ -141,8 +145,8 @@ use Cwd 'abs_path';
 #   turn_usernames_into_uids
 #   uid_gid_and_mode_match
 #   unwanted_file_interactive
+#   update_bundlefile
 #   update_bundle_file_comment_out_entry
-#   update_bundlefile_type_regular
 #   update_package_repository_info_interactive
 #   upgrade_packages_interactive
 #   user_is_root
@@ -456,6 +460,7 @@ sub read_config_file {
                 s/\s*=\s*/ /o;
 
                 if( m/^pkg_manager\s+(.*)(\s|#|$)/ )                { $::o{pkg_manager} = lc($1); }
+                if( m/^pkg_manager_autoremove\s+(.*)(\s|#|$)/ )     { $::o{pkg_manager_autoremove} = lc($1); }
                 if( m/^base_ur[il]\s+(.*)(\s|#|$)/ )                { $::o{base_url} = $1; }
                 if( m/^upload_url\s+(.*)(\s|#|$)/ )                 { $::o{upload_url} = $1; }
                 if( m/^email_log_to\s+(.*)(\s|#|$)/ )               { $::o{email_log_to} = $1; }
@@ -1165,6 +1170,7 @@ sub sync_state {
     # BEGIN Package related activities
     #
     update_package_repository_info_interactive();
+    autoremove_packages_interactive() if($::o{pkg_manager_autoremove} eq 'yes');
     upgrade_packages_interactive();
     install_packages_interactive();
     remove_packages_interactive();
@@ -1646,7 +1652,7 @@ sub install_hardlink {
 
     my $file     = shift;
 
-    if($::o{debug}) { ssm_print "install_softlink($file)\n"; }
+    if($::o{debug}) { ssm_print "install_hardlink($file)\n"; }
 
     ssm_print "         FIXING:  Hard link $file -> $TARGET{$file}\n";
 
@@ -1849,7 +1855,7 @@ sub get_uid {
     
     my $file = shift;
 
-    my $st = stat($file);
+    my $st = lstat($file);
     my $uid = (getpwuid $st_uid)[0];
     
     return $uid;
@@ -1859,7 +1865,7 @@ sub get_mode {
     
     my $file = shift;
 
-    my $st = stat($file);
+    my $st = lstat($file);
     my $mode  = sprintf "%04o", $st_mode & 07777;
 
     return $mode;
@@ -2448,6 +2454,7 @@ sub take_pkg_action {
                 'install_pkgs'  => \&install_pkgs,
                 'upgrade_pkgs'  => \&upgrade_pkgs,
                 'remove_pkgs'   => \&remove_pkgs,
+                'autoremove'    => \&autoremove_pkgs,
             );
 
             # Keep this function short and sweet by simply passing the name of the
@@ -3253,25 +3260,29 @@ sub update_bundle_file_comment_out_entry {
 
 #
 # Usage:
-#   my $file = update_bundlefile_type_regular( $name, $md5sum, $owner, $group, $mode );
+#   my $file = update_bundlefile( %filespec );
 #
-sub update_bundlefile_type_regular {
+#       Where %filespec keys may include the following:
+#           type
+#           name
+#           md5sum
+#           owner
+#           group
+#           mode
+#           target
+#
+sub update_bundlefile {
 
     #
     # Name of system file in question, and attributes
     #
-    my $name       = shift;
-    my $md5sum     = shift;
-    my $owner      = shift;
-    my $group      = shift;
-    my $mode       = shift;
-
-    my $type       = 'regular';
+    my %filespec   = @_;
 
     my $timestamp = get_current_time_as_timestamp();
     my $hostname  = get_hostname();
     my $comment   = "From $hostname on $timestamp";
 
+    my $name = $filespec{name};
     my $url  = "$::o{base_url}/$BUNDLEFILE{$name}";
     my $bundlefile = get_file($url, 'error');
     open(FILE, "<$bundlefile") or die("Couldn't open $bundlefile for reading");
@@ -3304,18 +3315,19 @@ sub update_bundlefile_type_regular {
 
                 # Allow "key = value" or "key=value" type definitions.
                    s#^name\s*=.*#name       = $name#;
-                s/^comment\s*=.*/comment    = $comment/;
-                   s/^type\s*=.*/type       = regular/;
-                  s/^owner\s*=.*/owner      = $owner/;
-                  s/^group\s*=.*/group      = $group/;
-                   s/^mode\s*=.*/mode       = $mode/;
+                s/^comment\s*=.*/comment    = $comment/             if($comment);
+                   s/^type\s*=.*/type       = $filespec{type}/      if($filespec{type});
+                 s/^target\s*=.*/target     = $filespec{target}/    if($filespec{target});
+                  s/^owner\s*=.*/owner      = $filespec{owner}/     if($filespec{owner});
+                  s/^group\s*=.*/group      = $filespec{group}/     if($filespec{group});
+                   s/^mode\s*=.*/mode       = $filespec{mode}/      if($filespec{mode});
 
                 #
                 # When we match the md5sum bit, comment out the prior entry,
                 # but keep it for posterity, then add the new entry too.
                 #
                 if( s/^(md5sum\s*=.*)/# $1/ ) {
-                    $_ .= "md5sum     = $md5sum  # $timestamp\n";
+                    $_ .= "md5sum     = $filespec{md5sum}  # $timestamp\n" if($filespec{md5sum});
                 };
 
                 push @newfile, $_;
@@ -3339,12 +3351,13 @@ sub update_bundlefile_type_regular {
         push @newfile,   "\n";
         push @newfile,   "[file]\n";
         push @newfile,   "name       = $name\n";
-        push @newfile,   "comment    = $comment\n";
-        push @newfile,   "type       = regular\n";
-        push @newfile,   "md5sum     = $md5sum  # $timestamp\n";
-        push @newfile,   "owner      = $owner\n";
-        push @newfile,   "group      = $group\n";
-        push @newfile,   "mode       = $mode\n";
+        push @newfile,   "comment    = $comment\n"                          if($comment);
+        push @newfile,   "type       = $filespec{type}\n"                   if($filespec{type});
+        push @newfile,   "target     = $filespec{target}\n"                 if($filespec{target});
+        push @newfile,   "md5sum     = $filespec{md5sum}  # $timestamp\n"   if($filespec{md5sum});
+        push @newfile,   "owner      = $filespec{owner}\n"                  if($filespec{owner});
+        push @newfile,   "group      = $filespec{group}\n"                  if($filespec{group});
+        push @newfile,   "mode       = $filespec{mode}\n"                   if($filespec{mode});
         push @newfile,   "\n";
 
     }
@@ -3549,6 +3562,7 @@ sub add_new_files {
     return ($ERROR_LEVEL, $CHANGES_MADE);
 }
 
+
 #
 #   Usage:  my $type = get_file_type($file);
 #
@@ -3567,27 +3581,40 @@ sub get_file_type {
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
-    if( ! -e $file ) { return 'non-existent'; } 
+    my $type;
 
-    if( -d $file ) { return 'directory'; } 
+    if( lstat($file) ) {
 
-    if( -l $file ) { return 'softlink'; } 
+        if( S_ISLNK($st_mode) ) {
+            $type = 'softlink';
+        }
+        elsif( S_ISREG($st_mode) ) {
+            $type = 'regular';
+        }
+        elsif( S_ISDIR($st_mode) ) {
+            $type = 'directory';
+        }
+        elsif( S_ISFIFO($st_mode) ) {
+            $type = 'fifo';
+        }
+        elsif( S_ISBLK($st_mode) ) {
+            $type = 'block';
+        }
+        elsif( S_ISCHR($st_mode) ) {
+            $type = 'character';
+        }
 
-    my $st = stat($file);
-    if( S_ISFIFO($st_mode) ) {
-        return 'fifo';
+    } elsif( -l $file ) {
+
+        # For some reason (a bug in perl maybe?), some symlinks may not be
+        # successfully detected with stat, but are with this method.  -BEF-
+        $type = 'softlink';
+
+    } else {
+        $type = 'non-existent';
     }
-    elsif( S_ISBLK($st_mode) ) {
-        return 'block';
-    }
-    elsif( S_ISCHR($st_mode) ) {
-        return 'character';
-    }
 
-    # 
-    # What?  Still no match?  Must be a plain old regular file...
-    #
-    return 'regular';
+    return $type;
 }
 
 
@@ -3614,7 +3641,6 @@ sub add_file_to_repo {
     }
 
     choose_bundlefile_for_file($file);
-    
     my $type = get_file_type($file);
     if($type eq 'non-existent') {
         $ERROR_LEVEL++;
@@ -3624,6 +3650,37 @@ sub add_file_to_repo {
     if($type eq 'regular') {
         add_file_to_repo_type_regular($file);
     }
+    elsif($type eq 'softlink') {
+        add_file_to_repo_type_softlink($file);
+    }
+
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+
+    return 1;
+}
+
+
+sub add_file_to_repo_type_softlink {
+
+    my $file   = shift;
+
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
+    my %filespec;
+    $filespec{type}     = 'softlink';
+    $filespec{name}     = $file;
+    my $dir             = dirname($file);
+    chdir $dir;
+    $filespec{target}   = abs_path readlink($file);
+
+    my $tmp_file = update_bundlefile( %filespec );
+
+    my $bundlefile = "$BUNDLEFILE{$file}";
+    ssm_print "copy_file_to_upstream_repo($tmp_file, $bundlefile)\n" if($::o{debug});
+    copy_file_to_upstream_repo($tmp_file, $bundlefile);
+    unlink $tmp_file;
+
+    $::outstanding{$file} = 'fixed';
 
     if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
 
@@ -3637,19 +3694,21 @@ sub add_file_to_repo_type_regular {
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
-    my $md5sum = get_md5sum($file);
-    my $owner  = get_uid($file);
-    my $group  = get_gid($file);
-    my $mode   = get_mode($file);
+    my %filespec;
+    $filespec{type}     = 'regular';
+    $filespec{name}     = $file;
+    $filespec{md5sum}   = get_md5sum($file);
+    $filespec{owner}    = get_uid($file);
+    $filespec{group}    = get_gid($file);
+    $filespec{mode}     = get_mode($file);
 
-    #
     # Copy the file itself into the repo
-    #
-    my $filename_in_repo = "$file/$md5sum";
+    my $filename_in_repo = "$file/$filespec{md5sum}";
     copy_file_to_upstream_repo($file, $filename_in_repo);
 
+    my $tmp_file = update_bundlefile( %filespec );
+
     my $bundlefile = "$BUNDLEFILE{$file}";
-    my $tmp_file = update_bundlefile_type_regular( $file, $md5sum, $owner, $group, $mode );
     ssm_print "copy_file_to_upstream_repo($tmp_file, $bundlefile)\n" if($::o{debug});
     copy_file_to_upstream_repo($tmp_file, $bundlefile);
     unlink $tmp_file;
@@ -3951,6 +4010,56 @@ sub remove_packages_interactive {
     return 1;
 }
 
+sub autoremove_packages_interactive {
+
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
+    # Only do pkg stuff on later passes
+    return 1 if( $::PASS_NUMBER == 1 );
+
+    my %pending_pkg_changes = get_pending_pkg_changes('autoremove');
+
+    if(%pending_pkg_changes) {
+
+        ssm_print "Not OK:  Package autoremoves\n";
+        ssm_print "\n";
+        ssm_print "         Need to:\n";
+
+        my $max_length = 0;
+        foreach my $pkg (sort keys %pending_pkg_changes) {
+
+            ssm_print "$debug_prefix PKG $pkg\n" if($o::{debug});
+
+            my $length = length $pending_pkg_changes{$pkg};
+            if($length > $max_length) {
+                $max_length = $length;
+            }
+        }
+
+        my @sort_list;
+        foreach my $pkg (sort keys %pending_pkg_changes) {
+
+            my $action = lc( $pending_pkg_changes{$pkg}{action} );
+            my $pad = get_pad($max_length - length($action));
+            push @sort_list, "- ${action}${pad} $pkg";
+        }
+
+        foreach my $line (sort @sort_list) {
+            ssm_print "         $line\n";
+        }
+
+        take_pkg_action('autoremove', (keys %pending_pkg_changes) );
+
+    } else {
+        ssm_print "OK:      Package autoremoves\n";
+    }
+
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+
+    return 1;
+}
+
+
 sub upgrade_packages_interactive {
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
@@ -3984,7 +4093,7 @@ sub upgrade_packages_interactive {
             my $pad = get_pad($max_length - length($action));
 
             if($pending_pkg_changes{$pkg}{current_version} and $pending_pkg_changes{$pkg}{target_version}) {
-                push @sort_list, "- ${action}${pad} $pkg from $pending_pkg_changes{$pkg}{current_version} to $pending_pkg_changes{$pkg}{target_version}";
+                push @sort_list, "- ${action}${pad} $pkg  from  $pending_pkg_changes{$pkg}{current_version} to $pending_pkg_changes{$pkg}{target_version}";
             } else {
                 push @sort_list, "- ${action}${pad} $pkg";
             }

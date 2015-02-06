@@ -106,8 +106,13 @@ sub main {
             ssm_print "\n";
         }
         ssm_print "-------------------------------\n";
-        ssm_print "Added $changes_made files.\n";
-        ssm_print "Encountered $error_level errors.\n";
+        if($error_level == 0) {
+            ssm_print "Added $changes_made files.\n";
+            ssm_print "Encountered $error_level errors.\n";
+        } else {
+            ssm_print "Tried to add $changes_made files.\n";
+            ssm_print "Encountered $error_level errors.\n";
+        }
 
         ssm_print qq(\n);
 

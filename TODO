@@ -1,63 +1,37 @@
--- Improve diff function
-
--- ssm -ap or --add-package "pkg pkg pkg pkg"
-
 -- Allow --add-file to support other file types
 
-    -- symlink
     -- hardlink
     -- directory
     -- special
 
--- add global setting:
+-- Improve diff function
 
-    Consider this instead of max_kernel_pkgs --  less coding effort,
-    could still add the below later if deemed necessary:
+-- ssm -ap or --add-package "pkg pkg pkg pkg"
 
-    apt-get_autoremove = true
+-- allow host matching 
+    - based on hostname match
+        - regex
+        - glob
+    - based on dmidecode element match
+        - regex
+        - glob
+    - match per stanza?
+        - all pkgs within a stanza?  or per file?
+        - by bundlefile?
+            [bundles]
+            my_bundle_file match=WHAT,TYPE,PATTERN
+                Where
+                    WHAT = hostname, dmi-element
+                    TYPE = glob, regex
+                    PATTERN = 'm/^gpu\d+/'
 
-    Example apt-get upgrade output...
-
-            The following packages were automatically installed and are no longer required:
-              linux-headers-3.16.0-23 linux-headers-3.16.0-23-generic
-              linux-headers-3.16.0-25 linux-headers-3.16.0-25-generic
-              linux-image-3.16.0-23-generic linux-image-3.16.0-25-generic
-              linux-image-extra-3.16.0-23-generic linux-image-extra-3.16.0-25-generic
-              linux-signed-image-3.16.0-25-generic
-            Use 'apt-get autoremove' to remove them.
-
-    --
-
-    max_kernel_pkgs = N (default to 3)
-
-        Maximum number of kernel packages to keep on a system.  Prevents
-        /boot from filling up with old kernel packages.
-
-        Behavior:  When a new kernel is added to a system that already
-        has three (two old, and one running), then the new one makes for
-        four.  After installing the new kernel, the oldest kernel will
-        be removed.
-
-        /* How to make it work */
-
-        - User settable package name regex by distro type
-        - either a regex to match the package name(s)
-            - kernel_pkg_name_regex = REGEX     # man perlre for details
-            - or a regex to match the file name that belongs in the
-              package, then a pkg_mgr function
-              get_name_of_pkg_that_owns_this_file(FILE);
-
-
-
--- verify that all documented pkg repo options work as described
+        - each file item is it's own stanza anyway...
 
 -- change treatment of [services] entries
     - stop converting them to individual files
     - use system specific commands to evaluate and manipulate
         - my $current_settings = get_service_settings($servicename)
         - apply_service_settings($servicename, $target_settings)
-
--- make sure options make sense
 
 -- build regression testing harness
 
@@ -79,8 +53,6 @@
 
     'make test' executes the test script
 
-
-
 -- add an "a" option for "directories".
 
 -- add a "u" option for "unwanted".  Convert a file to an unwanted file.
@@ -92,10 +64,6 @@
 
     search to be sure that $priority($file) matches the entry in the
     config chunk
-
--- Consider adding an option to _not_ update repo metadata when doing
-   package operations.
-
 
 -- directory+contents-unwanted
     Allow "a" option to add unwanted files to config
@@ -123,25 +91,6 @@ Add a --not-ok option like "GSS"
     Sounds good, but lower priority.  Current --summary output is pretty
     easy to parse with the eyes or with a parser.
 
---
-
-If -af file is in an alternate directory structure, but path exists,
-don't pull explicit path.
-
-    Ie.: don't change
-
-        /etc/init.d/script
-
-        to
-
-        /etc/rc.d/init.d/script
-
-        If /etc/init.d/script is specified.
-
-
---
-
-
 - consider:
     - changing /etc/ssm to /etc/simple-state-manager
     - have program look for /etc/ssm/client.conf if /etc/simple-state-manager/client.conf doesn't exist
@@ -162,8 +111,6 @@ don't pull explicit path.
           currently referenced version.
         - has the net effect of producing a trimmed repo that is ready
           for distribution to others or point-in-time archival.
-
-- consider assume repo == $config_file url ???
 
 - Add nice comments in /etc/ssm/defaults file
 
@@ -234,8 +181,6 @@ don't pull explicit path.
     
     Implies --only-files.  If the user want's both files and packages,
     they can do a proper --chroot.
-
-
 
 -   Have upload_url default to ssh@ or file:// version of
     'config_file'

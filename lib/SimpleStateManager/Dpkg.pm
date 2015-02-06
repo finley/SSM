@@ -13,6 +13,7 @@ use Exporter;
                 upgrade_pkgs
                 install_pkgs
                 remove_pkgs
+                autoremove_pkgs
                 get_pkgs_provided_by_pkgs_from_state_definition
                 get_pkgs_currently_installed
                 get_pkgs_that_pkg_manager_says_to_upgrade
@@ -97,12 +98,23 @@ sub upgrade_ssm {
 }
 
 
-sub upgrade_pkgs {
+sub autoremove_pkgs {
+
+    my @pkgs = @_;
 
     my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
-    $pkg_changes_made = 'yes';
-    return install_pkgs(@_);    
+    return remove_pkgs(@pkgs);
+}
+
+
+sub upgrade_pkgs {
+
+    my @pkgs = @_;
+
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
+    return install_pkgs(@pkgs);
 }
 
 
@@ -307,6 +319,9 @@ sub get_pending_pkg_changes {
     if($action eq 'upgrade') {
         %pending_pkg_changes = do_apt_get_dry_run('dist-upgrade');
 
+    } elsif($action eq 'autoremove') {
+        %pending_pkg_changes = do_apt_get_dry_run('autoremove');
+
     } else {
         foreach my $pkg (keys %::PKGS_FROM_STATE_DEFINITION) {
 
@@ -376,7 +391,7 @@ sub do_apt_get_dry_run {
     my %pending_pkg_changes;
 
     if(! $space_delimited_pkg_list) {
-        if($action eq 'upgrade' or $action eq 'dist-upgrade') {
+        if($action eq 'upgrade' or $action eq 'dist-upgrade' or $action eq 'autoremove') {
             #
             # make sure we have some value in this variable to feed the
             # function below...
