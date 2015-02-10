@@ -1,3 +1,6 @@
+-- add dots (at least) when downloading pkg updates
+    - or simply show the output
+
 -- Allow --add-file to support other file types
 
     -- hardlink
@@ -7,6 +10,62 @@
 -- Improve diff function
 
 -- ssm -ap or --add-package "pkg pkg pkg pkg"
+
+--
+
+- New feature: test for result, but not a file
+
+    Usage:
+
+        [test]
+        name = command to run to execute the test   
+            # - may work like a generator, but no file is created or left on the file system
+            # - gets run every time
+            # - postscript is only action to be taken
+        type = [regex|md5sum|returncode]
+        expecting = 0
+        postscript = asdfalsdjasdjf
+
+
+    Examples:
+
+        [test]
+        name = test FILE1 -nt FILE2 ; echo $?
+        expecting = 0
+        postscript = blah.sh
+
+        [test]
+        name = nvidia-smi | md5sum
+        expecting = a590522539efeaaf6a1eeb8ac549d882
+        postscript = blah.sh
+
+        [test]
+        name = dmidecode | egrep 'Intel.*CPU' 
+        expecting = Version: Intel(R) Core(TM) i7-4600U CPU @ 2.10GHz       
+            # - space immediately after the equal sign is stripped
+        postscript = blah.sh
+            # - postscript is optional
+            # - if no postscript, simply returns "Not OK"
+
+
+- Consider
+    Ie.:
+        [condition]
+        name = test /boot/grub/grub.conf -nt /lib/modules/qlogic.update_drivers.buildstamp -o ! -f /lib/modules/qlogic.update_drivers.buildstamp 
+        postscript = /usr/local/bin/qlogic.update_drivers && touch /lib/modules/qlogic.update_drivers.timestamp
+
+
+- Test feature alternate:
+
+    in every file section type, similar to "postscript", add the
+    following feature:
+
+        iftrue = condition test
+
+    Only offer to take action if the condition tests true.
+
+--
+
 
 -- allow host matching 
     - based on hostname match
@@ -222,28 +281,6 @@ Add a --not-ok option like "GSS"
     name        = iptables-restart
     action      = /etc/init.d/iptables restart
 
-- New feature:  test 
-
-    [test]
-    name = test FILE1 -nt FILE2
-    postscript = blah.sh
-    priority = 0
-
-    Ie.:
-        [condition]
-        name = test /boot/grub/grub.conf -nt /lib/modules/qlogic.update_drivers.buildstamp -o ! -f /lib/modules/qlogic.update_drivers.buildstamp 
-        postscript = /usr/local/bin/qlogic.update_drivers && touch /lib/modules/qlogic.update_drivers.timestamp
-
-
-- Test feature alternate:
-
-    in every file section type, similar to "postscript", add the
-    following feature:
-
-        iftrue = condition test
-
-    Only offer to take action if the condition tests true.
-
 
 - Consider changing --summary:
 
@@ -438,3 +475,4 @@ Add a --not-ok option like "GSS"
 *   email owner(s) with report
     * add owner field to definition
 
+#   vim:set tw=0:
