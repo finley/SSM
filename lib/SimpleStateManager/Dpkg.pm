@@ -9,10 +9,6 @@ package SimpleStateManager::Dpkg;
 use Exporter;
 @ISA = qw(Exporter);
 @EXPORT = qw(
-                upgrade_ssm
-                upgrade_pkgs
-                install_pkgs
-                remove_pkgs
                 autoremove_pkgs
                 get_pkgs_provided_by_pkgs_from_state_definition
                 get_pkgs_currently_installed
@@ -23,7 +19,10 @@ use Exporter;
                 get_running_kernel_pkg_name
                 get_pending_pkg_changes
                 get_native_arch
+                install_pkgs
+                remove_pkgs
                 update_pkg_availability_data
+                upgrade_pkgs
             );
 use strict;
 use SimpleStateManager qw(ssm_print run_cmd);
