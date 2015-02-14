@@ -1169,11 +1169,14 @@ sub sync_state {
     #
     # BEGIN Package related activities
     #
-    update_package_repository_info_interactive();
-    autoremove_packages_interactive() if($::o{pkg_manager_autoremove} eq 'yes');
-    upgrade_packages_interactive();
-    install_packages_interactive();
-    remove_packages_interactive();
+    # Only do pkg stuff after initial examination pass
+    if( $::PASS_NUMBER > 1 ) {
+        update_package_repository_info_interactive();
+        autoremove_packages_interactive() if($::o{pkg_manager_autoremove} and $::o{pkg_manager_autoremove} eq 'yes');
+        upgrade_packages_interactive();
+        install_packages_interactive();
+        remove_packages_interactive();
+    }
     #
     # END Package related activities
     #
@@ -4010,6 +4013,7 @@ sub remove_packages_interactive {
     return 1;
 }
 
+
 sub autoremove_packages_interactive {
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
@@ -4021,34 +4025,41 @@ sub autoremove_packages_interactive {
 
     if(%pending_pkg_changes) {
 
-        ssm_print "Not OK:  Package autoremoves\n";
-        ssm_print "\n";
-        ssm_print "         Need to:\n";
+        if( $pending_pkg_changes{'-autoremove_unsupported'} ) {
 
-        my $max_length = 0;
-        foreach my $pkg (sort keys %pending_pkg_changes) {
+            ssm_print "WARNING: Package autoremoves -> not supported by this package manager\n";
 
-            ssm_print "$debug_prefix PKG $pkg\n" if($o::{debug});
+        } else {
 
-            my $length = length $pending_pkg_changes{$pkg};
-            if($length > $max_length) {
-                $max_length = $length;
+            ssm_print "Not OK:  Package autoremoves\n";
+            ssm_print "\n";
+            ssm_print "         Need to:\n";
+
+            my $max_length = 0;
+            foreach my $pkg (sort keys %pending_pkg_changes) {
+
+                ssm_print "$debug_prefix PKG $pkg\n" if($o::{debug});
+
+                my $length = length $pending_pkg_changes{$pkg};
+                if($length > $max_length) {
+                    $max_length = $length;
+                }
             }
+
+            my @sort_list;
+            foreach my $pkg (sort keys %pending_pkg_changes) {
+
+                my $action = lc( $pending_pkg_changes{$pkg}{action} );
+                my $pad = get_pad($max_length - length($action));
+                push @sort_list, "- ${action}${pad} $pkg";
+            }
+
+            foreach my $line (sort @sort_list) {
+                ssm_print "         $line\n";
+            }
+
+            take_pkg_action('autoremove', (keys %pending_pkg_changes) );
         }
-
-        my @sort_list;
-        foreach my $pkg (sort keys %pending_pkg_changes) {
-
-            my $action = lc( $pending_pkg_changes{$pkg}{action} );
-            my $pad = get_pad($max_length - length($action));
-            push @sort_list, "- ${action}${pad} $pkg";
-        }
-
-        foreach my $line (sort @sort_list) {
-            ssm_print "         $line\n";
-        }
-
-        take_pkg_action('autoremove', (keys %pending_pkg_changes) );
 
     } else {
         ssm_print "OK:      Package autoremoves\n";

@@ -1,5 +1,5 @@
 #  
-#   Copyright (C) 2006-2014 Brian Elliott Finley
+#   Copyright (C) 2006-2015 Brian Elliott Finley
 #
 #    vi: set et ai ts=4 filetype=perl tw=0 number:
 # 
@@ -9,17 +9,18 @@ package SimpleStateManager::Yum;
 use Exporter;
 @ISA = qw(Exporter);
 @EXPORT = qw(
-                get_pending_pkg_changes
+                autoremove_pkgs
                 do_pkg_manager_dry_run
-                remove_pkgs
-                upgrade_pkgs
-                install_pkgs
-                update_pkg_availability_data
+                get_pending_pkg_changes
                 get_pkgs_provided_by_pkgs_from_state_definition
                 get_pkgs_currently_installed
                 get_pkg_dependencies
                 get_pkg_reverse_dependencies
                 get_running_kernel_pkg_name
+                install_pkgs
+                remove_pkgs
+                update_pkg_availability_data
+                upgrade_pkgs
             );
 
 use strict;
@@ -64,9 +65,10 @@ sub download_pkgs {
 #   Usage:  my %hash = do_pkg_manager_dry_run("install", "ash sendmail rsync");
 #   Usage:  my %hash = do_pkg_manager_dry_run("remove", "ash sendmail rsync");
 #   Usage:  my %hash = do_pkg_manager_dry_run("upgrade");
+#   Usage:  my %hash = do_pkg_manager_dry_run("autoremove");
 #
 #       Returns a hash of $pkg = $pending_state;
-#       Where $pending_state may be one of 'install', 'upgrade', 'dist-upgrade', or 'remove'.
+#       Where $pending_state may be one of 'install', 'upgrade', 'dist-upgrade', 'autoremove, or 'remove'.
 #
 sub do_pkg_manager_dry_run {
 
@@ -96,6 +98,9 @@ sub do_pkg_manager_dry_run {
 
         if($action eq 'upgrade') {
             print FILE "update\n";
+        }
+        if($action eq 'autoremove') {
+            print FILE "autoremove\n";
         }
         elsif($action eq 'install') {
             print FILE "install $space_delimited_pkg_list\n";
@@ -193,6 +198,33 @@ sub get_pending_pkg_changes {
 
     if($action eq 'upgrade') {
         %pending_pkg_changes = do_pkg_manager_dry_run($action);
+
+    } elsif($action eq 'autoremove') {
+
+        #
+        # Does this system even support this feature?
+        #
+        my $feature_found = undef;
+
+        my $cmd = 'yum --help';
+        open(INPUT,"$cmd|") or die("Couldn't run $cmd for input\n");
+        while(<INPUT>) {
+            if( m/^autoremove/ ) {
+                $feature_found = 'yes';
+            }
+        }
+        close(INPUT);
+
+        unless( $feature_found ) { 
+
+            # packages cannot begin with a hyphen, so just pass the response back in this way
+            $pending_pkg_changes{'-autoremove_unsupported'} = 1;
+
+            return %pending_pkg_changes;
+        }
+
+        %pending_pkg_changes = do_pkg_manager_dry_run('autoremove');
+
 
     } else {
 
@@ -424,173 +456,6 @@ sub get_pkgs_provided_by_pkgs_from_state_definition {
     return %$PKGS_FROM_STATE_DEFINITION;
 }
 
-##
-## Returns a hash of packages, with the package names as the keys.
-##
-## NOTE:  If there are alternates as dependencies, all alternates are returned
-##        as the a key in a space seperated string format. -BEF-
-##
-#sub get_pkg_dependencies {
-#    ssm_print ">>\n>> get_pkg_dependencies()\n" if( $::o{debug} );
-#
-#    my @packages = @_;
-#
-#    my %dependencies;
-#    my %erasures;
-#
-#    my $file = choose_tmp_file();
-#    open(FILE,">$file") or die("Couldn't open $file for writing");
-#    print FILE "install";
-#    foreach my $pkg (@packages) {
-#        print FILE " $pkg";
-#    }
-#    print FILE "\n";
-#    print FILE "transaction solve\n";
-#    print FILE "exit\n";
-#    close(FILE);
-#    my $cmd = "yum shell $file 2>&1";
-#    ssm_print ">>   $cmd\n" if( $::o{debug} );
-#
-#    open(OUTPUT,"$cmd|") or die;
-#        while(<OUTPUT>) {
-#            chomp;
-#            #
-#            # Output looks like:
-#            #   --> Running transaction check
-#            #   ---> Package nss-tools.x86_64 0:3.12.1.1-1.el5.centos.1 set to be updated
-#            #   ---> Package kernel.x86_64 0:2.6.18-92.1.1.el5 set to be installed
-#            #   ---> Package krb5-libs.x86_64 0:1.6.1-25.el5_2.1 set to be updated
-#            #   ---> Package krb5-workstation.x86_64 0:1.6.1-25.el5_2.1 set to be updated
-#            #   ---> Package kernel-headers.x86_64 0:2.6.18-92.1.13.el5 set to be updated
-#            #   --> Finished Dependency Resolution
-#            #   --> Running transaction check
-#            #   ---> Package nss-tools.x86_64 0:3.12.1.1-1.el5.centos.1 set to be updated
-#            #   ---> Package krb5-libs.x86_64 0:1.6.1-25.el5_2.1 set to be updated
-#            #   ---> Package kernel.x86_64 0:2.6.18-92.1.1.el5 set to be installed
-#            #   ---> Package kernel.x86_64 0:2.6.18-92.1.13.el5 set to be installed
-#            #   ---> Package kernel-devel.x86_64 0:2.6.18-92.1.13.el5 set to be installed
-#            #   ---> Package kernel-devel.x86_64 0:2.6.18-53.1.21.el5 set to be erased
-#            #   ---> Package kernel.x86_64 0:2.6.18-53.1.21.el5 set to be erased
-#            #   --> Finished Dependency Resolution
-#            #
-#            # So, we need to produce two sets of results (set to be updated -- such packages
-#            # should already be in the 'To be upgraded' listing):
-#            #   dependencies    -> m/set to be installed/ 
-#            #   erasures        -> m/set to be erased/ 
-#            if(m/\s+Package\s+(\S+)\s+\S+\s+set to be installed/) {
-#                $dependencies{$1} = 1;   
-#            }
-#            elsif(m/\s+Package\s+(\S+)\s+\S+\s+set to be updated/) {
-#                # Sometimes a packages is 'set to be updated', but is
-#                # not yet installed.  Go figure... -BEF-
-#                $dependencies{$1} = 1;   
-#            }
-#            elsif(m/\s+Package\s+(\S+)\s+\S+\s+set to be erased/) {
-#                $erasures{$1} = 1;   
-#            }
-#        }
-#    close(OUTPUT);
-#    unlink($file);
-#
-#    # Dependencies and erasures that are the packages we're getting dependencies for
-#    # don't count.  Remove 'em.
-#    #
-#    # Ok, what's really going on here.  We'll, rather than try to explain it,
-#    # in the output above, search for /kernel\./ as an example. -BEF-
-#    foreach my $pkg (@packages) {
-#        if(defined $dependencies{$pkg}) { delete $dependencies{$pkg}; }
-#        if(defined $erasures{$pkg})     { delete $erasures{$pkg};     }
-#    }
-#
-#    if( $::o{debug} ) {
-#        foreach(sort keys %dependencies) {
-#            ssm_print ">>   Dependency: $_\n";
-#        }
-#        foreach(sort keys %erasures) {
-#            ssm_print ">>   Erasure: $_\n";
-#        }
-#    }
-#    return (\%dependencies, \%erasures);
-#}
-
-
-#sub get_pkg_reverse_dependencies {
-#    ssm_print ">>\n>> get_pkg_reverse_dependencies()\n" if( $::o{debug} );
-#
-#    my @packages = @_;
-#
-#    my %reverse_dependencies;
-#
-#    #
-#    # Find the reverse dependencies -- packages that depend on the package we're
-#    # considering removing.
-#    #
-#    # Yum doesn't have a way to simply ask it this.  But we can invoke the
-#    # "yum shell" feature, getting it to calculate the result of our potential 
-#    # transaction without actually doing it.  That way it will show us the 
-#    # reverse dependency list we're interested in.
-#    #
-#    my $file = choose_tmp_file();
-#    open(FILE,">$file") or die("Couldn't open $file for writing");
-#    foreach my $pkg (@packages) {
-#        print FILE "remove $pkg\n";
-#    }
-#    print FILE "transaction solve\n";
-#    print FILE "exit\n";
-#    close(FILE);
-#    my $cmd = "yum -C shell $file";
-#    ssm_print ">> $cmd\n" if( $::o{debug} );
-#
-#    open(OUTPUT,"$cmd|") or die;
-#    while(<OUTPUT>) {
-#        chomp;
-#        #
-#        # Output looks like:
-#        #
-#        #   Setting up Yum Shell
-#        #   > Setting up Remove Process
-#        #   Loading mirror speeds from cached hostfile
-#        #    * base: mirror.centos.org
-#        #    * updates: mirror.centos.org
-#        #    * addons: mirror.centos.org
-#        #    * extras: mirror.centos.org
-#        #   > --> Running transaction check
-#        #   ---> Package popt.x86_64 0:1.10.2-48.el5 set to be erased
-#        #   --> Processing Dependency: libpopt.so.0()(64bit) for package: util-linux
-#        #   --> Processing Dependency: libpopt.so.0()(64bit) for package: passwd
-#        #   --> Processing Dependency: libpopt.so.0()(64bit) for package: ntsysv
-#        #   [snip]
-#        #   --> Processing Dependency: popt = 1.10.2 for package: rpm
-#        #   --> Running transaction check
-#        #   ---> Package ntsysv.x86_64 0:1.3.30.1-2 set to be erased
-#        #   --> Processing Dependency: ntsysv for package: firstboot-tui
-#        #   ---> Package rpm-build.x86_64 0:4.4.2-48.el5 set to be erased
-#        #   ---> Package GConf2.x86_64 0:2.14.0-9.el5 set to be erased
-#        #   [snip]
-#        #   etc...
-#        #
-#        # What we want to capture is any "Package" that is "set to be erased".
-#        #
-#        if(m/Package\s+(\S+)\s+(\S+)\s+set to be erased/) {
-#            $reverse_dependencies{$1} = 1;
-#        }
-#    }
-#    close(OUTPUT);
-#
-#    unlink($file);
-#
-#    foreach my $pkg (@packages) {
-#        if(defined $reverse_dependencies{$pkg}) { 
-#            # We don't need to claim one of the listed packages as a reverse
-#            # dependency of one of the other listed packages. -BEF-
-#            delete $reverse_dependencies{$pkg};
-#        } else {
-#            ssm_print ">>   $pkg rdeps include $1\n" if( $::o{debug} );
-#        }
-#    }
-#
-#    return %reverse_dependencies;
-#}
 
 sub get_running_kernel_pkg_name {
 
@@ -603,6 +468,18 @@ sub get_running_kernel_pkg_name {
 
     return $running_kernel_pkg_name;
 }
+
+
+sub autoremove_pkgs {
+
+    my @pkgs = @_;
+
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
+    return remove_pkgs(@pkgs);
+}
+
+
 
 #
 ################################################################################
