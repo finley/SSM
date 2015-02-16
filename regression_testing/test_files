@@ -1,0 +1,52 @@
+#
+#   vim:set tw=0:
+#
+
+#
+#   Systems on which to test
+#
+# centos6
+# centos7
+# fedora20
+# ubuntu 14.10
+#
+
+# On each system type tested
+repo_dir=$(mktemp -d)
+rsync -av usr/share/doc/examples/ $repo_dir/
+
+conf=$repo_dir/testy.conf
+cat usr/share/doc/examples/safe_to_run_example_config_file.conf > $conf
+
+sudo ssm -c $conf --sync --summary
+sudo ssm -c $conf --sync --no
+sudo ssm -c $conf --sync --yes
+
+# create test dir for files
+test_dir=$(mktemp -d)
+mkdir -p $test_dir
+
+# create test file
+test_file=$test_dir/test_file.txt
+echo "I'm a little test file. :-)" > $test_file
+
+# create symlink to test file
+ln -s $test_file ${test_file}.symlink
+
+# add file and symlink
+sudo ssm -c $conf --add-file $test_file
+sudo ssm -c $conf --add-file ${test_file}.symlink
+
+# remove one file and re-sync w/only-this-file
+rm -f $test_file
+sudo ssm -c $conf --sync --only-this-file $test_file --yes
+
+# remove another file and re-sync w/only-files
+rm -f ${test_file}.symlink
+sudo ssm -c $conf --sync --only-files --yes
+
+sudo ssm -c $conf --sync --summary
+
+# rm -fr $test_dir
+# rm -fr $repo_dir
+
