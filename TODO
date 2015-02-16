@@ -1,3 +1,9 @@
+-- s/bundle/recipe/
+    
+    Make recipe a synonym for bundle.
+
+    Update documentation and output to say recipe instead of bundle.
+
 -- add dots (at least) when downloading pkg updates
     - or simply show the output
 
