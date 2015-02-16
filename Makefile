@@ -168,7 +168,7 @@ $(TOPDIR)/tmp/${package}-$(VERSION).tar.bz2:  clean
 	@echo
 	@echo '# commit changes and go'
 	@echo 'git commit -m "prep for v$$ver" -a'
-	@echo 'git tag v$$ver'
+	@echo 'git tag -a v$$ver'
 	@echo 
 	@echo "If 'yes', then hit <Enter> to continue..."; \
 	read i
@@ -196,23 +196,26 @@ distclean: clean
 
 .PHONY: testclean
 testclean:
-	rm -f  /tmp/hosts
-	rm -f  /etc/rc2.d/S99example-service
-	rm -f  /tmp/xconsole
-	rm -f  /tmp/null
-	rm -f  /tmp/one-regular-file.txt
-	rm -f  /tmp/monkey
-	rm -fr /tmp/uncle-bob
-	rm -f  /tmp/sda
-	rm -f  /tmp/monkeyboy
-	rm -f  /etc/rc6.d/K01example-service
-	rm -fr /tmp/monkey_nest
-	rm -f  /tmp/monkey_nest/eggs
-	rm -f  /tmp/bob
-	rm -f  /tmp/ls
-	rm -f  /tmp/hostname
-	rm -f  /tmp/monkey_dir
-	rm -f  /etc/rc0.d/K01example-service
-	rm -f  /tmp/etc/sysconfig/network-scripts/ifcfg-eth2
-	rm -f  /tmp/softlink
+	rm -fr /tmp/demo_block-file-like-dev-sda
+	rm -fr /tmp/demo_character-file-like-dev-null
+	rm -fr /tmp/demo_chown+chmod-file
+	rm -fr /tmp/demo_directory
+	rm -fr /tmp/demo_directory+contents-unwanted
+	rm -fr /tmp/demo_directory+contents-unwanted
+	rm -fr /tmp/demo_fifo-file
+	rm -fr /tmp/demo_generated-hostname
+	rm -fr /tmp/demo_generated-ifcfg-eth1
+	rm -fr /tmp/demo_generated-ifcfg-eth2
+	rm -fr /tmp/demo_generated-ifcfg-eth3
+	rm -fr /tmp/demo_hardlink
+	rm -fr /tmp/demo_ignore-this-file
+	rm -fr /tmp/demo_regular-file
+	rm -fr /tmp/demo_softlink-with-absolute-path
+	rm -fr /tmp/demo_softlink-with-relative-path-to-target
+	rm -fr /tmp/demo_unwanted-directory
+	rm -fr /tmp/demo_unwanted-file
+
+.PHONY: test
+test:	testclean
+	$(TOPDIR)/regression_testing/test_files
 

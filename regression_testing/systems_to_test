@@ -1,0 +1,15 @@
+#
+#   vim:set tw=0:
+#
+
+#
+#   Systems on which to test
+#
+# centos6
+# centos7
+# fedora20
+# ubuntu 14.10
+#
+
+# Put actual host names here...
+#centos6.lab

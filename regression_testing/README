@@ -1,0 +1,14 @@
+#
+#   vim:set tw=0:
+#
+
+#
+#   Testing Model
+#
+1. 'make test' is executed in the source tree
+2. $ver is captured from the current tag indicated in the VERSION file (ie. "0.5.5" -- sans the leading "v" in "v0.5.5").
+4. For each host in the 'systems_to_test' file: 
+    a. ssh $platform curl -L -o /tmp/v${ver}.tar.gz https://github.com/finley/SSM/archive/v${ver}.tar.gz
+    b. ssh $platform tar -C /tmp -xvf /tmp/v${ver}.tar.gz
+    c. ssh $platform "cd /tmp/SSM-${ver} && sudo make install_deps && sudo make test"
+
