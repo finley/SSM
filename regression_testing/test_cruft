@@ -1,0 +1,8 @@
+#
+#   vim:set tw=0:
+#
+
+# On each system type tested
+/bin/ls -ld /tmp/ | egrep -i '(system-state-manager|ssm)'
+    # no cruft should be left behind
+
