@@ -4,6 +4,8 @@
 
     Update documentation and output to say recipe instead of bundle.
 
+-- s/Simple State Manager/SystemImager State Manager/  ???
+
 -- add dots (at least) when downloading pkg updates
     - or simply show the output
 

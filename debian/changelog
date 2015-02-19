@@ -1,3 +1,31 @@
+simple-state-manager (0.5.5) stable; urgency=medium
+
+  * 6322dbf genesis
+  * 71d73f5 - Start of regression testing framework
+  * 56114e9 - genesis
+  * 3095d97 .
+  * 1417c00 - add 'pkg_manager_autoremove' option for yum based systems.
+    For   systems with package managers that don't yet support this
+    feature, it   will simply provide a warning and continue with all
+    other functions.
+  * e6876ec - alphabetise exported function names
+  * 5f07fb5 .
+  * 32fc34c - add 'pkg_manager_autoremove' option for debian based
+    systems.  See
+    usr/share/doc/examples/safe_to_run_example_config_file.conf for
+    details. - fix detection of symlinks in get_file_type() - make
+    output text more obvious, if a command line file add fails - add --
+    add-file support for softlinks
+  * 833cd1a - Break add_file_to_repo_type_regular into multiple
+    subroutines to facilitate handling adding other file types
+  * 3d451b2 - Only get absolute path for a file if it is not already
+    specified with an absolute path.
+  * ce813f2 -  minor verbiage output tweak
+  * 096d1e4 - Add option to specify a specific bundlefile when adding a
+    file to the repo.  Suggested by Francis Dang (TAMU).
+
+ -- Brian Elliott Finley <brian@thefinleys.com>  Wed, 18 Feb 2015 18:18:05 -0600
+
 simple-state-manager (0.5.4) stable; urgency=medium
 
   * 8fbb9aa .
