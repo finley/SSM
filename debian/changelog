@@ -1,3 +1,15 @@
+simple-state-manager (0.5.7) stable; urgency=medium
+
+  * e4baa22 - add user/group to softlink examples
+  * 0ba65c1 - added get_major() function - added get_minor() function -
+    fixed detection of wrong major or minor for block and character
+    files - rename update_bundlefile() to
+    update_or_add_entry_to_bundlefile() - add support for --add-file for
+    files of type: block, character, fifo
+  * 81c256c - add support for '--add-file /tmp/directory'
+
+ -- Brian Elliott Finley <brian@thefinleys.com>  Sat, 28 Feb 2015 15:32:03 -0600
+
 simple-state-manager (0.5.6) stable; urgency=medium
 
   * 65f45eb prep for v0.5.5

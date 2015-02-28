@@ -9,10 +9,6 @@
 -- add dots (at least) when downloading pkg updates
     - or simply show the output
 
--- Allow --add-file to support other file types
-
-    -- hardlink
-
 -- Improve diff function
 
 -- ssm -ap or --add-package "pkg pkg pkg pkg"
