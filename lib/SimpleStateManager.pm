@@ -1569,7 +1569,7 @@ sub softlink_interactive {
     # validate input
     unless( 
             defined($file)          and ($file          =~ m#^/#)
-        and defined($TARGET{$file}) and (($TARGET{$file} =~ m#^/#) or ($TARGET{$file} =~ m#^\.\./#))
+        and defined($TARGET{$file})
         and defined($TYPE{$file})   and ($TYPE{$file}   =~ m#\S#)
     ) {
         return report_improper_file_definition($file);
@@ -1587,7 +1587,6 @@ sub softlink_interactive {
     my    $dirname = dirname( $file );
     chdir $dirname;
     if( ! -e $TARGET{$file} ) {
-
         ssm_print "WARNING: Soft link $file -> $TARGET{$file} (target doesn't exist).\n";
         $ERROR_LEVEL++;  if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
     }
@@ -3669,8 +3668,8 @@ sub add_file_to_repo {
     }
 
     if( $file !~ m|^/| ) {
-        ssm_print "$debug_prefix Finding absolute path for $file" if($::o{debug});
-        $file = abs_path($file);
+        ssm_print "$debug_prefix Finding fully qualified file name $file" if($::o{debug});
+        $file = fully_qualified_file_name($file);
         ssm_print " => $file\n" if($::o{debug});
     }
 
@@ -3704,14 +3703,12 @@ sub add_file_to_repo_type_nonRegular {
     my %filespec;
     $filespec{type}     = $type;
     $filespec{name}     = $file;
-    my $dir             = dirname($file);
-    chdir $dir;
     $filespec{owner}    = get_uid($file);
     $filespec{group}    = get_gid($file);
-    $filespec{mode}     = get_mode($file)           unless( ($filespec{type} eq 'softlink') );
-    $filespec{target}   = abs_path readlink($file)      if( ($filespec{type} eq 'softlink') );
-    $filespec{major}    = get_major($file)              if( ($filespec{type} eq 'character') or ($filespec{type} eq 'block') );
-    $filespec{minor}    = get_minor($file)              if( ($filespec{type} eq 'character') or ($filespec{type} eq 'block') );;
+    $filespec{mode}     = get_mode($file)       unless( ($filespec{type} eq 'softlink') );
+    $filespec{target}   = readlink($file)           if( ($filespec{type} eq 'softlink') );
+    $filespec{major}    = get_major($file)          if( ($filespec{type} eq 'character') or ($filespec{type} eq 'block') );
+    $filespec{minor}    = get_minor($file)          if( ($filespec{type} eq 'character') or ($filespec{type} eq 'block') );;
 
     my $tmp_file = update_or_add_entry_to_bundlefile( %filespec );
 
@@ -4416,6 +4413,36 @@ sub bundlefile_is_in_the_config {
     ssm_print "$debug_prefix returning undef\n" if($::o{debug});
 
     return undef;
+}
+
+
+sub fully_qualified_path {
+
+    my $file = shift;
+
+    my $dir = dirname($file) . "/" . basename($file);
+
+    return 
+}
+
+
+sub fully_qualified_file_name {
+
+    my $file = shift;
+
+    my $working_dir = getcwd();
+
+    # cd into target dir, no matter how it was specified (ie.,
+    # ../my/dir)
+    chdir dirname( $file );
+    my $path = getcwd();
+    my $basename = basename($file);
+    my $fully_qualified_file_name = "$path/$basename";
+
+    # cd -
+    chdir $working_dir;
+
+    return $fully_qualified_file_name;
 }
 
 
