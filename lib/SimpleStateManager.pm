@@ -3656,6 +3656,38 @@ sub add_file_to_repo {
     elsif($type eq 'softlink') {
         add_file_to_repo_type_softlink($file);
     }
+    elsif($type eq 'directory') {
+        add_file_to_repo_type_directory($file);
+    }
+
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+
+    return 1;
+}
+
+
+sub add_file_to_repo_type_directory {
+
+    my $file   = shift;
+
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
+    my %filespec;
+    $filespec{type}     = 'directory';
+    $filespec{name}     = $file;
+    my $dir             = dirname($file);
+    chdir $dir;
+    $filespec{owner}    = get_uid($file);
+    $filespec{group}    = get_gid($file);
+    $filespec{mode}     = get_mode($file);
+
+    my $tmp_file = update_bundlefile( %filespec );
+
+    my $bundlefile = "$BUNDLEFILE{$file}";
+    copy_file_to_upstream_repo($tmp_file, $bundlefile);
+    unlink $tmp_file;
+
+    $::outstanding{$file} = 'fixed';
 
     if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
 
@@ -3679,7 +3711,6 @@ sub add_file_to_repo_type_softlink {
     my $tmp_file = update_bundlefile( %filespec );
 
     my $bundlefile = "$BUNDLEFILE{$file}";
-    ssm_print "copy_file_to_upstream_repo($tmp_file, $bundlefile)\n" if($::o{debug});
     copy_file_to_upstream_repo($tmp_file, $bundlefile);
     unlink $tmp_file;
 
@@ -3712,7 +3743,6 @@ sub add_file_to_repo_type_regular {
     my $tmp_file = update_bundlefile( %filespec );
 
     my $bundlefile = "$BUNDLEFILE{$file}";
-    ssm_print "copy_file_to_upstream_repo($tmp_file, $bundlefile)\n" if($::o{debug});
     copy_file_to_upstream_repo($tmp_file, $bundlefile);
     unlink $tmp_file;
 
@@ -4264,6 +4294,8 @@ sub copy_file_to_upstream_repo {
     my $filename_in_repo  = shift;
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
+    ssm_print qq($debug_prefix copy local file "$filename_on_system" to file name "$filename_in_repo" in repo.\n) if($::o{debug});
 
     #
     # For URL's of type "ssh://"
