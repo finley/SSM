@@ -1,3 +1,13 @@
+simple-state-manager (0.5.8) stable; urgency=medium
+
+  * 3b14e83 - when doing --add-file with a symlink, get fully qualified
+    path to   named file, rather than absolute path to the target name
+    as the file. - when doing --add-file with a symlink, get symlink
+    target as specified   by the symlink, and don't resolve to it's
+    absolute path.
+
+ -- Brian Elliott Finley <brian@thefinleys.com>  Sat, 28 Feb 2015 17:57:44 -0600
+
 simple-state-manager (0.5.7) stable; urgency=medium
 
   * e4baa22 - add user/group to softlink examples

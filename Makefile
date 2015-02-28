@@ -167,8 +167,10 @@ $(TOPDIR)/tmp/${package}-$(VERSION).tar.bz2:  clean
 	@echo '# dont worry about changelog entries in spec file for now...  #vim rpm/simple-state-manager.spec'
 	@echo
 	@echo '# commit changes and go'
-	@echo 'git commit -m "prep for v$$ver" -a'
-	@echo 'git tag -a v$$ver'
+	@echo 'git commit -m v$$ver -a'
+	@echo 'git tag -m v$$ver -a v$$ver'
+	@echo 'git push'
+	@echo 'git push origin --tags'
 	@echo 
 	@echo "If 'yes', then hit <Enter> to continue..."; \
 	read i
