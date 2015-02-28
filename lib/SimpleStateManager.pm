@@ -71,8 +71,10 @@ use Cwd 'abs_path';
 #       % egrep '^sub ' lib/SimpleStateManager.pm | perl -p -e 's/^sub /#   /; s/ {//;' | sort
 #
 #   add_file_to_repo
+#   add_file_to_repo_type_directory
 #   add_file_to_repo_type_regular
 #   add_file_to_repo_type_softlink
+#   add_file_to_repo_type_nonRegular
 #   add_new_files
 #   autoremove_packages_interactive
 #   backup
@@ -145,7 +147,7 @@ use Cwd 'abs_path';
 #   turn_usernames_into_uids
 #   uid_gid_and_mode_match
 #   unwanted_file_interactive
-#   update_bundlefile
+#   update_or_add_entry_to_bundlefile
 #   update_bundle_file_comment_out_entry
 #   update_package_repository_info_interactive
 #   upgrade_packages_interactive
@@ -1759,7 +1761,7 @@ sub special_file_interactive {
     } 
     else {
 
-        my $st = stat($file);
+        my $st = lstat($file);
 
         if( ! uid_gid_and_mode_match($file) ) {
             $needs_fixing = 1;
@@ -1772,6 +1774,14 @@ sub special_file_interactive {
         }
         elsif( ($TYPE{$file} eq 'character') and (! S_ISCHR($st_mode)) ) {
             $needs_fixing = 1;
+        }
+        elsif( ($TYPE{$file} eq 'character') or ($TYPE{$file} eq 'block') ) {
+            if( $MAJOR{$file} ne major($st->rdev) ) {
+                $needs_fixing = 1;
+            }
+            elsif ($MINOR{$file} ne minor($st->rdev) ) {
+                $needs_fixing = 1;
+            }
         }
     }
 
@@ -1852,6 +1862,26 @@ sub get_gid {
     my $gid = (getgrgid $st_gid)[0];
     
     return $gid;
+}
+
+sub get_major {
+    
+    my $file = shift;
+
+    my $st = lstat($file);
+    my $major = major($st->rdev);
+    
+    return $major;
+}
+
+sub get_minor {
+    
+    my $file = shift;
+
+    my $st = lstat($file);
+    my $minor = minor($st->rdev);
+    
+    return $minor;
 }
 
 sub get_uid {
@@ -2581,15 +2611,12 @@ sub take_file_action {
             my %actions = (
 
                 'add_file_to_repo'              => \&add_file_to_repo,
-
                 'install_directory'             => \&install_directory,
                 'install_file'                  => \&install_file,
                 'install_hardlink'              => \&install_hardlink,
                 'install_softlink'              => \&install_softlink,
                 'install_special_file'          => \&install_special_file,
-
                 'remove_file'                   => \&remove_file,
-
                 'set_ownership_and_permissions' => \&set_ownership_and_permissions,
             );
 
@@ -3263,7 +3290,7 @@ sub update_bundle_file_comment_out_entry {
 
 #
 # Usage:
-#   my $file = update_bundlefile( %filespec );
+#   my $file = update_or_add_entry_to_bundlefile( %filespec );
 #
 #       Where %filespec keys may include the following:
 #           type
@@ -3274,7 +3301,7 @@ sub update_bundle_file_comment_out_entry {
 #           mode
 #           target
 #
-sub update_bundlefile {
+sub update_or_add_entry_to_bundlefile {
 
     #
     # Name of system file in question, and attributes
@@ -3318,19 +3345,21 @@ sub update_bundlefile {
 
                 # Allow "key = value" or "key=value" type definitions.
                    s#^name\s*=.*#name       = $name#;
-                s/^comment\s*=.*/comment    = $comment/             if($comment);
-                   s/^type\s*=.*/type       = $filespec{type}/      if($filespec{type});
-                 s/^target\s*=.*/target     = $filespec{target}/    if($filespec{target});
-                  s/^owner\s*=.*/owner      = $filespec{owner}/     if($filespec{owner});
-                  s/^group\s*=.*/group      = $filespec{group}/     if($filespec{group});
-                   s/^mode\s*=.*/mode       = $filespec{mode}/      if($filespec{mode});
+                s/^comment\s*=.*/comment    = $comment/             if(defined $comment);
+                   s/^type\s*=.*/type       = $filespec{type}/      if(defined $filespec{type});
+                 s/^target\s*=.*/target     = $filespec{target}/    if(defined $filespec{target});
+                  s/^owner\s*=.*/owner      = $filespec{owner}/     if(defined $filespec{owner});
+                  s/^group\s*=.*/group      = $filespec{group}/     if(defined $filespec{group});
+                   s/^mode\s*=.*/mode       = $filespec{mode}/      if(defined $filespec{mode});
+                  s/^major\s*=.*/major      = $filespec{major}/     if(defined $filespec{major});
+                  s/^minor\s*=.*/minor      = $filespec{minor}/     if(defined $filespec{minor});
 
                 #
                 # When we match the md5sum bit, comment out the prior entry,
                 # but keep it for posterity, then add the new entry too.
                 #
                 if( s/^(md5sum\s*=.*)/# $1/ ) {
-                    $_ .= "md5sum     = $filespec{md5sum}  # $timestamp\n" if($filespec{md5sum});
+                    $_ .= "md5sum     = $filespec{md5sum}  # $timestamp\n" if(defined $filespec{md5sum});
                 };
 
                 push @newfile, $_;
@@ -3354,13 +3383,15 @@ sub update_bundlefile {
         push @newfile,   "\n";
         push @newfile,   "[file]\n";
         push @newfile,   "name       = $name\n";
-        push @newfile,   "comment    = $comment\n"                          if($comment);
-        push @newfile,   "type       = $filespec{type}\n"                   if($filespec{type});
-        push @newfile,   "target     = $filespec{target}\n"                 if($filespec{target});
-        push @newfile,   "md5sum     = $filespec{md5sum}  # $timestamp\n"   if($filespec{md5sum});
-        push @newfile,   "owner      = $filespec{owner}\n"                  if($filespec{owner});
-        push @newfile,   "group      = $filespec{group}\n"                  if($filespec{group});
-        push @newfile,   "mode       = $filespec{mode}\n"                   if($filespec{mode});
+        push @newfile,   "comment    = $comment\n"                          if(defined $comment);
+        push @newfile,   "type       = $filespec{type}\n"                   if(defined $filespec{type});
+        push @newfile,   "owner      = $filespec{owner}\n"                  if(defined $filespec{owner});
+        push @newfile,   "group      = $filespec{group}\n"                  if(defined $filespec{group});
+        push @newfile,   "mode       = $filespec{mode}\n"                   if(defined $filespec{mode});
+        push @newfile,   "target     = $filespec{target}\n"                 if(defined $filespec{target});
+        push @newfile,   "md5sum     = $filespec{md5sum}  # $timestamp\n"   if(defined $filespec{md5sum});
+        push @newfile,   "major      = $filespec{major}\n"                  if(defined $filespec{major});
+        push @newfile,   "minor      = $filespec{minor}\n"                  if(defined $filespec{minor});
         push @newfile,   "\n";
 
     }
@@ -3653,11 +3684,8 @@ sub add_file_to_repo {
     if($type eq 'regular') {
         add_file_to_repo_type_regular($file);
     }
-    elsif($type eq 'softlink') {
-        add_file_to_repo_type_softlink($file);
-    }
-    elsif($type eq 'directory') {
-        add_file_to_repo_type_directory($file);
+    else {
+        add_file_to_repo_type_nonRegular($file, $type);
     }
 
     if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
@@ -3666,49 +3694,26 @@ sub add_file_to_repo {
 }
 
 
-sub add_file_to_repo_type_directory {
+sub add_file_to_repo_type_nonRegular {
 
     my $file   = shift;
+    my $type   = shift;
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     my %filespec;
-    $filespec{type}     = 'directory';
+    $filespec{type}     = $type;
     $filespec{name}     = $file;
     my $dir             = dirname($file);
     chdir $dir;
     $filespec{owner}    = get_uid($file);
     $filespec{group}    = get_gid($file);
-    $filespec{mode}     = get_mode($file);
+    $filespec{mode}     = get_mode($file)           unless( ($filespec{type} eq 'softlink') );
+    $filespec{target}   = abs_path readlink($file)      if( ($filespec{type} eq 'softlink') );
+    $filespec{major}    = get_major($file)              if( ($filespec{type} eq 'character') or ($filespec{type} eq 'block') );
+    $filespec{minor}    = get_minor($file)              if( ($filespec{type} eq 'character') or ($filespec{type} eq 'block') );;
 
-    my $tmp_file = update_bundlefile( %filespec );
-
-    my $bundlefile = "$BUNDLEFILE{$file}";
-    copy_file_to_upstream_repo($tmp_file, $bundlefile);
-    unlink $tmp_file;
-
-    $::outstanding{$file} = 'fixed';
-
-    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
-
-    return 1;
-}
-
-
-sub add_file_to_repo_type_softlink {
-
-    my $file   = shift;
-
-    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
-
-    my %filespec;
-    $filespec{type}     = 'softlink';
-    $filespec{name}     = $file;
-    my $dir             = dirname($file);
-    chdir $dir;
-    $filespec{target}   = abs_path readlink($file);
-
-    my $tmp_file = update_bundlefile( %filespec );
+    my $tmp_file = update_or_add_entry_to_bundlefile( %filespec );
 
     my $bundlefile = "$BUNDLEFILE{$file}";
     copy_file_to_upstream_repo($tmp_file, $bundlefile);
@@ -3740,7 +3745,7 @@ sub add_file_to_repo_type_regular {
     my $filename_in_repo = "$file/$filespec{md5sum}";
     copy_file_to_upstream_repo($file, $filename_in_repo);
 
-    my $tmp_file = update_bundlefile( %filespec );
+    my $tmp_file = update_or_add_entry_to_bundlefile( %filespec );
 
     my $bundlefile = "$BUNDLEFILE{$file}";
     copy_file_to_upstream_repo($tmp_file, $bundlefile);

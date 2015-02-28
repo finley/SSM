@@ -12,7 +12,6 @@
 -- Allow --add-file to support other file types
 
     -- hardlink
-    -- special
 
 -- Improve diff function
 
