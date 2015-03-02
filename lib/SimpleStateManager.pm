@@ -44,6 +44,7 @@ use Exporter;
                 choose_tmp_file
                 email_log_file
                 add_new_files
+                add_new_packages
             );
 
 use strict;
@@ -78,7 +79,6 @@ use Cwd 'abs_path';
 #   add_new_files
 #   autoremove_packages_interactive
 #   backup
-#   bundlefile_is_in_the_config
 #   check_depends
 #   check_depends_interactive
 #   choose_bundlefile_for_file
@@ -147,7 +147,7 @@ use Cwd 'abs_path';
 #   turn_usernames_into_uids
 #   uid_gid_and_mode_match
 #   unwanted_file_interactive
-#   update_or_add_entry_to_bundlefile
+#   update_or_add_file_stanza_to_bundlefile
 #   update_bundle_file_comment_out_entry
 #   update_package_repository_info_interactive
 #   upgrade_packages_interactive
@@ -186,6 +186,7 @@ my (
     %PRIORITY,    # priority level for files and/or packages
     %GENERATOR,   # script or command to run to generate a generated file
     %BUNDLEFILE,  # name of bundlefile where each file or package is defined
+    %BUNDLEFILE_LIST,   # simple list of bundle files
     %TMPFILE,     # name of a temporary file associated with a file
 );
 
@@ -249,6 +250,7 @@ sub _initialize_variables {
         %PRIORITY,
         %GENERATOR,
         %BUNDLEFILE,
+        %BUNDLEFILE_LIST,
     ) = ();
     
     $ERROR_LEVEL = 0;
@@ -3289,18 +3291,21 @@ sub update_bundle_file_comment_out_entry {
 
 #
 # Usage:
-#   my $file = update_or_add_entry_to_bundlefile( %filespec );
+#   my $file = update_or_add_file_stanza_to_bundlefile( %filespec );
 #
 #       Where %filespec keys may include the following:
-#           type
 #           name
-#           md5sum
+#           comment
+#           type
 #           owner
 #           group
 #           mode
+#           md5sum
 #           target
+#           major
+#           minor
 #
-sub update_or_add_entry_to_bundlefile {
+sub update_or_add_file_stanza_to_bundlefile {
 
     #
     # Name of system file in question, and attributes
@@ -3346,20 +3351,21 @@ sub update_or_add_entry_to_bundlefile {
                    s#^name\s*=.*#name       = $name#;
                 s/^comment\s*=.*/comment    = $comment/             if(defined $comment);
                    s/^type\s*=.*/type       = $filespec{type}/      if(defined $filespec{type});
-                 s/^target\s*=.*/target     = $filespec{target}/    if(defined $filespec{target});
                   s/^owner\s*=.*/owner      = $filespec{owner}/     if(defined $filespec{owner});
                   s/^group\s*=.*/group      = $filespec{group}/     if(defined $filespec{group});
                    s/^mode\s*=.*/mode       = $filespec{mode}/      if(defined $filespec{mode});
-                  s/^major\s*=.*/major      = $filespec{major}/     if(defined $filespec{major});
-                  s/^minor\s*=.*/minor      = $filespec{minor}/     if(defined $filespec{minor});
 
                 #
                 # When we match the md5sum bit, comment out the prior entry,
                 # but keep it for posterity, then add the new entry too.
                 #
                 if( s/^(md5sum\s*=.*)/# $1/ ) {
-                    $_ .= "md5sum     = $filespec{md5sum}  # $timestamp\n" if(defined $filespec{md5sum});
+                    $_ .=       "md5sum     = $filespec{md5sum}  # $timestamp\n" if(defined $filespec{md5sum});
                 };
+
+                 s/^target\s*=.*/target     = $filespec{target}/    if(defined $filespec{target});
+                  s/^major\s*=.*/major      = $filespec{major}/     if(defined $filespec{major});
+                  s/^minor\s*=.*/minor      = $filespec{minor}/     if(defined $filespec{minor});
 
                 push @newfile, $_;
 
@@ -3387,6 +3393,7 @@ sub update_or_add_entry_to_bundlefile {
         push @newfile,   "owner      = $filespec{owner}\n"                  if(defined $filespec{owner});
         push @newfile,   "group      = $filespec{group}\n"                  if(defined $filespec{group});
         push @newfile,   "mode       = $filespec{mode}\n"                   if(defined $filespec{mode});
+
         push @newfile,   "target     = $filespec{target}\n"                 if(defined $filespec{target});
         push @newfile,   "md5sum     = $filespec{md5sum}  # $timestamp\n"   if(defined $filespec{md5sum});
         push @newfile,   "major      = $filespec{major}\n"                  if(defined $filespec{major});
@@ -3394,6 +3401,75 @@ sub update_or_add_entry_to_bundlefile {
         push @newfile,   "\n";
 
     }
+
+    my $file = choose_tmp_file();
+    open(FILE, ">$file") or die("Couldn't open $file for writing");
+    print FILE @newfile;
+    close(FILE);
+
+    return $file;
+}
+
+
+#
+# Usage:
+#   my $file = add_package_stanza_to_bundlefile( @pkg_entries );
+#
+#       Where @pkg_entries may include the following:
+#
+#           PKGNAME   OPTIONS
+#
+#       Example:
+#           syslog-ng
+#           rsync
+#           zsh
+#           zip
+#           klogd       unwanted
+#           lynx        priority=99
+#           sysklogd    unwanted,priority=3
+#
+sub add_package_stanza_to_bundlefile {
+
+    #
+    # Name of system file in question, and attributes
+    #
+    my @pkg_entries   = @_;
+
+    my $timestamp = get_current_time_as_timestamp();
+    my $hostname  = get_hostname();
+    my $comment   = "From $hostname on $timestamp";
+
+    my $bundlefile = choose_valid_bundlefile();
+    unless($bundlefile) {
+        return 3;
+    }
+
+    my $url  = "$::o{base_url}/$bundlefile";
+
+    my $bundlefile_copy = get_file($url, 'error');
+    open(FILE, "<$bundlefile_copy") or die("Couldn't open $bundlefile_copy for reading");
+    push my @input, (<FILE>);
+    close(FILE);
+    unlink $bundlefile_copy;
+
+    my @newstanza;
+    push @newstanza,   "[packages]\n";
+    foreach (@pkg_entries) {
+        chomp;
+        push @newstanza, "$_\n" unless(m/^\s/);
+    }
+    push @newstanza,   "\n";
+
+    ssm_print qq(Adding:  The following package stanza to configuration file "$bundlefile".\n\n);
+    foreach (@newstanza) {
+        ssm_print qq(  $_);
+    }
+    
+    # Append the new stanza to the existing bundle file
+    my @newfile;
+    push @newfile, @input;
+    push @newfile, "\n";
+    push @newfile, @newstanza;
 
     my $file = choose_tmp_file();
     open(FILE, ">$file") or die("Couldn't open $file for writing");
@@ -3536,13 +3612,14 @@ sub _include_bundle {
 
     my $file = shift;
 
-    my @array;
-
     chomp($file);
     ssm_print "Bundle:  $file\n" unless($::o{only_this_file});
 
+    $BUNDLEFILE_LIST{$file} = 1;
+
     # For --analyze-config purposes, prefix the input data from this
     # bundle file with it's own name as a BundleFile. -BEF-
+    my @array;
     push @array, "\n";
     push @array, "BundleFile: $file\n";
     push @array, "\n";
@@ -3584,10 +3661,18 @@ sub backup {
 }
 
 
+sub add_new_packages {
+
+    add_packages_to_repo( @{$::o{add_package}} );
+    $CHANGES_MADE++;
+
+    return ($ERROR_LEVEL, $CHANGES_MADE);
+}
+
+
 sub add_new_files {
 
     foreach my $file ( @{$::o{add_file}} ) {
-
         add_file_to_repo($file);
         $CHANGES_MADE++;
     }
@@ -3651,21 +3736,32 @@ sub get_file_type {
 }
 
 
+sub add_packages_to_repo {
+
+    my @packages = @_;
+
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
+    my $bundlefile = choose_valid_bundlefile();
+    unless($bundlefile) {
+        return 3;
+    }
+
+    my $tmp_file = add_package_stanza_to_bundlefile( @packages );
+    copy_file_to_upstream_repo($tmp_file, $bundlefile);
+    unlink $tmp_file;
+
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+
+    return 1;
+}
+
+
 sub add_file_to_repo {
 
     my $file = shift;
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
-
-    if(! defined $::o{upload_url}) {
-
-        _specify_an_upload_url();
-
-        $ERROR_LEVEL++;
-        if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-        ssm_print "\n";
-        return 3;
-    }
 
     if( $file !~ m|^/| ) {
         ssm_print "$debug_prefix Finding fully qualified file name $file" if($::o{debug});
@@ -3673,10 +3769,15 @@ sub add_file_to_repo {
         ssm_print " => $file\n" if($::o{debug});
     }
 
-    choose_bundlefile_for_file($file);
+    if(! defined $BUNDLEFILE{$file}) {
+        $BUNDLEFILE{$file} = choose_valid_bundlefile();
+    }
+
     my $type = get_file_type($file);
     if($type eq 'non-existent') {
+        ssm_print "ERROR:   File $file does not appear to exist!\n";
         $ERROR_LEVEL++;
+        return 3;
     }
     ssm_print "$debug_prefix FILE $file is of TYPE $type\n" if($::o{debug});
 
@@ -3710,7 +3811,7 @@ sub add_file_to_repo_type_nonRegular {
     $filespec{major}    = get_major($file)          if( ($filespec{type} eq 'character') or ($filespec{type} eq 'block') );
     $filespec{minor}    = get_minor($file)          if( ($filespec{type} eq 'character') or ($filespec{type} eq 'block') );;
 
-    my $tmp_file = update_or_add_entry_to_bundlefile( %filespec );
+    my $tmp_file = update_or_add_file_stanza_to_bundlefile( %filespec );
 
     my $bundlefile = "$BUNDLEFILE{$file}";
     copy_file_to_upstream_repo($tmp_file, $bundlefile);
@@ -3742,7 +3843,7 @@ sub add_file_to_repo_type_regular {
     my $filename_in_repo = "$file/$filespec{md5sum}";
     copy_file_to_upstream_repo($file, $filename_in_repo);
 
-    my $tmp_file = update_or_add_entry_to_bundlefile( %filespec );
+    my $tmp_file = update_or_add_file_stanza_to_bundlefile( %filespec );
 
     my $bundlefile = "$BUNDLEFILE{$file}";
     copy_file_to_upstream_repo($tmp_file, $bundlefile);
@@ -3756,98 +3857,106 @@ sub add_file_to_repo_type_regular {
 }
 
 
-sub choose_bundlefile_for_file {
+#
+# For packages or files
+#
+#   my $bundlefile = choose_valid_bundlefile( $proposed_bundlefile );
+#   my $bundlefile = choose_valid_bundlefile();
+#
+#       If no proposed bundlefile is included, then it will prefer a bundlefile
+#       specified on the command line, then fall back to the main config file.
+#
+sub choose_valid_bundlefile {
 
-    my $file_on_system = shift;
+    my $proposed_bundlefile = shift;
+
+    if(! defined $::o{upload_url}) {
+
+        _specify_an_upload_url();
+
+        $ERROR_LEVEL++;
+        if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+        ssm_print "\n";
+
+        return undef;
+    }
+
+    if(! defined $proposed_bundlefile) {
+        $proposed_bundlefile = $::o{bundlefile};
+    }
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
-    if(! defined $BUNDLEFILE{$file_on_system}) {
-        #
-        # This must be a new file, not yet in the definition.  
-        #
-        if($::o{bundlefile}) {
+    # If a bundlefile was specified on the command line
+    if($proposed_bundlefile) {
 
-            if( ! bundlefile_is_in_the_config( $::o{bundlefile} ) ) {
-                #
-                # Hmm.  The specified bundlefile doesn't exist in this config.  
-                #
-            
-                #
-                # Check to see if it exists in the repo.  
-                #
-                my $url  = "$::o{base_url}/$::o{bundlefile}";
-                my $tmpfile = get_file($url, 'warn', 'silent');
+        if( ! $BUNDLEFILE_LIST{$proposed_bundlefile} ) {
+            #
+            # Hmm.  The specified bundlefile doesn't exist in this config.  
+            #
+        
+            #
+            # Check to see if it exists in the repo.  
+            #
+            my $url  = "$::o{base_url}/$proposed_bundlefile";
+            my $tmpfile = get_file($url, 'warn', 'silent');
 
-                if($tmpfile) {
-                    # It does exist!  Let's bail. -BEF-
-                    ssm_print "\n";
-                    ssm_print "ERROR: The bundlefile you specified, $::o{bundlefile}, exists in the\n";
-                    ssm_print "       repository, but is not currently referenced by this config.  It \n";
-                    ssm_print "       might be used by a different config, in which case it could be \n";
-                    ssm_print "       dangerous to the other config if we change it, and it's existing\n";
-                    ssm_print "       contents could be dangerous to this config.\n";
-                    ssm_print "\n";
-                    ssm_print "       Please specify either a totally new bundlefile or one that is \n";
-                    ssm_print "       already in use by this config. -The Mgmt\n";
-                    ssm_print "\n";
-            
-                    unlink $tmpfile;
+            if($tmpfile) {
+                # It does exist!  Let's bail. -BEF-
+                ssm_print "\n";
+                ssm_print "ERROR: The bundlefile you specified, $proposed_bundlefile, exists in the\n";
+                ssm_print "       repository, but is not currently referenced by this config.  It \n";
+                ssm_print "       might be used by a different config, in which case it could be \n";
+                ssm_print "       dangerous to the other config if we change it, and it's existing\n";
+                ssm_print "       contents could be dangerous to this config.\n";
+                ssm_print "\n";
+                ssm_print "       Please specify either a totally new bundlefile or one that is \n";
+                ssm_print "       already in use by this config. -The Mgmt\n";
+                ssm_print "\n";
+        
+                unlink $tmpfile;
 
-                    exit 1;
-            
-                } else {
-            
-                    #
-                    # The user has specified a new bundlefile.  At some point we'll
-                    # handle this, but for now we'll just ask them to specify an
-                    # existing bundlefile.
-                    #
-            
-                    ssm_print "\n";
-                    ssm_print "ERROR: The bundlefile you specified, $::o{bundlefile}, doesn't yet exist\n";
-                    ssm_print "       in the repository.  Please specify one of the following bundlefiles \n";
-                    ssm_print "       that are already referenced by this config:\n";
-                    ssm_print "\n";
-            
-                    my %tmp;
-                    foreach (values %BUNDLEFILE) {
-                        # uniquify the bundlefile names
-                        $tmp{$_} = 1;
-                    }
-                    foreach (sort keys %tmp) {
-                        # print them out
-                        print "           $_\n";
-                    }
-            
-                    ssm_print "\n";
-                    ssm_print "       If you'd like to make a feature request for this to add a bundlefile\n";
-                    ssm_print "       to the repo in such situations, please email <brian\@thefinleys.com>\n";
-                    ssm_print "\n";
-            
-                    exit 1;
+                exit 1;
+        
+            } else {
+        
+                #
+                # The user has specified a new bundlefile.  At some point we'll
+                # handle this, but for now we'll just ask them to specify an
+                # existing bundlefile.
+                #
+        
+                ssm_print "\n";
+                ssm_print "ERROR: The bundlefile you specified, $proposed_bundlefile, doesn't yet exist\n";
+                ssm_print "       in the repository.  Please specify one of the following bundlefiles \n";
+                ssm_print "       that are already referenced by this config:\n";
+                ssm_print "\n";
+        
+                foreach (sort keys %BUNDLEFILE_LIST) {
+                    print "           $_\n";
                 }
+        
+                ssm_print "\n";
+                ssm_print "       If you'd like to make a feature request for this to add a bundlefile\n";
+                ssm_print "       to the repo in such situations, please email <brian\@thefinleys.com>\n";
+                ssm_print "\n";
+        
+                exit 1;
             }
-
-            #
-            # Ok, it's passed the test.  It exists and it's already in the config.  Let's use it.
-            #
-            $BUNDLEFILE{$file_on_system} = $::o{bundlefile};
-            ssm_print "$debug_prefix assigning $file_on_system to bundlefile specified with --bundlefile $::o{bundlefile}\n" if($::o{debug});
-
-        } else {
-            #
-            # And no bundlefile preference was specified, so we default to
-            # adding it to the main configuration file. -BEF-
-            #
-            $BUNDLEFILE{$file_on_system} = basename( $::o{config_file} );
-            ssm_print "$debug_prefix assigning $file_on_system to default bundlefile $BUNDLEFILE{$file_on_system}\n" if($::o{debug});
         }
+
+        #
+        # Ok, it's passed the test.  It exists and it's already in the config.  Let's use it.
+        #
+        return $proposed_bundlefile;
+
+    } else {
+        #
+        # And no bundlefile preference was specified, so we default to
+        # adding it to the main configuration file. -BEF-
+        #
+        return basename( $::o{config_file} );
     }
-
-    ssm_print "$debug_prefix bundlefile $BUNDLEFILE{$file_on_system} is the target for $file_on_system\n" if($::o{debug});
-
-    return 1;
 }
 
 
@@ -4384,35 +4493,6 @@ sub copy_file_to_upstream_repo {
     if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
 
     return 1;
-}
-
-
-#
-# Test to see if BUNDLEFILE exists in the aggregate config
-#
-# Usage:
-#   if( bundlefile_is_in_the_config("$BUNDLEFILE") ) { then; }
-#
-sub bundlefile_is_in_the_config {
-
-    my $file_to_test = shift;
-    my $result = undef;
-
-    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
-
-    foreach my $file_from_config (values %BUNDLEFILE) {
-        ssm_print "$debug_prefix testing if $file_to_test eq $file_from_config\n" if($::o{debug});
-        if( $file_from_config eq $file_to_test ) {
-            ssm_print "$debug_prefix returning 1\n" if($::o{debug});
-            return 1;
-        }
-    }
-
-    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
-
-    ssm_print "$debug_prefix returning undef\n" if($::o{debug});
-
-    return undef;
 }
 
 

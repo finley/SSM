@@ -1,3 +1,17 @@
+-- improve --add-package
+    - only add packages that aren't already in the definition
+        - if "lynx" exists, don't add "lynx"
+        - if "lynx" exists, do add    "lynx priority=99
+        - if "lynx priority=91" exists, do add "lynx priority=99"
+        - if "lynx priority=91" exists, do add "lynx unwanted,priority=100"
+
+        s/\s+/ /g =~ $pkg_and_options_in_config;
+        s/\s+/ /g =~ $pkg_and_options_proposed;
+
+        unless($pkg_and_options_proposed eq $pkg_and_options_in_config) {
+            Add_em...
+        }
+
 -- s/bundle/recipe/
     
     Make recipe a synonym for bundle.
@@ -10,8 +24,6 @@
     - or simply show the output
 
 -- Improve diff function
-
--- ssm -ap or --add-package "pkg pkg pkg pkg"
 
 --
 

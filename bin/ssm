@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 
 #
-# Copyright (C) 2006-2014 Brian Elliott Finley <brian@thefinleys.com>
+# Copyright (C) 2006-2015 Brian Elliott Finley <brian@thefinleys.com>
 #
 
 use strict;
@@ -71,6 +71,7 @@ GetOptions(
     "of|only-files"                     => \$o{only_files},
     "otf|only-this-file=s@"             => \$o{only_this_file},
     "af|add-file=s@"                    => \$o{add_file},
+    "ap|add-package=s@"                 => \$o{add_package},
     "bf|bundlefile=s"                   => \$o{bundlefile},
     "analyze-config"                    => \$o{analyze_config},
 ) or usage() and exit(1);
@@ -120,8 +121,36 @@ sub main {
 
         exit $error_level;
 
+    }
+    elsif($o{add_package}) {
 
-    } elsif($o{sync_state}) {
+        read_config_file();
+
+        ($error_level, $changes_made) = add_new_packages();
+
+        if( $main::o{debug} ) { 
+            ssm_print "ssm:main(), add_new_packages results:\n";
+            ssm_print "  \$changes_made:            $changes_made\n";
+            ssm_print "  \$error_level:             $error_level\n";
+            ssm_print "\n";
+        }
+        ssm_print "-------------------------------\n";
+        if($error_level == 0) {
+            ssm_print "Added packages.\n";
+            ssm_print "Encountered $error_level errors.\n";
+        } else {
+            ssm_print "Tried to add packages.\n";
+            ssm_print "Encountered $error_level errors.\n";
+        }
+
+        ssm_print qq(\n);
+
+        email_log_file();
+
+        exit $error_level;
+
+    } 
+    elsif($o{sync_state}) {
 
         my $outstanding_changes = -1;
         my $prior_outstanding_changes = -1;
@@ -203,7 +232,7 @@ sub validate_options {
         exit 1;
     }
 
-    unless($o{sync_state} or $o{analyze_config} or $o{add_file} or $o{summary}) { 
+    unless($o{sync_state} or $o{analyze_config} or $o{add_file} or $o{add_package} or $o{summary}) { 
         usage();
         print "\n";
         print "Try one of the following:\n";
@@ -211,6 +240,7 @@ sub validate_options {
         print "  --sync\n";
         print "  --summary\n";
         print "  --add-file\n";
+        print "  --add-package\n";
         print "  --analyze-config\n";
         print "\n";
         exit(1);
@@ -223,7 +253,6 @@ sub validate_options {
         print "\n";
         sleep 1;
     }
-
 
     if($o{only_files} and $o{only_packages}) { 
         usage();
@@ -257,10 +286,34 @@ sub validate_options {
         undef $o{sync_state};
     }
 
+    if( $o{add_package} and $o{sync_state}) { 
+        print "\n";
+        print " The --add-package option overrides the --sync option.  Proceeding\n";
+        print " with --add-package.\n";
+        print "\n";
+        undef $o{sync_state};
+    }
+
     if( $o{add_file} and $o{only_packages}) { 
         usage();
         print "\n";
         print "The --add-file and --only-packages options conflict.  Use one or the other.\n";
+        print "\n";
+        exit(1);
+    }
+
+    if( $o{add_file} and $o{add_package}) { 
+        usage();
+        print "\n";
+        print "The --add-file and --add-package options conflict.  Use one or the other.\n";
+        print "\n";
+        exit(1);
+    }
+
+    if( $o{add_package} and $o{only_files}) { 
+        usage();
+        print "\n";
+        print "The --add-package and --only-files options conflict.  Use one or the other.\n";
         print "\n";
         exit(1);
     }
@@ -362,10 +415,19 @@ OPTIONS
     
     --af, --add-file FILE [--add-file FILE...]
 
-        Adds file to the base definition file.  May be used multiple
-        times to specify multiple files.
+        Adds FILE to the main configuration file, or to --bundlefile
+        if specified.  May be used multiple times to specify multiple
+        files.
 
         Example:  --af /etc/file1.txt --af /etc/file2.txt
+
+    --ap, --add-package PACKAGE [--add-package PACKAGE...]
+
+        Adds PACKAGE to the main configuration file, or to --bundlefile
+        if specified.  May be used multiple times to specify multiple
+        packages.
+
+        Example:  --ap packagename1 --ap "packagename2 priority=99"
 
     --bf, --bundlefile BUNDLEFILE
 
@@ -443,7 +505,8 @@ BUGS
 
     Report bugs and suggestions at: https://github.com/finley/SSM/issues
 
-    Or send email to: Brian Elliott Finley <brian\@thefinleys.com>
+    Or send email to: 
+      Brian Finley <brian\@thefinleys.com> or Brian Finley <bfinley\@lenovo.com>
 
 EOF
 
@@ -462,4 +525,4 @@ sub store_invocation_command {
     return 1;
 }
 
-#  vi:set filetype=perl:
+#  vi:set filetype=perl tw=0:
