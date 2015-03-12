@@ -3,19 +3,23 @@
 #
 
 # On each system type tested
-repo_dir=$(mktemp -d)
-rsync -av usr/share/doc/examples/ $repo_dir/
-
+test_dir=$(mktemp -d --tmpdir=/tmp ssm.XXX)
+repo_dir=$test_dir/etc/ssm
 conf=$repo_dir/testy.conf
+
+echo
+echo "Test Dir:  $test_dir"
+echo "Repo Dir:  $repo_dir"
+echo "Test Conf: $conf"
+echo
+
+mkdir -p $repo_dir
+rsync -av usr/share/doc/examples/ $repo_dir/
 cat usr/share/doc/examples/safe_to_run_example_config_file.conf > $conf
 
 sudo ssm -c $conf --sync --summary
 sudo ssm -c $conf --sync --no
 sudo ssm -c $conf --sync --yes
-
-# create test dir for files
-test_dir=$(mktemp -d)
-mkdir -p $test_dir
 
 # create test file
 test_file=$test_dir/test_file.txt
@@ -39,5 +43,4 @@ sudo ssm -c $conf --sync --only-files --yes
 sudo ssm -c $conf --sync --summary
 
 # rm -fr $test_dir
-# rm -fr $repo_dir
 

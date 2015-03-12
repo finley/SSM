@@ -185,7 +185,7 @@ $(TOPDIR)/tmp/${package}-$(VERSION).tar.bz2:  clean
 	ls -l $(TOPDIR)/tmp/
 
 .PHONY: clean
-clean:
+clean: testclean
 	rm -fr $(TOPDIR)/tmp/
 	rm -fr $(TOPDIR)/usr/share/man/
 
@@ -196,28 +196,29 @@ distclean: clean
 	rm -f  $(TOPDIR)/debian/files
 	rm -fr $(TOPDIR)/debian/${package}/
 
-#.PHONY: testclean
-#testclean:
-#	rm -fr /tmp/demo_block-file-like-dev-sda
-#	rm -fr /tmp/demo_character-file-like-dev-null
-#	rm -fr /tmp/demo_chown+chmod-file
-#	rm -fr /tmp/demo_directory
-#	rm -fr /tmp/demo_directory+contents-unwanted
-#	rm -fr /tmp/demo_directory+contents-unwanted
-#	rm -fr /tmp/demo_fifo-file
-#	rm -fr /tmp/demo_generated-hostname
-#	rm -fr /tmp/demo_generated-ifcfg-eth1
-#	rm -fr /tmp/demo_generated-ifcfg-eth2
-#	rm -fr /tmp/demo_generated-ifcfg-eth3
-#	rm -fr /tmp/demo_hardlink
-#	rm -fr /tmp/demo_ignore-this-file
-#	rm -fr /tmp/demo_regular-file
-#	rm -fr /tmp/demo_softlink-with-absolute-path
-#	rm -fr /tmp/demo_softlink-with-relative-path-to-target
-#	rm -fr /tmp/demo_unwanted-directory
-#	rm -fr /tmp/demo_unwanted-file
-#
-#.PHONY: test
-#test:	testclean
-#	$(TOPDIR)/regression_testing/test_files
-#
+.PHONY: testclean
+testclean:
+	rm -fr /tmp/demo_block-file-like-dev-sda
+	rm -fr /tmp/demo_character-file-like-dev-null
+	rm -fr /tmp/demo_chown+chmod-file
+	rm -fr /tmp/demo_directory
+	rm -fr /tmp/demo_directory+contents-unwanted
+	rm -fr /tmp/demo_directory+contents-unwanted
+	rm -fr /tmp/demo_fifo-file
+	rm -fr /tmp/demo_generated-hostname
+	rm -fr /tmp/demo_generated-ifcfg-eth1
+	rm -fr /tmp/demo_generated-ifcfg-eth2
+	rm -fr /tmp/demo_generated-ifcfg-eth3
+	rm -fr /tmp/demo_hardlink
+	rm -fr /tmp/demo_ignore-this-file
+	rm -fr /tmp/demo_regular-file
+	rm -fr /tmp/demo_softlink-with-absolute-path
+	rm -fr /tmp/demo_softlink-with-relative-path-to-target
+	rm -fr /tmp/demo_unwanted-directory
+	rm -fr /tmp/demo_unwanted-file
+
+.PHONY: test
+test:	testclean
+	chmod +x $(TOPDIR)/regression_testing/test_files
+	$(TOPDIR)/regression_testing/test_files
+
