@@ -1099,19 +1099,6 @@ sub sync_state {
 
         last if($::o{only_packages});
 
-        # my $unsatisfied = check_depends($file);
-        # if($unsatisfied ne "1") {
-        #     ssm_print "Not OK:  File $file -> Unmet Dependencies";
-        #     unless( $::o{summary} ) {
-        #         ssm_print ":\n";
-        #         ssm_print "         $unsatisfied";
-        #     }
-        #     ssm_print "\n";
-        #     $::outstanding{$file} = 'unmet_deps';
-        #     $ERROR_LEVEL++;
-        #     if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-        # }
-
         # elsif( ($TYPE{$file} eq 'ignore') or ($TYPE{$file} eq 'ignored') ) {
         if( ($TYPE{$file} eq 'ignore') or ($TYPE{$file} eq 'ignored') ) {
             ignore_file_interactive($file);
@@ -1231,8 +1218,8 @@ sub check_depends_interactive {
 
     if($check_depends_results eq "1") {
         return 1;
-
-    } else {
+    } 
+    else {
 
         ssm_print "Not OK:  File $file -> Unmet Dependencies";
         unless( $::o{summary} ) {
@@ -1245,7 +1232,8 @@ sub check_depends_interactive {
         if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
 
         my $action = 'null';
-        take_file_action( $file, $action, 'n#' );
+        take_file_action( $file, $action, 'n#' ) unless($::o{yes});
+            # There is no "yes" action to take, so just skip if --yes.
 
         return undef;
     }
@@ -1500,7 +1488,7 @@ sub do_you_want_me_to {
         return 'undef';
     }
 
-    if( $main::o{yes} ) { 
+    if( $::o{yes} ) { 
         return 'y';
 
     } elsif( $main::o{no} ) { 
@@ -2472,7 +2460,7 @@ sub take_pkg_action {
         if($main::o{no}) {
             $answer = 'n';
         } 
-        elsif($main::o{yes}) {
+        elsif($::o{yes}) {
             $answer = 'y';
         } 
         else {
@@ -2570,7 +2558,7 @@ sub take_file_action {
         if($main::o{no}) {
             $answer = 'n';
         } 
-        elsif($main::o{yes}) {
+        elsif($::o{yes}) {
             $answer = 'y';
         } 
         else {
@@ -2632,13 +2620,13 @@ sub take_file_action {
                 $CHANGES_MADE++;
 
             } else {
-                ssm_print "take_file_action() >> DEVELOPER PEBKAC ERROR: '$action' is not a valid action\n";
+                ssm_print "take_file_action() >> DEVELOPER PEBKAC ERROR 1: '$action' is not a valid action\n";
                 $return_code = 7;
 
             }
 
         } else {
-                if($::o{debug}) { ssm_print "take_file_action() >> PEBKAC ERROR: '$answer' is not a valid answer\n"; }
+                if($::o{debug}) { ssm_print "take_file_action() >> PEBKAC ERROR 2: '$answer' is not a valid answer\n"; }
                 $return_code = 7;
         }
 
