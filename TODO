@@ -1,4 +1,18 @@
+-- allow creation of new bundle file
+
+    see line 3924
+
+-- add a --chroot DIR option
+
+-- ssm --add-file
+    - if $regular_file 
+        and md5sum matches
+        don't add new entry
+
 -- improve --add-package
+    - verify that package exists in configured repos
+        - apt-cache show $pkgname (or similar)
+        - yum info $pkgname (or similar)
     - only add packages that aren't already in the definition
         - if "lynx" exists, don't add "lynx"
         - if "lynx" exists, do add    "lynx priority=99

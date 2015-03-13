@@ -1,3 +1,14 @@
+simple-state-manager (0.5.10) stable; urgency=medium
+
+  * f8b0d86 - Fix bug where --yes and an unmet dependency generates a
+    developer PEBKAC error.
+  * cbd57fb - add regression test for bug: if --yes and unmet depends,
+    get take_file_action() >> DEVELOPER PEBKAC ERROR: 'null' is not a
+    valid action
+  * 6f6ee2b - add regression testing as option in makefile
+
+ -- Brian Elliott Finley <brian@thefinleys.com>  Thu, 12 Mar 2015 22:02:05 -0500
+
 simple-state-manager (0.5.9) stable; urgency=medium
 
   * 1e38304 - add --add-package option
