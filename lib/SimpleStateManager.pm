@@ -2870,6 +2870,7 @@ sub install_file {
 
 
 #
+# my $tmp_file = get_file($file, 'nowarn');
 # my $tmp_file = get_file($file, 'warn');
 # my $tmp_file = get_file($file, 'error');              # the default
 # my $tmp_file = get_file($file, 'error', 'silent'); 
@@ -2902,7 +2903,6 @@ sub get_file {
                 exit 1;
             } else {
                 ssm_print "WARNING: $file doesn't exist...\n" unless($silent);
-                $ERROR_LEVEL++;  if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
                 return undef;
             }
         } else {
@@ -3367,11 +3367,11 @@ sub update_or_add_file_stanza_to_bundlefile {
 
     if( $found_entry eq 'yes' ) {
 
-        ssm_print qq(Updating:  Entry for "$name" in configuration file "$BUNDLEFILE{$name}".\n);
+        ssm_print qq(Updating:  Entry for "$name" in configuration file "$BUNDLEFILE{$name}" as type $filespec{type}.\n);
 
     } else {
 
-        ssm_print qq(Adding:  Entry for "$name" in configuration file "$BUNDLEFILE{$name}".\n);
+        ssm_print qq(Adding:  Entry for "$name" in configuration file "$BUNDLEFILE{$name}" as type $filespec{type}.\n);
 
         push @newfile,   "\n";
         push @newfile,   "[file]\n";
@@ -3396,6 +3396,71 @@ sub update_or_add_file_stanza_to_bundlefile {
     close(FILE);
 
     return $file;
+}
+
+
+#
+# Usage:
+#   my $file = add_bundlefile_stanza_to_bundlefile( $new_bundlefile );
+#
+sub add_bundlefile_stanza_to_bundlefile {
+
+    #
+    # Name of system file in question, and attributes
+    #
+    my $new_bundlefile = shift;
+
+    my $timestamp = get_current_time_as_timestamp();
+    my $hostname  = get_hostname();
+    my $comment   = "From $hostname on $timestamp";
+
+    # For now we always put added bundlefiles into the main config file
+    my $parent_bundlefile = basename( $::o{config_file} );
+
+    my $url  = "$::o{base_url}/$parent_bundlefile";
+
+    my $bundlefile_copy = get_file($url, 'error');
+    open(FILE, "<$bundlefile_copy") or die("Couldn't open $bundlefile_copy for reading");
+    push my @input, (<FILE>);
+    close(FILE);
+    unlink $bundlefile_copy;
+
+    my @newstanza;
+    push @newstanza, "[bundles]\n";
+    push @newstanza, "$new_bundlefile\n";
+    push @newstanza,   "\n";
+
+    ssm_print qq(Adding:  The following bundles stanza to configuration file "$parent_bundlefile".\n);
+    ssm_print "\n";
+    foreach (@newstanza) {
+        ssm_print qq(  $_);
+    }
+    
+    # Append the new stanza to the existing bundle file
+    my @newfile;
+    push @newfile, @input;
+    push @newfile, "\n";
+    push @newfile, @newstanza;
+    
+    my $file;
+
+    # Add comment to top of new bundlefile and drop it in repo
+    $file = choose_tmp_file();
+    open(FILE, ">$file") or die("Couldn't open $file for writing");
+    print FILE qq(#\n);
+    print FILE qq(# $comment\n);
+    print FILE qq(#\n);
+    close(FILE);
+    copy_file_to_upstream_repo($file, $new_bundlefile);
+
+    # Add entry to parent bundle file and copy up to repo
+    $file = choose_tmp_file();
+    open(FILE, ">$file") or die("Couldn't open $file for writing");
+    print FILE @newfile;
+    close(FILE);
+    copy_file_to_upstream_repo($file, $parent_bundlefile);
+
+    return 1;
 }
 
 
@@ -3907,29 +3972,11 @@ sub choose_valid_bundlefile {
                 exit 1;
         
             } else {
-        
+
                 #
-                # The user has specified a new bundlefile.  At some point we'll
-                # handle this, but for now we'll just ask them to specify an
-                # existing bundlefile.
+                # The user has specified a new bundlefile.
                 #
-        
-                ssm_print "\n";
-                ssm_print "ERROR: The bundlefile you specified, $proposed_bundlefile, doesn't yet exist\n";
-                ssm_print "       in the repository.  Please specify one of the following bundlefiles \n";
-                ssm_print "       that are already referenced by this config:\n";
-                ssm_print "\n";
-        
-                foreach (sort keys %BUNDLEFILE_LIST) {
-                    print "           $_\n";
-                }
-        
-                ssm_print "\n";
-                ssm_print "       If you'd like to make a feature request for this to add a bundlefile\n";
-                ssm_print "       to the repo in such situations, please email <brian\@thefinleys.com>\n";
-                ssm_print "\n";
-        
-                exit 1;
+                add_bundlefile_stanza_to_bundlefile($proposed_bundlefile);
             }
         }
 

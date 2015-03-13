@@ -17,30 +17,68 @@ mkdir -p $repo_dir
 rsync -av usr/share/doc/examples/ $repo_dir/
 cat usr/share/doc/examples/safe_to_run_example_config_file.conf > $conf
 
-sudo ssm -c $conf --sync --summary
-sudo ssm -c $conf --sync --no
-sudo ssm -c $conf --sync --yes
+#
+# Usage:  
+#
+#   cmd="your command"
+#   run_cmd
+#
+run_cmd() {
+    echo
+    echo "<<<<<<<<<<<<<<<<<<<<<<<<< BEGIN >>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+    echo CMD: $cmd
+    $cmd
+#    exit_code=$?
+#    if [ $exit_code != 0 ]; then
+#        echo
+#        echo "FAILED!:  $cmd"
+#        echo "With an exit code of $exit_code"
+#        echo
+#        exit $exit_code
+#    fi
+    echo "<<<<<<<<<<<<<<<<<<<<<<<<< END >>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+    echo RECAP: $cmd
+    echo
+    echo -n "Hit <Enter> to continue..." ; read x
+}
 
-# create test file
+cmd="sudo ssm -c $conf --sync --summary"
+run_cmd
+
+cmd="sudo ssm -c $conf --sync --no"
+run_cmd
+
+cmd="sudo ssm -c $conf --sync --yes"
+run_cmd
+
 test_file=$test_dir/test_file.txt
-echo "I'm a little test file. :-)" > $test_file
+cmd="sudo ssm -c $conf --add-file $test_file"
+run_cmd
 
-# create symlink to test file
+echo "Creating the test file" > $test_file
+cmd="sudo ssm -c $conf --add-file $test_file"
+run_cmd
+
 ln -s $test_file ${test_file}.symlink
+cmd="sudo ssm -c $conf --add-file ${test_file}.symlink"
+run_cmd
 
-# add file and symlink
-sudo ssm -c $conf --add-file $test_file
-sudo ssm -c $conf --add-file ${test_file}.symlink
+newdir=$test_dir/test_dir/
+sudo mkdir -p $newdir
+cmd="sudo sudo ssm -c $conf --add-file $newdir"
+run_cmd
 
-# remove one file and re-sync w/only-this-file
 rm -f $test_file
-sudo ssm -c $conf --sync --only-this-file $test_file --yes
+sudo rm -f $test_file
+cmd="sudo ssm -c $conf --sync --only-this-file $test_file --yes"
+run_cmd
 
-# remove another file and re-sync w/only-files
-rm -f ${test_file}.symlink
-sudo ssm -c $conf --sync --only-files --yes
+sudo rm -f ${test_file}.symlink 
+cmd="sudo ssm -c $conf --sync --only-files --yes"
+run_cmd
 
-sudo ssm -c $conf --sync --summary
+cmd="sudo ssm -c $conf --sync --summary"
+run_cmd
 
 # rm -fr $test_dir
 

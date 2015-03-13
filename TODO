@@ -1,7 +1,3 @@
--- allow creation of new bundle file
-
-    see line 3924
-
 -- add a --chroot DIR option
 
 -- ssm --add-file
