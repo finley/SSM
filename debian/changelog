@@ -1,3 +1,10 @@
+simple-state-manager (0.5.11) stable; urgency=medium
+
+  * 60e487f - Add ability to specify new bundlefile with --add-file and -
+    -bundlefile
+
+ -- Brian Elliott Finley <brian@thefinleys.com>  Fri, 13 Mar 2015 16:23:50 -0500
+
 simple-state-manager (0.5.10) stable; urgency=medium
 
   * f8b0d86 - Fix bug where --yes and an unmet dependency generates a
