@@ -1,5 +1,10 @@
 -- add a --chroot DIR option
 
+-- add a --capture-state DIRECTORY [-bf newbundlefile]
+    - Match all files in DIRECTORY to packages
+    - validate state of files, and find changed files
+    - add changed files to config
+
 -- ssm --add-file
     - if $regular_file 
         and md5sum matches
