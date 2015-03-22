@@ -8,6 +8,9 @@ repo_dir=$test_dir/etc/ssm
 conf=$repo_dir/testy.conf
 
 echo
+echo
+echo BEGIN Regression Testing
+echo
 echo "Test Dir:  $test_dir"
 echo "Repo Dir:  $repo_dir"
 echo "Test Conf: $conf"
@@ -28,16 +31,10 @@ run_cmd() {
     echo "<<<<<<<<<<<<<<<<<<<<<<<<< BEGIN >>>>>>>>>>>>>>>>>>>>>>>>>>>>"
     echo CMD: $cmd
     $cmd
-#    exit_code=$?
-#    if [ $exit_code != 0 ]; then
-#        echo
-#        echo "FAILED!:  $cmd"
-#        echo "With an exit code of $exit_code"
-#        echo
-#        exit $exit_code
-#    fi
     echo "<<<<<<<<<<<<<<<<<<<<<<<<< END >>>>>>>>>>>>>>>>>>>>>>>>>>>>"
-    echo RECAP: $cmd
+    echo ">> RECAP:  $cmd"
+    test -z "$expectations" || echo ">> EXPECT: $expectations"
+    unset expectations
     echo
     echo -n "Hit <Enter> to continue..." ; read x
 }
@@ -53,10 +50,12 @@ run_cmd
 
 test_file=$test_dir/test_file.txt
 cmd="sudo ssm -c $conf --add-file $test_file"
+expectations="Expect 1 errors as $test_file hasn't been created yet."
 run_cmd
 
 echo "Creating the test file" > $test_file
 cmd="sudo ssm -c $conf --add-file $test_file"
+expectations="Expect 0 errors now that $test_file has been created."
 run_cmd
 
 ln -s $test_file ${test_file}.symlink
