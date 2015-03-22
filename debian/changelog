@@ -1,3 +1,14 @@
+simple-state-manager (0.6.1) stable; urgency=medium
+
+  * 5ff753c - Add host and timestamp entry to new package stanzas when --
+    add-package   is used. - Only show package manager info once, and
+    only show when package   options are in effect.
+  * 3c378c5 - add option to specify expected results for regression
+    tests
+  * d9105fe .
+
+ -- Brian Elliott Finley <brian@thefinleys.com>  Sun, 22 Mar 2015 12:43:00 -0500
+
 simple-state-manager (0.5.11) stable; urgency=medium
 
   * 60e487f - Add ability to specify new bundlefile with --add-file and -
