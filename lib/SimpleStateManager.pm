@@ -527,8 +527,6 @@ sub read_config_file {
 
             }
 
-            ssm_print "INFO:    Package manager -> $::o{pkg_manager}\n" unless($::o{only_this_file}); 
-
             if( ! defined $::o{remove_running_kernel} ) { 
                 # Default to "no"
                 $::o{remove_running_kernel} = 'no';
@@ -1138,30 +1136,33 @@ sub sync_state {
         }
     }
 
-    # Get integer value that represents the number of packages defined.
-    if( (scalar (keys %::PKGS_FROM_STATE_DEFINITION)) == 0) {
-        ssm_print "OK:      Packages -> No [packages] defined in the configuration.\n";
-        return ($ERROR_LEVEL, $CHANGES_MADE);
-    }
-    elsif( $::o{pkg_manager} eq 'none' ) {
-        ssm_print "WARNING: Packages -> [packages] defined, but 'pkg_manager = none'.\n";
-        return ($ERROR_LEVEL, $CHANGES_MADE);
-    } 
-    elsif( $::o{only_this_file} ) {
-        # Don't print anything to keep output minimalist in this case.
-        return ($ERROR_LEVEL, $CHANGES_MADE);
-    }
-    elsif( $::o{only_files} ) {
-        ssm_print "OK:      Option --only-files specified.  Skipping [packages] sections.\n"; 
-        return ($ERROR_LEVEL, $CHANGES_MADE);
-    } 
-
     ####################################################################
     #
     # BEGIN Package related activities
     #
     # Only do pkg stuff after initial examination pass
     if( $::PASS_NUMBER > 1 ) {
+
+        # Get integer value that represents the number of packages defined.
+        if( (scalar (keys %::PKGS_FROM_STATE_DEFINITION)) == 0) {
+            ssm_print "INFO:    Packages -> No [packages] defined in the configuration.\n";
+            return ($ERROR_LEVEL, $CHANGES_MADE);
+        }
+        elsif( $::o{pkg_manager} eq 'none' ) {
+            ssm_print "WARNING: Packages -> [packages] defined, but 'pkg_manager = none'.\n";
+            return ($ERROR_LEVEL, $CHANGES_MADE);
+        } 
+        elsif( $::o{only_this_file} ) {
+            # Don't print anything to keep output minimalist in this case.
+            return ($ERROR_LEVEL, $CHANGES_MADE);
+        }
+        elsif( $::o{only_files} ) {
+            ssm_print "INFO:    Option --only-files specified.  Skipping any [packages] sections.\n"; 
+            return ($ERROR_LEVEL, $CHANGES_MADE);
+        } 
+
+        ssm_print "INFO:    Package manager -> $::o{pkg_manager}\n";
+
         update_package_repository_info_interactive();
         autoremove_packages_interactive() if($::o{pkg_manager_autoremove} and $::o{pkg_manager_autoremove} eq 'yes');
         upgrade_packages_interactive();
@@ -3507,6 +3508,9 @@ sub add_package_stanza_to_bundlefile {
 
     my @newstanza;
     push @newstanza,   "[packages]\n";
+    push @newstanza,   "#\n";
+    push @newstanza,   "# Added on host $hostname on $timestamp\n";
+    push @newstanza,   "#\n";
     foreach (@pkg_entries) {
         chomp;
         push @newstanza, "$_\n" unless(m/^\s/);
