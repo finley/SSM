@@ -1086,8 +1086,29 @@ sub sync_state {
     # Files
     my %only_this_file_hash;
     if( $::o{only_this_file} ) {
+
+        my %specified_files_that_arent_defined;
+
         foreach my $file ( @{$::o{only_this_file}} ) {
-            $only_this_file_hash{$file} = 1;
+            if($TYPE{$file}) {  # if type is specified, then it exists in the definition
+                $only_this_file_hash{$file} = 1;
+            } else {
+                $specified_files_that_arent_defined{$file} = 1;
+            }
+        }
+
+        if(%specified_files_that_arent_defined) {
+
+            ssm_print_always "\n";
+            ssm_print_always "ERROR:  The following files were specified with --only-this-file, but do\n";
+            ssm_print_always "        not exist in the definition:\n";
+            ssm_print_always "\n";
+            foreach my $file (sort keys %specified_files_that_arent_defined) {
+                ssm_print_always "          $file\n";
+            }
+            ssm_print_always "\n";
+
+            exit 1;
         }
     }
 
