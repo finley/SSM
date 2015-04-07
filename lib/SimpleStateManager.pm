@@ -1979,11 +1979,10 @@ sub contents_unwanted_interactive {
         return 1;
     }
 
-    ssm_print "INFO:    Processing contents-unwanted directory $dir\n" unless($::o{summary});
-
     # state what we're doing
     # get list of files in directory
     my $file;
+    my $info_message_has_been_displayed;
     opendir(DIR,"$dir") or die "Can't open $dir for reading";
         #
         # See if each file matches a defined file
@@ -1994,7 +1993,14 @@ sub contents_unwanted_interactive {
         #       side of string if necessary.
         #
         while (defined ($file = readdir DIR) ) {
+
             next if $file =~ /^\.\.?$/;
+
+            # We got a hit!
+            unless($info_message_has_been_displayed or $::o{summary}) {
+                ssm_print "INFO:    Processing contents-unwanted directory $dir\n";
+                $info_message_has_been_displayed = 'yes';
+            }
             $file = "$dir/$file";
             ssm_print ">>> in_directory: $file\n" if( $::o{debug} );
             unless (defined $TYPE{$file}) {
@@ -2008,6 +2014,7 @@ sub contents_unwanted_interactive {
                 }
             }
         }
+
     closedir(DIR);
 
     #
