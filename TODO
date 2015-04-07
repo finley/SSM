@@ -1,4 +1,83 @@
+- add an optional "notice = SOME TEXT GOES HERE" that can be added for
+  any file.  The notice will be displayed in interactive mode when a
+  user is presented with a decision on how to handle a "Not OK" file.
+
+- ssm -ar, --add-recipe RECIPEFILE
+    - RECIPEFILE defines file(s) and/or packages it affects
+
+    or
+
+    - -ag, --add-generated-file 'FILENAME' --gen, --generator-file FILE_CONTAINING_GENERATOR_SCRIPT
+
+        - And, allow 'generator' FILENAMEs to be specified with a wild card:
+
+            - /var/lib/bluetooth/*:*:*:*:*:*/config
+          
+          Each name (as they match on that node's file system) is expanded into
+          the active config state, and the generator is executed once for each
+          FILENAME.
+
+          Need some way to expand file 'name' as a variable to be used by the
+          generator.
+
+[file]
+name       = /var/lib/bluetooth/E8:B1:FC:C1:A0:E2/config
+comment    = From xbob on 2015-04-05 13:29:22
+type       = generated
+owner      = root
+group      = root
+mode       = 0644
+#md5sum     = e794b418aefc3e5604112abef32f7de9  # 2015-04-05 13:29:22
+generator  = <EOF
+#!/bin/bash
+#
+#   Recipe Name:    bluetooth to hostname 
+#   Description:        
+#    
+#       Set bluetooth device instances to use $hostname when the
+#       advertise themselves.
+#
+#   2015.04.05  Brian Elliott Finley
+#       - created
+#
+cat $SSM_FILENAME | perl -p -e "s/^name .*-(\d+)$/name $hostname-\$1/"
+EOF
+
+
+--
+- Handle "E: Unmet dependencies.  Try using -f."
+- Handle pkgs that have license acceptance needs, such as "oracle-java7-installer".
+    - perhaps we catch pkg-mgr complaints and re-direct to an SSM website URL with guidance
+        - for oracle-java7-installer, this worked:  https://gist.github.com/mugli/8720670
+    - perhaps we add a per-package option of prescript="script"
+    - perhaps we add a per-package option of actiontag=TAGNAME
+--
+
+bfinley@redmine.labs.lenovo.com:~% sudo ssm -ap build-essential -ap libssh2-1 -ap libssh2-1-dev -ap cmake -ap libgpg-error-dev -bf bundle.redmine_git_hosting
+
+Configuration File: file:///etc/ssm/ssm_repo/redmine_server.conf
+Bundle:  bundle.redmine.packages
+Bundle:  bundle.dmsf_plugin_packages
+Adding:  The following bundles stanza to configuration file "redmine_server.conf".
+
+  [bundles]
+  bundle.redmine_git_hosting
+  
+
+ERROR: The bundlefile you specified, bundle.redmine_git_hosting, exists in the
+       repository, but is not currently referenced by this config.  It 
+       might be used by a different config, in which case it could be 
+       dangerous to the other config if we change it, and it's existing
+       contents could be dangerous to this config.
+
+       Please specify either a totally new bundlefile or one that is 
+       already in use by this config. -The Mgmt
+
+
 -- add a --chroot DIR option
+
+-- allow non-root operation
+    - users to manage config files for their own environment
 
 -- add a --capture-state DIRECTORY [-bf newbundlefile]
     - Match all files in DIRECTORY to packages
