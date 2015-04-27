@@ -71,6 +71,7 @@ perl -pi -e "s|share/doc/%{name}|share/doc/%{name}-%{version}|" $RPM_BUILD_ROOT/
 %files
 %defattr(-,root,root)
 %config(noreplace) /etc/ssm/defaults
+%config(noreplace) /etc/ssm/localhost
 %{_prefix}/lib/*
 %{_prefix}/sbin/*
 %{_prefix}/share/*

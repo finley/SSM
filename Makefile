@@ -72,6 +72,8 @@ install:  all
 	#	
 	cat $(TOPDIR)/usr/share/doc/examples/safe_to_run_example_config_file.conf \
 		| perl -p -e 's/^/#/' > ${docdir}/examples/starter_config_file.conf
+	#
+	cp -i $(TOPDIR)/usr/share/doc/examples/safe_to_run_example_config_file.conf ${sysconfdir}/localhost
 	#	
 	find ${docdir} -type d -exec chmod 0775 '{}' \;
 	find ${docdir} -type f -exec chmod 0664 '{}' \;

@@ -2,10 +2,19 @@
 #   Simple State Manager "defaults" file
 #
 
+#
+# Initial config_file is a copy of the sample config file installed
+# here:
+#
+#   /usr/share/doc/simple-state-manager/examples/safe_to_run_example_config_file.conf
+#
+config_file file:///etc/ssm/localhost
+
+#
+#   Various URL types you can use:
+#
 # config_file   http://server/OU/FQDN
 # config_file   https://server/OU/FQDN
 # config_file   ftp://server/OU/FQDN
-# config_file   file:///etc/system-state-manager/FQDN
-
-config_file file:///usr/share/doc/simple-state-manager/examples/safe_to_run_example_config_file.conf
+# config_file   file:///etc/ssm/FQDN
 
