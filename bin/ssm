@@ -70,7 +70,7 @@ GetOptions(
     "op|only-packages"                  => \$o{only_packages},
     "of|only-files"                     => \$o{only_files},
     "otf|only-this-file=s@"             => \$o{only_this_file},
-    "af|add-file=s@"                    => \$o{add_file},
+    "af|add-file|add-files=s@"          => \$o{add_file},
     "ap|add-package|add-packages=s@"    => \$o{add_package},
     "bf|bundlefile=s"                   => \$o{bundlefile},
     "analyze-config"                    => \$o{analyze_config},
@@ -399,12 +399,19 @@ OPTIONS
 
         Example:  --otf /etc/file1.txt --otf /etc/file2.txt
     
-    --af, --add-file FILE [--add-file FILE...]
+    --af, --add-file FILE [FILE...]
+
+        Where FILE type may be any of the following: regular, directory,
+        softlink, block, character, or fifo.  A hardlink is treated as a
+        regular file when adding via this method.
 
         Adds FILE to the main configuration file, or to --bundlefile if
-        specified.  May be used multiple times to specify multiple files.
+        specified.  
 
-        Example:  --af /etc/file1.txt --af /etc/file2.txt
+        Fully qualified paths are automatically determined, if not specified
+        explicitly.
+
+        Example:  --add-file file1 "/etc/other directory/" ../file3
 
     --ap, --add-package PACKAGE [PACKAGE...]
 

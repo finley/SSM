@@ -3759,6 +3759,8 @@ sub add_new_packages {
 
 sub add_new_files {
 
+    push @{$::o{add_file}}, @ARGV;
+
     foreach my $file ( @{$::o{add_file}} ) {
         add_file_to_repo($file);
         $CHANGES_MADE++;
