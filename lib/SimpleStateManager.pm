@@ -3748,6 +3748,8 @@ sub backup {
 
 sub add_new_packages {
 
+    push @{$::o{add_package}}, @ARGV;
+
     add_packages_to_repo( @{$::o{add_package}} );
     $CHANGES_MADE++;
 

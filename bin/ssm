@@ -71,7 +71,7 @@ GetOptions(
     "of|only-files"                     => \$o{only_files},
     "otf|only-this-file=s@"             => \$o{only_this_file},
     "af|add-file=s@"                    => \$o{add_file},
-    "ap|add-package=s@"                 => \$o{add_package},
+    "ap|add-package|add-packages=s@"    => \$o{add_package},
     "bf|bundlefile=s"                   => \$o{bundlefile},
     "analyze-config"                    => \$o{analyze_config},
 ) or usage() and exit(1);
@@ -352,20 +352,6 @@ sub validate_options {
         $o{no} = 1; 
     }
 
-    #
-    # Handle this common user error situation in a friendly way.  Note
-    # the missing "--config" argument. -BEF-
-    #
-    #   ssm --sync http://mgt/my-config-file.conf
-    #
-    # So we assume that the user meant this:
-    #
-    #   ssm --sync --config http://mgt/my-config-file.conf
-    #
-    if(! $o{config_file} and $ARGV[0]) {
-        $o{config_file} = $ARGV[0];
-    }
-
     return 1;
 }
 
@@ -408,42 +394,40 @@ OPTIONS
     
     --otf, --only-this-file FILE [--only-this-file FILE...]
 
-        Only sync this particular file.  Don't sync packages.  May be
-        used multiple times to specify multiple files.
+        Only sync this particular file.  Don't sync packages.  May be used
+        multiple times to specify multiple files.
 
         Example:  --otf /etc/file1.txt --otf /etc/file2.txt
     
     --af, --add-file FILE [--add-file FILE...]
 
-        Adds FILE to the main configuration file, or to --bundlefile
-        if specified.  May be used multiple times to specify multiple
-        files.
+        Adds FILE to the main configuration file, or to --bundlefile if
+        specified.  May be used multiple times to specify multiple files.
 
         Example:  --af /etc/file1.txt --af /etc/file2.txt
 
-    --ap, --add-package PACKAGE [--add-package PACKAGE...]
+    --ap, --add-package PACKAGE [PACKAGE...]
 
-        Adds PACKAGE to the main configuration file, or to --bundlefile
-        if specified.  May be used multiple times to specify multiple
-        packages.
+        Adds each PACKAGE to the main configuration file, or to --bundlefile if
+        specified.
 
-        Example:  --ap packagename1 --ap "packagename2 priority=99"
+        Example:  --add-package pkgname1 "pkgname2 priority=99" pkgname3
 
     --bf, --bundlefile BUNDLEFILE
 
-        Works with the --add-file option.  Specifies the BUNDLEFILE in
-        the repo to which all files specified by --add-file should be
-        added.  While --add-file may be specified multiple times,
-        only one --bundlefile may be specified.
+        Works with the --add-file option.  Specifies the BUNDLEFILE in the repo
+        to which all files specified by --add-file should be added.  While
+        --add-file may be specified multiple times, only one --bundlefile may be
+        specified.
 
         Defaults to the main config file.
 
     --config URL
 
-        Where URL is the location of the configuration file (state
-        definition file) you want to use with this client.  The URL can
-        be in one of the following forms, and the configuration files
-        can be named anything you like:
+        Where URL is the location of the configuration file (state definition
+        file) you want to use with this client.  The URL can be in one of the
+        following forms, and the configuration files can be named anything you
+        like:
     
          https://server.example.com/ssm_repo/computenodes.conf
           http://server.example.com/ssm_repo/myhost.example.com
@@ -456,22 +440,21 @@ OPTIONS
 
         Answer "yes" to all questions.
     
-        Note: Does not install packages that are undefined, even if the
-        package manager wants to install them.  Must go interactive
-        (omit --yes) to be prompted for installation of undefined
-        packages.
+        Note: Does not install packages that are undefined, even if the package
+        manager wants to install them.  Must go interactive (omit --yes) to be
+        prompted for installation of undefined packages.
     
     --no
 
-        Answer "no" to all questions.  Don't make any changes to the
-        system.  (Well, if a newer version is available, it will still
-        upgrade the 'ssm' package itself.)
+        Answer "no" to all questions.  Don't make any changes to the system.
+        (Well, if a newer version is available, it will still upgrade the 'ssm'
+        package itself.)
     
     --summary
 
-        Implies "--no" and "--sync".  Does not include diff output on
-        files that are out of sync.  Only shows a one line summary for
-        each configuration element.
+        Implies "--no" and "--sync".  Does not include diff output on files that
+        are out of sync.  Only shows a one line summary for each configuration
+        element.
 
     --debug
 
@@ -479,20 +462,20 @@ OPTIONS
     
     --analyze-config
 
-        Output details about where config elements are defined, and what
-        their priorities are.  Implies the options --sync and --no.
+        Output details about where config elements are defined, and what their
+        priorities are.  Implies the options --sync and --no.
     
     
 SEE ALSO
 
-    For details on the /etc/ssm/defaults file, which points a client
-    at it's state definition config file, just open it up and edit it.
-    It includes instructions right there in it's comments:
+    For details on the /etc/ssm/defaults file, which points a client at it's
+    state definition config file, just open it up and edit it.  It includes
+    instructions right there in it's comments:
 
         /etc/ssm/defaults
 
-    For details on state definition config files, where all the really
-    fun stuff happens, please see:
+    For details on state definition config files, where all the really fun stuff
+    happens, please see:
 
         /usr/share/doc/simple-state-manager/examples/safe_to_run_example_config_file.conf
     
