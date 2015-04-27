@@ -1,3 +1,69 @@
+-- Improve diff function
+
+- add a '--list THINGY' option, where THINGY can be:
+        - packages
+        - files
+        - bundles
+
+- How to handle sensitive files in repo
+
+    - General assumptions:
+        - File metadata is not sensitive
+        - File contents may be sensitive
+
+    - Option A:
+        - Each file can have a repo-location override setting
+        - Most files can be accessed via http
+        - Valid repo URLs could include scp://
+
+    - Option B:
+        - Put a directive in the repo to require client connections to
+          originate from a low numbered port (below 1024), and with an IP
+          address restriction
+            - Only root can initiate connections from below 1024, and if
+              they've got root, then they'd have access to any certificate
+              stored on the system also
+            - works for local installs (clusters), but ssl certs prolly make
+              the most sense if crossing many nets or the Interweb
+            - use https so that packets can't be sniffed, but user's would have
+              to be root on the cluster to sniff anyway...
+
+    - Option C:
+        - Use SSL Certs
+
+
+- When /tmp/nest is also defined, but not specified on the command line...
+
+    Issue: 
+
+    # sudo ssm -otf /tmp/nest/monkey --sync -d
+
+    >> regular_file_interactive(/tmp/nest/monkey)
+    >>> Dependencies for /tmp/nest/monkey: /tmp/nest
+    >>>> Checking on status of /tmp/nest
+    >>>>>  /tmp/nest exists, but isn't considered 'fixed'
+    Not OK:  File /tmp/nest/monkey -> Unmet Dependencies:
+             /tmp/nest 
+    ERROR_LEVEL: 1
+    SimpleStateManager::take_file_action()
+    SimpleStateManager::take_file_action() ( /tmp/nest/monkey, null, n# )
+    >>> Dependencies for /tmp/nest/monkey: /tmp/nest /tmp/nest
+    >>>> Checking on status of /tmp/nest
+    >>>>>  /tmp/nest exists, but isn't considered 'fixed'
+    >>>> Checking on status of /tmp/nest
+    >>>>>  /tmp/nest exists, but isn't considered 'fixed'
+    
+               NOTE: Options limited due to Unmet Dependencies
+    SimpleStateManager::do_you_want_me_to()
+    do_you_want_me_to(): #
+
+
+    Resolution:
+    - pull in dependency (/tmp/nest)
+     or
+    - ignore dependency 
+
+
 - add an optional "notice = SOME TEXT GOES HERE" that can be added for
   any file.  The notice will be displayed in interactive mode when a
   user is presented with a decision on how to handle a "Not OK" file.
@@ -84,11 +150,6 @@ ERROR: The bundlefile you specified, bundle.redmine_git_hosting, exists in the
     - validate state of files, and find changed files
     - add changed files to config
 
--- ssm --add-file
-    - if $regular_file 
-        and md5sum matches
-        don't add new entry
-
 -- improve --add-package
     - verify that package exists in configured repos
         - apt-cache show $pkgname (or similar)
@@ -112,12 +173,8 @@ ERROR: The bundlefile you specified, bundle.redmine_git_hosting, exists in the
 
     Update documentation and output to say recipe instead of bundle.
 
--- s/Simple State Manager/SystemImager State Manager/  ???
-
 -- add dots (at least) when downloading pkg updates
     - or simply show the output
-
--- Improve diff function
 
 --
 
@@ -199,26 +256,6 @@ ERROR: The bundlefile you specified, bundle.redmine_git_hosting, exists in the
     - use system specific commands to evaluate and manipulate
         - my $current_settings = get_service_settings($servicename)
         - apply_service_settings($servicename, $target_settings)
-
--- build regression testing harness
-
-    Directory w/series of config files
-
-        test_configs.d/*.conf
-    
-
-    Simple test script maybe?
-        
-        for config in $(/bin/ls test_configs.d/*.conf)
-        do
-            ssm --config $config --summary
-            ssm --config $config --sync --no
-            ssm --config $config --sync --yes
-            ssm --config $config --summary
-        done
-
-
-    'make test' executes the test script
 
 -- add an "a" option for "directories".
 
