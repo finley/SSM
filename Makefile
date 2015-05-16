@@ -37,7 +37,6 @@ $(TOPDIR)/tmp/lib/SimpleStateManager.pm:  Makefile VERSION $(TOPDIR)/lib/SimpleS
 .PHONY: install
 install:  all
 	test -d ${sysconfdir} || install -d -m 755 ${sysconfdir}
-	test -e ${sysconfdir}/defaults || install -m 644 etc/defaults	${sysconfdir}
 	
 	test -d ${bindir} || install -d -m 755 ${bindir}
 	install -m 755 bin/* 					${bindir}
@@ -73,7 +72,8 @@ install:  all
 	cat $(TOPDIR)/usr/share/doc/examples/safe_to_run_example_config_file.conf \
 		| perl -p -e 's/^/#/' > ${docdir}/examples/starter_config_file.conf
 	#
-	cp -i $(TOPDIR)/usr/share/doc/examples/safe_to_run_example_config_file.conf ${sysconfdir}/localhost
+	test -e ${sysconfdir}/localhost || install -m 644 $(TOPDIR)/usr/share/doc/examples/safe_to_run_example_config_file.conf ${sysconfdir}/localhost
+	test -e ${sysconfdir}/defaults || install -m 644 etc/defaults	${sysconfdir}
 	#	
 	find ${docdir} -type d -exec chmod 0775 '{}' \;
 	find ${docdir} -type f -exec chmod 0664 '{}' \;
@@ -158,7 +158,6 @@ $(TOPDIR)/tmp/${package}-$(VERSION).tar.bz2:  clean
 	@echo 
 	@echo '# deb pkg bits first'
 	@echo 'git log `git describe --tags --abbrev=0`..HEAD --oneline > /tmp/${package}.gitlog'
-	#@echo "git log `git describe --tags --abbrev=0`..HEAD --oneline --name-status | perl -p -e 's/(^\S{7} .*)/\n$1/; s/(^\S\.*)/    $1/' > /tmp/${package}.gitlog"
 	@echo 'while read line; do dch --newversion $$ver "$$line"; done < /tmp/simple-state-manager.gitlog'
 	@echo 'dch --release "" --distribution stable --no-force-save-on-release'
 	@echo 'head debian/changelog'

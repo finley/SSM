@@ -1,3 +1,21 @@
+simple-state-manager (0.6.2) stable; urgency=medium
+
+  * 99bfd8e .
+  * f172b55 Default install now sets up system to run against the
+    safe_to_run_example_config_file.conf file.
+  * c8ff7b9 .
+  * bd5e023 Allow specification of multiple files with one argument: -af
+    file1 file2 file3...
+  * 51f3c9b Allow specification of multiple packages with one argument: -
+    ap pkg1 pkg2 pkg3...
+  * 262ca34 .
+  * c43ec90 - only announce that we are "Processing contents-unwanted
+    directory" if it contains unwanted files
+  * aec7a9c - produce an error message if --only-this-file is used with
+    a file that doesn't exist in the definition.
+
+ -- Brian Elliott Finley <brian@thefinleys.com>  Sat, 16 May 2015 09:35:40 -0500
+
 simple-state-manager (0.6.1) stable; urgency=medium
 
   * 5ff753c - Add host and timestamp entry to new package stanzas when --
