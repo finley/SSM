@@ -30,10 +30,10 @@ run_cmd() {
     echo
     echo "<<<<<<<<<<<<<<<<<<<<<<<<< BEGIN >>>>>>>>>>>>>>>>>>>>>>>>>>>>"
     echo CMD: $cmd
-    $cmd
-    echo "<<<<<<<<<<<<<<<<<<<<<<<<< END >>>>>>>>>>>>>>>>>>>>>>>>>>>>"
-    echo ">> RECAP:  $cmd"
     test -z "$expectations" || echo ">> EXPECT: $expectations"
+    $cmd
+    echo ">> RECAP:  $cmd"
+    echo "<<<<<<<<<<<<<<<<<<<<<<<<< END >>>>>>>>>>>>>>>>>>>>>>>>>>>>"
     unset expectations
     echo
     echo -n "Hit <Enter> to continue..." ; read x
