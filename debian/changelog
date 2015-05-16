@@ -14,7 +14,7 @@ simple-state-manager (0.6.2) stable; urgency=medium
   * aec7a9c - produce an error message if --only-this-file is used with
     a file that doesn't exist in the definition.
 
- -- Brian Elliott Finley <brian@thefinleys.com>  Sat, 16 May 2015 09:35:40 -0500
+ -- Brian Elliott Finley <brian@thefinleys.com>  Sat, 16 May 2015 09:43:34 -0500
 
 simple-state-manager (0.6.1) stable; urgency=medium
 
