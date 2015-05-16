@@ -1,35 +1,72 @@
+- Send highest level statements to syslog
+    - Not OK
+    - OK
+    - Fixing
+    - Packages OK
+    - Packages upgrading/installing/removing
+    - --ap and --af  Adding file / Adding package
+
+        (basically any modifying action should be logged)
+            - repo mod
+            - updating a file on a managed node
+            - updating a package on a managed node
+
+-- add an --audit feature
+
+    - historical & forensic audit of repo
+    - historical & forensic audit of changes per node
+
+    $  ssm --audit --dates 2014-09-21:2014-10-31 --diff --only-this-file /etc/hosts
+    
+    name       = /etc/hosts
+    comment    = From xbob on 2015-01-27 09:39:17
+    type       = regular
+    md5sum     = 156ad013dd74381017ad83ccf5933ac0  # 2014-09-21 23:09:46
+    # md5sum     = e53b9c5a9ef7056e40a198b2239afa49  # 2014-09-21 23:11:22
+    # md5sum     = 192ae0682fcb36869e53df479aa0ea67  # 2014-09-21 23:12:12
+    # md5sum     = 2a19c6f7b40552ad9609da0c9b2caba3  # 2014-09-21 23:14:54
+    # md5sum     = 1111879832a1dd104c89df5844c822f6  # 2014-10-31 13:35:49
+
+
+- How to handle sensitive files in repo.  Can extend later if necessary...
+
+    - General assumptions:
+        - File metadata is not sensitive
+        - File contents may be sensitive
+
+    - Initial Implementation
+        - Each file can have a repo-location override setting
+        - Most files can be accessed via http
+
+        #
+        #   Default is the name of the repo that gets used by default.
+        #
+        # [repo]
+        # name = default
+        # url  = http://hostname/install/ssm_repo
+
+        [repo]
+        name = secure
+        url  = ssh://hostname/ssm_repo.secure
+
+        [file]
+        name       = /etc/default/grub
+        type       = regular
+        md5sum     = 038c1c68801ef42ad81fa4d00f67fbc1  # 2014-06-04 13:11:55
+        owner      = root
+        group      = root
+        mode       = 0644
+        repo       = secure
+
+    - A future implementation may use SSL certs
+
+
 -- Improve diff function
 
 - add a '--list THINGY' option, where THINGY can be:
         - packages
         - files
         - bundles
-
-- How to handle sensitive files in repo
-
-    - General assumptions:
-        - File metadata is not sensitive
-        - File contents may be sensitive
-
-    - Option A:
-        - Each file can have a repo-location override setting
-        - Most files can be accessed via http
-        - Valid repo URLs could include scp://
-
-    - Option B:
-        - Put a directive in the repo to require client connections to
-          originate from a low numbered port (below 1024), and with an IP
-          address restriction
-            - Only root can initiate connections from below 1024, and if
-              they've got root, then they'd have access to any certificate
-              stored on the system also
-            - works for local installs (clusters), but ssl certs prolly make
-              the most sense if crossing many nets or the Interweb
-            - use https so that packets can't be sniffed, but user's would have
-              to be root on the cluster to sniff anyway...
-
-    - Option C:
-        - Use SSL Certs
 
 
 - When /tmp/nest is also defined, but not specified on the command line...
