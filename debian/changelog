@@ -1,5 +1,7 @@
 simple-state-manager (0.6.2) stable; urgency=medium
 
+  * 1fe2978 v
+  * 205e533 tweak expectations in regression tests
   * 99bfd8e .
   * f172b55 Default install now sets up system to run against the
     safe_to_run_example_config_file.conf file.
