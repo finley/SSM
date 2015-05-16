@@ -40,6 +40,7 @@ run_cmd() {
 }
 
 cmd="sudo ssm -c $conf --sync --summary"
+expectations="Expect 4 warnings, 3 OK, the rest Not OK"
 run_cmd
 
 cmd="sudo ssm -c $conf --sync --no"
@@ -47,6 +48,7 @@ run_cmd
 
 cmd="sudo ssm -c $conf --sync --yes"
 run_cmd
+expectations="Expect all OK."
 
 test_file=$test_dir/test_file.txt
 cmd="sudo ssm -c $conf --add-file $test_file"
@@ -60,23 +62,28 @@ run_cmd
 
 ln -s $test_file ${test_file}.symlink
 cmd="sudo ssm -c $conf --add-file ${test_file}.symlink"
+expectations="Expect 0 errors"
 run_cmd
 
 newdir=$test_dir/test_dir/
 sudo mkdir -p $newdir
 cmd="sudo sudo ssm -c $conf --add-file $newdir"
+expectations="Expect 0 errors"
 run_cmd
 
 rm -f $test_file
 sudo rm -f $test_file
 cmd="sudo ssm -c $conf --sync --only-this-file $test_file --yes"
+expectations="Expect 1 Not OK then 1 OK"
 run_cmd
 
 sudo rm -f ${test_file}.symlink 
 cmd="sudo ssm -c $conf --sync --only-files --yes"
+expectations="Expect all OK"
 run_cmd
 
 cmd="sudo ssm -c $conf --sync --summary"
+expectations="Expect all OK"
 run_cmd
 
 # rm -fr $test_dir
