@@ -134,11 +134,21 @@ sub install_pkgs {
         my $cmd;
 
         ssm_print "FIXING:  Packages -> Downloading...\n";
+        #
+        # -q=2          -- quiet level 2
+        # --yes         -- assume "yes" as answer to all prompts and run non-interactively.  Some actions still prompt, therefore the need for --force-yes below.
+        # --force-yes   -- don't prompt
+        # --download-only   -- download files to local cache, but don't install
         $cmd = 'DEBIAN_FRONTEND=noninteractive apt-get -q=2 --force-yes --yes --download-only install';
         run_cmd($cmd);
 
         ssm_print "FIXING:  Packages -> Installing...\n";
-        $cmd = 'DEBIAN_FRONTEND=noninteractive apt-get -q=2 --force-yes --yes install' . $pkgs;
+        #
+        # -q=2          -- quiet level 2
+        # --yes         -- assume "yes" as answer to all prompts and run non-interactively.  Some actions still prompt, therefore the need for --force-yes below.
+        # --force-yes   -- don't prompt
+        # -o Dpkg::Options::="--force-confold"  --  don't overwrite existing config files
+        $cmd = 'DEBIAN_FRONTEND=noninteractive apt-get -q=2 --force-yes --yes -o Dpkg::Options::="--force-confold" install' . $pkgs;
         run_cmd($cmd);
 
         # Remove any packages lying around in the cache.  Again.
@@ -166,6 +176,10 @@ sub remove_pkgs {
 
     if(defined $cmd) {
         ssm_print "FIXING:  Packages -> Removing.\n";
+        #
+        # -q=2          -- quiet level 2
+        # --yes         -- assume "yes" as answer to all prompts and run non-interactively.  Some actions still prompt, therefore the need for --force-yes below.
+        # --force-yes   -- don't prompt
         $cmd = 'DEBIAN_FRONTEND=noninteractive apt-get -q=2 --force-yes --yes remove' . $cmd;
         run_cmd($cmd);
     }
@@ -221,6 +235,8 @@ sub update_pkg_availability_data {
 
     #
     # Get the latest updates
+    #
+    # -q=2          -- quiet level 2
     my $cmd = 'apt-get -q=2 update';
     #
     # Run even if --no so that we don't get 'Unable to locate package X'
