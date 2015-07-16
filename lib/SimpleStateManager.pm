@@ -3357,7 +3357,7 @@ sub update_or_add_file_stanza_to_bundlefile {
         # Match filename portion, then compare against filename we're looking for
         #                   |                |
         #                 vvvvvv            vvvvvvvvvvv
-        if( m|^name\s*=\s*(\S.*)\s+$|  and  $1 eq $file ) {
+        if( m|^name\s*=\s*(\S.*)\s+$|  and  $1 eq $name ) {
 
             $found_entry = 'yes';
 
