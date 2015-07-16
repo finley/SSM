@@ -62,7 +62,7 @@ GetOptions(
     "help"                              => \$o{help},
     "version"                           => \$o{version},
     "config|state-definition-file=s"    => \$o{config_file},
-    "sync|sync-state"                   => \$o{sync_state},
+    "s|sy|sync|sync-state"              => \$o{sync_state},
     "summary"                           => \$o{summary},
     "yes"                               => \$o{yes},
     "n|no"                              => \$o{no},
@@ -110,17 +110,17 @@ sub main {
         if($error_level == 0) {
             ssm_print "Added $changes_made files.\n";
             ssm_print "Encountered $error_level errors.\n";
+            ssm_print qq(\n);
+
         } else {
             ssm_print "Tried to add $changes_made files.\n";
             ssm_print "Encountered $error_level errors.\n";
+            ssm_print qq(\n);
+
+            email_log_file();
+
+            exit $error_level;
         }
-
-        ssm_print qq(\n);
-
-        email_log_file();
-
-        exit $error_level;
-
     }
     elsif($o{add_package}) {
 
@@ -138,19 +138,21 @@ sub main {
         if($error_level == 0) {
             ssm_print "Added packages.\n";
             ssm_print "Encountered $error_level errors.\n";
+            ssm_print qq(\n);
+
         } else {
             ssm_print "Tried to add packages.\n";
             ssm_print "Encountered $error_level errors.\n";
+            ssm_print qq(\n);
+
+            email_log_file();
+
+            exit $error_level;
         }
-
-        ssm_print qq(\n);
-
-        email_log_file();
-
-        exit $error_level;
-
     } 
-    elsif($o{sync_state}) {
+
+
+    if($o{sync_state}) {
 
         my $outstanding_changes = -1;
         my $prior_outstanding_changes = -1;
@@ -198,18 +200,6 @@ sub main {
             sleep 1 unless( $o{yes} or $o{no});;
         }
     }
-
-
-#    ssm_print "-------------------------------\n";
-#    ssm_print "Total outstanding changes: $outstanding_change_count\n";
-#
-#    if($error_level > 0) {
-#        ssm_print qq(\n);
-#        ssm_print qq(         Please check the output above, and address anything that is\n);
-#        ssm_print qq(         "Not OK", then give it another whirl.\n);
-#    }
-#
-#    ssm_print qq(\n);
 
     email_log_file();
 
@@ -278,21 +268,21 @@ sub validate_options {
         sleep 1;
     }
 
-    if( $o{add_file} and $o{sync_state}) { 
-        print "\n";
-        print " The --add-file option overrides the --sync option.  Proceeding\n";
-        print " with --add-file.\n";
-        print "\n";
-        undef $o{sync_state};
-    }
+    #if( $o{add_file} and $o{sync_state}) { 
+    #    print "\n";
+    #    print " The --add-file option overrides the --sync option.  Proceeding\n";
+    #    print " with --add-file.\n";
+    #    print "\n";
+    #    undef $o{sync_state};
+    #}
 
-    if( $o{add_package} and $o{sync_state}) { 
-        print "\n";
-        print " The --add-package option overrides the --sync option.  Proceeding\n";
-        print " with --add-package.\n";
-        print "\n";
-        undef $o{sync_state};
-    }
+    #if( $o{add_package} and $o{sync_state}) { 
+    #    print "\n";
+    #    print " The --add-package option overrides the --sync option.  Proceeding\n";
+    #    print " with --add-package.\n";
+    #    print "\n";
+    #    undef $o{sync_state};
+    #}
 
     if( $o{add_file} and $o{only_packages}) { 
         usage();
@@ -379,7 +369,7 @@ OPTIONS
 
         Display version and copyright information.
     
-    --sync
+    --s, --sync
 
         Bring this machine's state in sync with it's state definition
         file.
@@ -418,7 +408,11 @@ OPTIONS
         Adds each PACKAGE to the main configuration file, or to --bundlefile if
         specified.
 
-        Example:  --add-package pkgname1 "pkgname2 priority=99" pkgname3
+        You may combine this option with --sync (or --sync --only-packages) to
+        install the package you've just added to the configuration.
+
+        Examples:  --add-package pkgname1 "pkgname2 priority=99" pkgname3
+                   -s -ap pkg1 pkg2
 
     --bf, --bundlefile BUNDLEFILE
 

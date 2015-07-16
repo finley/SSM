@@ -4315,7 +4315,10 @@ sub upgrade_packages_interactive {
             my $action = lc( $pending_pkg_changes{$pkg}{action} );
             my $pad = get_pad($max_length - length($action));
 
-            if($pending_pkg_changes{$pkg}{current_version} and $pending_pkg_changes{$pkg}{target_version}) {
+            if(
+                ($pending_pkg_changes{$pkg}{current_version} and $pending_pkg_changes{$pkg}{target_version}) and 
+                ($pending_pkg_changes{$pkg}{current_version} ne  $pending_pkg_changes{$pkg}{target_version})
+                ) {
                 push @sort_list, "- ${action}${pad} $pkg  from  $pending_pkg_changes{$pkg}{current_version} to $pending_pkg_changes{$pkg}{target_version}";
             } else {
                 push @sort_list, "- ${action}${pad} $pkg";
