@@ -3257,7 +3257,11 @@ sub update_bundle_file_comment_out_entry {
 
         $_ = shift @input;
 
-        if( m|^name\s*=\s*$file| ) {
+        #
+        # Match filename portion, then compare against filename we're looking for
+        #                   |                |
+        #                 vvvvvv            vvvvvvvvvvv
+        if( m|^name\s*=\s*(\S.*)\s+$|  and  $1 eq $file ) {
 
             #
             # We've got a hit!  Rewind until we get to the beginning of the
@@ -3349,7 +3353,11 @@ sub update_or_add_file_stanza_to_bundlefile {
 
         $_ = shift @input;
 
-        if( m|^name\s*=\s*$name| ) {
+        #
+        # Match filename portion, then compare against filename we're looking for
+        #                   |                |
+        #                 vvvvvv            vvvvvvvvvvv
+        if( m|^name\s*=\s*(\S.*)\s+$|  and  $1 eq $file ) {
 
             $found_entry = 'yes';
 
