@@ -1,3 +1,47 @@
+Hello Brian,
+
+
+
+   Thanks for working on managing files with restricted access in SSM.
+
+
+
+   Here is a possible improvement that I mentioned before you took off.
+
+
+
+     Topic: Adding test or matching for a variable (like hostname) for applying packages to a host or a class of hosts.  Two use cases are
+
+
+
+     (a) Globus host certs for fast transfer nodes (FTN).  Both FTN nodes share the same SSM config file, but each FTN has its own X509 host certs.  I can scp host cert files for each FTN from postscript.  It might be easier to do so (with change tracking) from SSM.
+
+
+
+     (b) The content for /etc/sysconfig/network-scripts/ifcfg-eth0 for some hosts  is "generated" within SSM.  With a hostname matching rule, this config file can be managed as a regular file.
+
+
+
+--
+
+Mark
+
+
+--
+
+- add feature:
+    - ssm --rename /old/file/name /new/file/name
+
+        Renames a file in the repository.
+
+        What it really does is make a copy of the file in the repository to the
+        new name, and updates the specified configuration with it's new name
+        and the date of the change.  This leaves the original file in place for
+        audit purposes.
+
+
+--
+
 - Send highest level statements to syslog
     - Not OK
     - OK
@@ -63,11 +107,75 @@
 
 -- Improve diff function
 
+-- Add to --add-file  a "--type" flag for types that can't be autodetected,
+    such as hard links, unwanted, etc.
+
+-- Add "read-only" feature for bundles
+    - If a bundle is included as "read-only", it will not be modified with
+      updates handled by the client.  Rather, the updates will be put into the
+      base config file as "higher priority" than the priority of the element in
+      the bundle file
+      
+-- add a 
+
+    WARNING: Configuration file in /etc/ssm/default is $CONF_FILE,
+    but $EXPLICIT_CONF is being used instead...
+
 - add a '--list THINGY' option, where THINGY can be:
         - packages
         - files
         - bundles
 
+- Make bundles read-only be default, so that when doing an --add-file from one
+  node class, you don't overwrite settings for a more general node class.
+
+  Make the add-file function (and similar functions) auto-raise the
+  priority of the file element to +1 over the priority of the
+  pre-existing element in a sub-bundle.
+
+    [bundles]
+    bundle.rhel7-nodes read-write
+
+  Alternately, perhaps just add an option that modifies the --add-file
+  behavior to say "--put-updates-into-existing-bundles'
+
+  Example:
+
+    Given the following layout, if running on a storage node and you do
+    "a" to add a local file to update the config, and that file happens
+    to be in bundle.common-files, then you've updated that file for all
+    nodes, when it's probably most appropriate that it actually be added
+    to storage-node.conf directly with a higher priority.
+
+        In "storage-node.conf":
+            [bundles]
+            bundle.rhel7-nodes
+
+        In "bundle.rhel7-nodes":
+            [bundles]
+            bundle.common-files
+
+
+- Auto decrement the priority of bundles by 1.  Is this a good idea?
+  (Prolly not on reflection... -BEF-)
+
+    Example:
+
+        In "storage-node.conf":
+            [bundles]
+            bundle.rhel7-nodes
+
+        In "bundle.rhel7-nodes":
+            [bundles]
+            bundle.common-files
+
+        With a default priority for everything (0), this would result in:
+
+            - All elements in bundle.rhel7-nodes would be assigned a priority
+              of -1.
+
+            - All elements in bundle.common-files would be assigned a priority
+              of -2.
 
 - When /tmp/nest is also defined, but not specified on the command line...
 
@@ -100,6 +208,11 @@
      or
     - ignore dependency 
 
+- consider testing for the following file, and indicating to the user that a
+  reboot is required to finish applying updates:
+
+    - /var/run/reboot-required
+        (on Ubuntu 14.10)
 
 - add an optional "notice = SOME TEXT GOES HERE" that can be added for
   any file.  The notice will be displayed in interactive mode when a
