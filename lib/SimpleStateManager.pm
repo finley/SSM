@@ -1225,7 +1225,7 @@ sub sync_state {
         ssm_print "\n";
     }
 
-    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
 
     sleep 1;
     return ($ERROR_LEVEL, $CHANGES_MADE);
@@ -1418,7 +1418,7 @@ sub run_cmd {
     
     ssm_print "\n" if( defined $add_newline );
 
-    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
     
     return 1;
 }
@@ -1538,7 +1538,7 @@ sub do_you_want_me_to {
 
     }
 
-    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
 }
 
 
@@ -2360,7 +2360,7 @@ sub generated_file_interactive {
 
     unlink $TMPFILE{$file};
 
-    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
 
     return 1;
 }
@@ -2663,7 +2663,7 @@ sub take_file_action {
 
     ssm_print "\n";
 
-    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
 
     return $return_code;
 }
@@ -2784,7 +2784,7 @@ sub diff_file {
         unlink $tmp_file;
     }
 
-    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
 
     return 1;
 }
@@ -2801,7 +2801,7 @@ sub execute_prescript {
         run_cmd($cmd);
     }
 
-    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
 
     return 1;
 }
@@ -2818,7 +2818,7 @@ sub execute_postscript {
         run_cmd($cmd);
     }
 
-    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
 
     return 1;
 }
@@ -2973,7 +2973,7 @@ sub get_file {
         exit 1;
     }
 
-    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
 
     return $tmp_file;
 }
@@ -3087,7 +3087,7 @@ sub hardlink_interactive {
         ssm_print "OK:      Hard link $file -> $TARGET{$file}\n";
     }
 
-    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
 
     return 1;
 }
@@ -3300,7 +3300,7 @@ sub update_bundle_file_comment_out_entry {
     copy_file_to_upstream_repo($tmp_bundle_file, $BUNDLEFILE{$file});
     unlink $tmp_bundle_file;
 
-    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
 
     return 1;
 }
@@ -3840,7 +3840,7 @@ sub add_packages_to_repo {
     copy_file_to_upstream_repo($tmp_file, $bundlefile);
     unlink $tmp_file;
 
-    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
 
     return 1;
 }
@@ -3877,7 +3877,7 @@ sub add_file_to_repo {
         add_file_to_repo_type_nonRegular($file, $type);
     }
 
-    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
 
     return 1;
 }
@@ -3908,7 +3908,7 @@ sub add_file_to_repo_type_nonRegular {
 
     $::outstanding{$file} = 'fixed';
 
-    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
 
     return 1;
 }
@@ -3940,7 +3940,7 @@ sub add_file_to_repo_type_regular {
 
     $::outstanding{$file} = 'fixed';
 
-    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
 
     return 1;
 }
@@ -4220,7 +4220,7 @@ sub remove_packages_interactive {
         ssm_print "OK:      Package removes\n";
     }
 
-    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
 
     return 1;
 }
@@ -4277,7 +4277,7 @@ sub autoremove_packages_interactive {
         ssm_print "OK:      Package autoremoves\n";
     }
 
-    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
 
     return 1;
 }
@@ -4335,7 +4335,7 @@ sub upgrade_packages_interactive {
         ssm_print "OK:      Package upgrades\n";
     }
 
-    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
 
     return 1;
 }
@@ -4383,7 +4383,7 @@ sub install_packages_interactive {
         ssm_print "OK:      Package installs\n";
     }
 
-    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
 
     return 1;
 }
@@ -4430,7 +4430,7 @@ sub update_package_repository_info_interactive {
     mkpath("$STATE_DIR", 0, 0775) unless( -e $STATE_DIR );
     touch $PKG_REPO_UPDATE_TIMESTAMP_FILE;
 
-    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
 
     return $return_code;
 }
@@ -4564,7 +4564,7 @@ sub copy_file_to_upstream_repo {
         ssm_print '  - Brian Elliott Finley <brian@thefinleys.com>' . "\n";
     }
 
-    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
 
     return 1;
 }
