@@ -1,3 +1,25 @@
+simple-state-manager (0.6.3) stable; urgency=medium
+
+  * 15afc63 - Fixed bug where updates to file sections in bundle file
+    would silently   fail if regular expression characters existed in
+    file name, such as   "+".  This would happen when doing a "comment
+    out" or "add" operation   via the SSM client.
+  * f10ab2e .
+  * 13b783a - Fixed bug where updates to file sections in bundle file
+    would silently   fail if regular expression characters existed in
+    file name, such as   "+".  This would happen when doing a "comment
+    out" or "add" operation   via the SSM client.
+  * 8f92dd4 - remove sleep statements from --debug runs
+  * cd884a3 - Allow --sync with --add-packages to add and install
+    package in one fell swoop.  Also allow --sync with --add-file
+  * fe50cf1 - minor verbiage change
+  * 8b514d3 - Dpkg.pm - don't go interactive on debian pkg installs when
+    new conf file exists, simply keep existing file on system.
+  * 418f55e Update copyright date
+  * 4d939b3 put expectations closer to result
+
+ -- Brian Finley <bfinley@xbob>  Tue, 28 Jul 2015 15:28:01 -0500
+
 simple-state-manager (0.6.2) stable; urgency=medium
 
   * 1fe2978 v

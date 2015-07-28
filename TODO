@@ -1,31 +1,27 @@
 Hello Brian,
 
-
-
    Thanks for working on managing files with restricted access in SSM.
-
-
-
    Here is a possible improvement that I mentioned before you took off.
-
-
 
      Topic: Adding test or matching for a variable (like hostname) for applying packages to a host or a class of hosts.  Two use cases are
 
-
-
      (a) Globus host certs for fast transfer nodes (FTN).  Both FTN nodes share the same SSM config file, but each FTN has its own X509 host certs.  I can scp host cert files for each FTN from postscript.  It might be easier to do so (with change tracking) from SSM.
 
-
-
      (b) The content for /etc/sysconfig/network-scripts/ifcfg-eth0 for some hosts  is "generated" within SSM.  With a hostname matching rule, this config file can be managed as a regular file.
-
-
 
 --
 
 Mark
 
+
+--
+
+- add feature
+
+    [global]
+    pkg-mgr = autodetect
+
+    # make default
 
 --
 
