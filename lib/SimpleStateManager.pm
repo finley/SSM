@@ -633,6 +633,8 @@ sub read_config_file {
                 $_ = shift @input;
             }
 
+            $name = normalized_file_name( $name ); 
+
             if( (defined $name) and (defined $DETAILS{$name}) ) {
                 ssm_print_always "\n";
                 ssm_print_always "ERROR: Multiple (conflicting) definitions for:\n";
@@ -746,18 +748,8 @@ sub read_config_file {
                     $name = $value; 
 
                     #if($::o{debug}) { ssm_print "name before: $name\n"; }
-
-                    # Turn double slashes into single slashes so that
-                    # tests for conflicting host names work properly.
-                    $name =~ s|/+|/|go;
-
-                    # Turn directories specified with an ending slash
-                    # into no ending slash to ensure conflicting
-                    # directory names are treated properly.
-                    $name =~ s|/$||go;
-
+                    $name = normalized_file_name( $name ); 
                     #if($::o{debug}) { ssm_print "name after:  $name\n"; }
-
 
                 } elsif($key eq 'type')       { 
                     $value =~ s/\s.*//;
@@ -1090,6 +1082,9 @@ sub sync_state {
         my %specified_files_that_arent_defined;
 
         foreach my $file ( @{$::o{only_this_file}} ) {
+
+            $file = normalized_file_name( $file ); 
+
             if($TYPE{$file}) {  # if type is specified, then it exists in the definition
                 $only_this_file_hash{$file} = 1;
             } else {
@@ -3354,49 +3349,54 @@ sub update_or_add_file_stanza_to_bundlefile {
         $_ = shift @input;
 
         #
-        # Match filename portion, then compare against filename we're looking for
-        #                   |                |
-        #                 vvvvvv            vvvvvvvvvvv
-        if( m|^name\s*=\s*(\S.*)\s+$|  and  $1 eq $name ) {
+        # Match filename portion
+        #                   |
+        #                 vvvvvv
+        if( m|^name\s*=\s*(\S.*)\s+$| ) {
 
-            $found_entry = 'yes';
+            my $name_entry = normalized_file_name( $1 ); 
 
-            #
-            # We've got a hit!  Rewind until we get to the beginning of the
-            # stanza (the named file may occur anywhere in the stanza) -BEF-
-            #
-            until ($_ =~ m/^\[file\]/ ) {
-                unshift @input, $_;
-                $_ = pop @newfile;
-            }
+            # then compare against filename we're looking for
+            if( $name_entry eq $name ) {
 
-            until( m/$stanza_terminator/ ) {
-
-                # Allow "key = value" or "key=value" type definitions.
-                   s#^name\s*=.*#name       = $name#;
-                s/^comment\s*=.*/comment    = $comment/             if(defined $comment);
-                   s/^type\s*=.*/type       = $filespec{type}/      if(defined $filespec{type});
-                  s/^owner\s*=.*/owner      = $filespec{owner}/     if(defined $filespec{owner});
-                  s/^group\s*=.*/group      = $filespec{group}/     if(defined $filespec{group});
-                   s/^mode\s*=.*/mode       = $filespec{mode}/      if(defined $filespec{mode});
+                $found_entry = 'yes';
 
                 #
-                # When we match the md5sum bit, comment out the prior entry,
-                # but keep it for posterity, then add the new entry too.
+                # We've got a hit!  Rewind until we get to the beginning of the
+                # stanza (the named file may occur anywhere in the stanza) -BEF-
                 #
-                if( s/^(md5sum\s*=.*)/# $1/ ) {
-                    $_ .=       "md5sum     = $filespec{md5sum}  # $timestamp\n" if(defined $filespec{md5sum});
-                };
+                until ($_ =~ m/^\[file\]/ ) {
+                    unshift @input, $_;
+                    $_ = pop @newfile;
+                }
 
-                 s/^target\s*=.*/target     = $filespec{target}/    if(defined $filespec{target});
-                  s/^major\s*=.*/major      = $filespec{major}/     if(defined $filespec{major});
-                  s/^minor\s*=.*/minor      = $filespec{minor}/     if(defined $filespec{minor});
+                until( m/$stanza_terminator/ ) {
 
-                push @newfile, $_;
+                    # Allow "key = value" or "key=value" type definitions.
+                       s#^name\s*=.*#name       = $name#;
+                    s/^comment\s*=.*/comment    = $comment/             if(defined $comment);
+                       s/^type\s*=.*/type       = $filespec{type}/      if(defined $filespec{type});
+                      s/^owner\s*=.*/owner      = $filespec{owner}/     if(defined $filespec{owner});
+                      s/^group\s*=.*/group      = $filespec{group}/     if(defined $filespec{group});
+                       s/^mode\s*=.*/mode       = $filespec{mode}/      if(defined $filespec{mode});
 
-                $_ = shift @input;
+                    #
+                    # When we match the md5sum bit, comment out the prior entry,
+                    # but keep it for posterity, then add the new entry too.
+                    #
+                    if( s/^(md5sum\s*=.*)/# $1/ ) {
+                        $_ .=       "md5sum     = $filespec{md5sum}  # $timestamp\n" if(defined $filespec{md5sum});
+                    };
+
+                     s/^target\s*=.*/target     = $filespec{target}/    if(defined $filespec{target});
+                      s/^major\s*=.*/major      = $filespec{major}/     if(defined $filespec{major});
+                      s/^minor\s*=.*/minor      = $filespec{minor}/     if(defined $filespec{minor});
+
+                    push @newfile, $_;
+
+                    $_ = shift @input;
+                }
             }
-
         }
 
         push @newfile, $_;
@@ -3865,6 +3865,8 @@ sub add_file_to_repo {
         $file = fully_qualified_file_name($file);
         ssm_print " => $file\n" if($::o{debug});
     }
+
+    $file = normalized_file_name( $file ); 
 
     if(! defined $BUNDLEFILE{$file}) {
         $BUNDLEFILE{$file} = choose_valid_bundlefile();
@@ -4608,6 +4610,20 @@ sub fully_qualified_file_name {
 }
 
 
+sub normalized_file_name {
+    
+    my $file = shift;
+
+    # Turn double slashes into single slashes so that tests for conflicting
+    # host names work properly.
+    $file =~ s|/+|/|go;
+
+    # Turn directories specified with an ending slash into no ending slash to
+    # ensure conflicting directory names are treated properly.
+    $file =~ s|/$||o;
+
+    return $file;
+}
 #
 ################################################################################
 
