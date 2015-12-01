@@ -9,12 +9,146 @@ Hello Brian,
 
      (b) The content for /etc/sysconfig/network-scripts/ifcfg-eth0 for some hosts  is "generated" within SSM.  With a hostname matching rule, this config file can be managed as a regular file.
 
---
-
-Mark
+- Mark
 
 
 --
+
+Pkg Interactions
+
+    1) On "ssm -ap pkg1", verify that the package name exists in the upstream repository before adding it to the list.  With apt-get/dpkg, verify that it's an installable package, and not just virtual:
+
+        ┌─[bfinley@xbob] ~/
+        └─[$] apt-cache show dictd-dictionary
+        N: Can't select versions from package 'dictd-dictionary' as it is purely virtual
+        N: No packages found
+
+
+    2) Add "ssm -rm pkg1" to remove packages
+
+--
+Idea:   capture_pkg_changes = [yes|no]
+
+    - capture pkg changes that happen through use of the native tools (by way
+      of detecting changes to the tools native database) and offer to add them
+      to the SSM state
+
+    - commands that happen later (chronologically) have a higher priority
+
+        e.g.:  
+            Native pkg commands:
+                $ yum install thingy
+                $ yum install other-thingy
+                $ yum remove thingy
+
+            Result:
+                $ rpm -qa | grep thingy
+                other-thingy
+
+--
+
+Idea!  To implement "action-tags":
+
+Phase I -- Reading the Config:
+
+    A new argument that can be included in a file or packages stanza:
+
+        [file]
+        name      = /tmp/testy
+        ...
+        actiontag = $actionTag
+            #
+            # where $actionTag can be any text string
+            #
+
+        [packages]
+        hpc-goodies-cpu     actiontag=$actionTag
+
+    
+    A new stanza type is added to specify the action that should be
+    taken if $actionTag needs to be run.
+
+        [actiontag]
+        actiontag   = $actionTag
+        postscript  = $postScript
+
+        [actiontag]
+        actiontag   = $actionTag_Too
+        postscript  = $postScript
+
+
+    As the config file(s) are read in, files or packages that specify an
+    actiontag are added as dependencies of that actiontag.
+
+
+Phase II -- Examining the System:
+
+    As the system is examined, for any file or package that is "Not OK",
+    it's actiontag (if any) is also marked as "Not OK".
+
+    XXX:  Perhaps we have a file on the system
+    (/var/state/ssm/$actionTag) that indicates that action needs to be
+    taken?  Survives cancels, reboots?  If --only-packages is run, but
+    includes actiontags for files, then we can't verify and execute the
+    action tag until run with both packages and files, and this allows
+    us to capture the need for the action in a persistent way.  :-)
+
+    NOTE:  Only one file or package that is "Not OK" is required to
+    trigger an actiontag.
+
+
+Phase III - Executing actions:
+
+??? Should we have an "stage = [post-files|post-packages]" for action
+tags?  Or just run after packages (if packages are run at all)?
+
+    Actiontags are processed after all files and packages.
+
+    XXX:  If only packages or files are processed... do we ignore action
+    tags?
+
+
+
+
+
+--
+
+Add a "apt-get -f install" bit at the appropriate point.
+
+--
+
+- Consider:
+    - Allow non-root invocation
+        - If action requires root privs, use sudo for that one action
+            - If action->install file && owner != EUID, then "sudo"
+            - If action->pkg-mgr && EUID != 0, then "sudo"
+
+- Track timestamps for entries with both:
+    a) last modified time of the file
+    b) time file was added to SSM
+
+--
+
+- On debian based systems, consider adding 'apt-get install -f' after all other
+  package processing, if any package processing has happened.
+
+- Test to see if any repo conf files are newer than when the repo was last updated, and if so, then update again.
+
+--
+
+- for packages entries, allow dependency on a file
+
+    hal "depends=/etc/apt/sources.list.d/mjblenner-ubuntu-ppa-hal-vivid.list"
+
+    And in this case, /etc/apt/sources.list.d/mjblenner-ubuntu-ppa-hal-vivid.list might have a prescript of "add-apt-repository -y ppa:mjblenner/ppa-hal"
+
+
+--
+
+- for --add-packages, make "unwanted" and "remove" synonyms
+
+- output
+    add a dot for each line of text that comes across during 'pkgmgr update' operations, etc.
 
 - add feature
 
