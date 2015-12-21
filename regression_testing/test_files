@@ -86,5 +86,25 @@ cmd="sudo ssm -c $conf --sync --summary"
 expectations="Expect all OK"
 run_cmd
 
+########################################################################
+#
+#   test for --add-file -- make sure dir or file name is normalized before a)
+#   adding to configuration or b) using after read from configuration.  In this
+#   case, a trailing slash should be removed.  2015.10.11 -BEF-
+#
+cmd="sudo ssm -c $conf --af /tmp"
+expectations="Expect all OK"
+run_cmd
+
+cmd="sudo ssm -c $conf --af /tmp/"
+expectations="Expect all OK"
+run_cmd
+
+cmd="sudo ssm -c $conf --summary --only-files"
+expectations="Expect all OK"
+run_cmd
+#
+########################################################################
+
 # rm -fr $test_dir
 
