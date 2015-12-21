@@ -15,6 +15,7 @@ use Exporter;
                 get_pkgs_that_pkg_manager_says_to_upgrade
                 get_pkg_dependencies
                 get_pkg_reverse_dependencies
+                get_pkg_repo_update_time_stamp
                 get_pkg_provides
                 get_running_kernel_pkg_name
                 get_pending_pkg_changes
@@ -26,6 +27,7 @@ use Exporter;
             );
 use strict;
 use SimpleStateManager qw(ssm_print run_cmd);
+use SimpleStateManager::Filesystem qw(get_file_timestamp);
 
 use AptPkg::Config '$_config';
 use AptPkg::System '$_system';
@@ -46,12 +48,14 @@ my $pkg_changes_made;
 #
 #       % egrep '^sub ' lib/SimpleStateManager/Dpkg.pm | perl -p -e 's/^sub /#   /; s/ {//;' | sort
 #
+#   autoremove_pkgs
 #   do_apt_get_dry_run
 #   get_native_arch
 #   get_pending_pkg_changes
 #   get_pkg_dependencies
 #   get_pkg_dependencies_old
 #   get_pkg_provides
+#   get_pkg_repo_update_time_stamp
 #   get_pkg_reverse_dependencies
 #   get_pkgs_currently_installed
 #   get_pkgs_from_state_definition
@@ -157,6 +161,18 @@ sub install_pkgs {
     }
 
     $pkg_changes_made = 'yes';
+
+#    #
+#    # Test for broken packages
+#    if( test_for_broken_packages() ) {
+#        apt_get_fix_broken();
+#        if( test_for_broken_packages() ) {
+#            #
+#            #   Still b0rken
+#            ssm_print "error message";
+#            raise error count;
+#        fi
+#    }
 
     return 1;    
 }
@@ -705,6 +721,7 @@ sub get_running_kernel_pkg_name {
     return $running_kernel_pkg_name;
 }
 
+
 sub get_native_arch {
 
     my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
@@ -717,6 +734,15 @@ sub get_native_arch {
     if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
 
     return $native_arch;
+}
+
+
+sub get_pkg_repo_update_time_stamp {
+
+    my $file = '/var/lib/apt/periodic/update-success-stamp';
+    my $timestamp = get_file_timestamp( $file );
+
+    return $timestamp;
 }
 
 #

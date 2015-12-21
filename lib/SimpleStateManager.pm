@@ -48,6 +48,8 @@ use Exporter;
             );
 
 use strict;
+
+# Filesystem related
 use File::Copy;
 use File::Path;
 use File::Basename;
@@ -60,9 +62,14 @@ use File::stat qw(:FIELDS);
 use POSIX qw(mkfifo);
 use Fcntl qw( :mode );
 use Digest::MD5;
+use Cwd 'abs_path';
+
+# Network related
 use LWP::Simple;
 use Mail::Send;
-use Cwd 'abs_path';
+
+# SimpleStateManager related
+use SimpleStateManager::Filesystem;
 
 
 ################################################################################
@@ -71,18 +78,20 @@ use Cwd 'abs_path';
 #
 #       % egrep '^sub ' lib/SimpleStateManager.pm | perl -p -e 's/^sub /#   /; s/ {//;' | sort
 #
+#   add_bundlefile_stanza_to_bundlefile
 #   add_file_to_repo
-#   add_file_to_repo_type_directory
-#   add_file_to_repo_type_regular
-#   add_file_to_repo_type_softlink
 #   add_file_to_repo_type_nonRegular
+#   add_file_to_repo_type_regular
 #   add_new_files
+#   add_new_packages
+#   add_package_stanza_to_bundlefile
+#   add_packages_to_repo
 #   autoremove_packages_interactive
 #   backup
 #   check_depends
 #   check_depends_interactive
-#   choose_bundlefile_for_file
 #   choose_tmp_file
+#   choose_valid_bundlefile
 #   chown_and_chmod_interactive
 #   close_log_file
 #   compare_package_options
@@ -95,15 +104,18 @@ use Cwd 'abs_path';
 #   email_log_file
 #   execute_postscript
 #   execute_prescript
+#   fully_qualified_file_name
+#   fully_qualified_path
 #   generated_file_interactive
 #   _get_arch
 #   get_current_time_as_timestamp
 #   get_file
-#   get_file_timestamp
 #   get_file_type
 #   get_gid
 #   get_hostname
+#   get_major
 #   get_md5sum
+#   get_minor
 #   get_mode
 #   get_pad
 #   get_pkgs_to_be_installed
@@ -147,8 +159,8 @@ use Cwd 'abs_path';
 #   turn_usernames_into_uids
 #   uid_gid_and_mode_match
 #   unwanted_file_interactive
-#   update_or_add_file_stanza_to_bundlefile
 #   update_bundle_file_comment_out_entry
+#   update_or_add_file_stanza_to_bundlefile
 #   update_package_repository_info_interactive
 #   upgrade_packages_interactive
 #   user_is_root
@@ -198,6 +210,13 @@ my $ERROR_LEVEL  = 0;
 my $CHANGES_MADE = 0;
 our $LOGFILE;
 my $repo_access_verified = 0;
+my %valid_pkg_managers = (
+                            'dpkg'     => 'Dpkg',
+                            'aptitude' => 'Dpkg',
+                            'apt-get'  => 'Dpkg',
+                            'yum'      => 'Yum',
+                            'none'     => 'None',
+                         ); # pkgmgr   =>  SSM Module to use
 
 #
 ################################################################################
@@ -275,22 +294,6 @@ sub get_current_time_as_timestamp {
 
     # Result is => 2014-06-04 13:11:55
     return "$year-$month-$day $hour:$min:$sec";
-}
-
-
-#
-#   my $timestamp = get_file_timestamp($file);
-#   (returns an epoch style timestamp)
-#
-sub get_file_timestamp {
-
-    my $file = shift;
-    
-    if( ! -e $file ) {
-        return undef;
-    } else {
-        return stat($file)->mtime;
-    }
 }
 
 
@@ -516,15 +519,8 @@ sub read_config_file {
             #
             # Make sure it's one we support
             #
-            unless( ($::o{pkg_manager} eq 'dpkg'    )
-                 or ($::o{pkg_manager} eq 'aptitude')
-                 or ($::o{pkg_manager} eq 'apt-get' )
-                 or ($::o{pkg_manager} eq 'yum'     )
-                 or ($::o{pkg_manager} eq 'none'    )
-            ) {
-
+            unless( $valid_pkg_managers{$::o{pkg_manager}} ) {
                 please_specify_a_valid_pkg_manager();
-
             }
 
             if( ! defined $::o{remove_running_kernel} ) { 
@@ -1180,6 +1176,7 @@ sub sync_state {
         ssm_print "INFO:    Package manager -> $::o{pkg_manager}\n";
 
         update_package_repository_info_interactive();
+
         autoremove_packages_interactive() if($::o{pkg_manager_autoremove} and $::o{pkg_manager_autoremove} eq 'yes');
         upgrade_packages_interactive();
         install_packages_interactive();
@@ -4413,18 +4410,22 @@ sub update_package_repository_info_interactive {
 
         ssm_print "INFO:    Package repo update -> skipping\n";
         return 1;
-
     }
     elsif( $::o{pkg_repo_update} eq 'auto' ) {
 
-        if( -e $PKG_REPO_UPDATE_TIMESTAMP_FILE ) {
+        my $timestamp = get_pkg_repo_update_time_stamp();
+        
+        #
+        # Need to find proper method for determining Yum repo update time.  Until then, the Yum.pm function returns undef,
+        # so we fall back to the SSM timestamp method here.
+        if( ! $timestamp and -e $PKG_REPO_UPDATE_TIMESTAMP_FILE ) {
+            $timestamp = get_file_timestamp( $PKG_REPO_UPDATE_TIMESTAMP_FILE );
+        }
 
+        if( $timestamp ) {
             my $current_time = time();
-            my $timestamp = get_file_timestamp( $PKG_REPO_UPDATE_TIMESTAMP_FILE );
-
-            my $age_of_timestamp = $current_time - $timestamp;
-
             my $window_in_seconds = $::o{pkg_repo_update_window} * 60 * 60;     # hours * minutes * seconds
+            my $age_of_timestamp = $current_time - $timestamp;
 
             if( $age_of_timestamp < $window_in_seconds ) {
                 ssm_print "INFO:    Package repo update -> skipping (updated in the last $::o{pkg_repo_update_window} hours)\n";
@@ -4610,20 +4611,6 @@ sub fully_qualified_file_name {
 }
 
 
-sub normalized_file_name {
-    
-    my $file = shift;
-
-    # Turn double slashes into single slashes so that tests for conflicting
-    # host names work properly.
-    $file =~ s|/+|/|go;
-
-    # Turn directories specified with an ending slash into no ending slash to
-    # ensure conflicting directory names are treated properly.
-    $file =~ s|/$||o;
-
-    return $file;
-}
 #
 ################################################################################
 

@@ -16,6 +16,7 @@ use Exporter;
                 get_pkgs_currently_installed
                 get_pkg_dependencies
                 get_pkg_reverse_dependencies
+                get_pkg_repo_update_time_stamp
                 get_running_kernel_pkg_name
                 install_pkgs
                 remove_pkgs
@@ -33,16 +34,19 @@ use SimpleStateManager qw(ssm_print run_cmd choose_tmp_file);
 #
 #       % egrep '^sub ' lib/SimpleStateManager/Yum.pm | perl -pi -e 's/^sub /#   /; s/ {//;' | sort
 #
-#   get_pkg_dependencies
-#   get_pkg_reverse_dependencies
+#   autoremove_pkgs
+#   do_pkg_manager_dry_run
+#   download_pkgs
+#   get_basearch
+#   get_pending_pkg_changes
+#   get_pkg_repo_update_time_stamp
 #   get_pkgs_currently_installed
 #   get_pkgs_provided_by_pkgs_from_state_definition
-#   do_pkg_manager_dry_run
 #   get_running_kernel_pkg_name
 #   install_pkgs
 #   remove_pkgs
+#   update_pkg_availability_data
 #   upgrade_pkgs
-#
 #
 ################################################################################
 
@@ -480,6 +484,9 @@ sub autoremove_pkgs {
 }
 
 
+sub get_pkg_repo_update_time_stamp {
+    return undef;
+}
 
 #
 ################################################################################
