@@ -11,6 +11,20 @@ Hello Brian,
 
 - Mark
 
+--
+
+When doing an --ap, also allow a --comment "adding in support of project x"
+
+--
+
+Bug:
+
+    - need to be able to specify 
+    
+        --bundle NEW-BUNDLE and --add-packages pgk1 pkg2 
+        
+      at the same time in a single run, and have NEW-BUNDLE created and the
+      packages added to it.
 
 --
 
