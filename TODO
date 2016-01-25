@@ -1,3 +1,22 @@
+Fix:  
+
+    Re-create scenario:
+    
+        echo helo > /tmp/testy
+        ssm -af /tmp/testy
+            # adds entry for regular file
+        rm /tmp/testy
+        ln -s /etc/hosts /tmp/testy
+        ssm -af /tmp/testy
+            # updates entry to be a softlink
+
+    Problem:
+
+        The last step does not add the new soft link specific
+        information, such as the target.
+
+--
+
 Hello Brian,
 
    Thanks for working on managing files with restricted access in SSM.
