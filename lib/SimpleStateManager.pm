@@ -3325,12 +3325,15 @@ sub update_or_add_file_stanza_to_bundlefile {
     #
     my %filespec   = @_;
 
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
+    show_debug_output_for_filespec($debug_prefix, %filespec) if( $::o{debug} );
+
     my $timestamp = get_current_time_as_timestamp();
     my $hostname  = get_hostname();
-    my $comment   = "From $hostname on $timestamp";
+    $filespec{comment} = "From $hostname on $timestamp";
 
-    my $name = $filespec{name};
-    my $url  = "$::o{base_url}/$BUNDLEFILE{$name}";
+    my $url  = "$::o{base_url}/$BUNDLEFILE{$filespec{name}}";
     my $bundlefile = get_file($url, 'error');
     open(FILE, "<$bundlefile") or die("Couldn't open $bundlefile for reading");
     push my @input, (<FILE>);
@@ -3354,7 +3357,7 @@ sub update_or_add_file_stanza_to_bundlefile {
             my $name_entry = normalized_file_name( $1 ); 
 
             # then compare against filename we're looking for
-            if( $name_entry eq $name ) {
+            if( $name_entry eq $filespec{name} ) {
 
                 $found_entry = 'yes';
 
@@ -3369,29 +3372,64 @@ sub update_or_add_file_stanza_to_bundlefile {
 
                 until( m/$stanza_terminator/ ) {
 
-                    # Allow "key = value" or "key=value" type definitions.
-                       s#^name\s*=.*#name       = $name#;
-                    s/^comment\s*=.*/comment    = $comment/             if(defined $comment);
-                       s/^type\s*=.*/type       = $filespec{type}/      if(defined $filespec{type});
-                      s/^owner\s*=.*/owner      = $filespec{owner}/     if(defined $filespec{owner});
-                      s/^group\s*=.*/group      = $filespec{group}/     if(defined $filespec{group});
-                       s/^mode\s*=.*/mode       = $filespec{mode}/      if(defined $filespec{mode});
+                    #
+                    # Allow for, but normalize, existing "key = value" or "key=value" type definitions.
+                    s#^name\s*=.*#name       = $filespec{name}#;
+
+                    if(defined $filespec{comment}) {
+                        s/^comment\s*=.*/comment    = $filespec{comment}/;
+                    }
+                    if(defined $filespec{type}) {
+                        s/^type\s*=.*/type       = $filespec{type}/;
+                    }
+
+                    if(defined $filespec{owner}) {
+                        s/^owner\s*=.*/owner      = $filespec{owner}/;
+                        delete $filespec{owner};
+                    }
+                    if(defined $filespec{group}) {
+                        s/^group\s*=.*/group      = $filespec{group}/;
+                        delete $filespec{group};
+                    }
+                    if(defined $filespec{mode}) {
+                        s/^mode\s*=.*/mode       = $filespec{mode}/;
+                        delete $filespec{mode};
+                    }
 
                     #
                     # When we match the md5sum bit, comment out the prior entry,
                     # but keep it for posterity, then add the new entry too.
                     #
                     if( s/^(md5sum\s*=.*)/# $1/ ) {
-                        $_ .=       "md5sum     = $filespec{md5sum}  # $timestamp\n" if(defined $filespec{md5sum});
+                        if(defined $filespec{md5sum}) {
+                            $_ .=       "md5sum     = $filespec{md5sum}  # $timestamp\n";
+                            delete $filespec{md5sum};
+                        }
                     };
 
-                     s/^target\s*=.*/target     = $filespec{target}/    if(defined $filespec{target});
-                      s/^major\s*=.*/major      = $filespec{major}/     if(defined $filespec{major});
-                      s/^minor\s*=.*/minor      = $filespec{minor}/     if(defined $filespec{minor});
+                    if(defined $filespec{target}) {
+                        s/^target\s*=.*/target     = $filespec{target}/;
+                        delete $filespec{target};
+                    }
+                    if(defined $filespec{major}) {
+                        s/^major\s*=.*/major      = $filespec{major}/;
+                        delete $filespec{major};
+                    }
+                    if(defined $filespec{minor}) {
+                        s/^minor\s*=.*/minor      = $filespec{minor}/;
+                        delete $filespec{minor};
+                    }
 
                     push @newfile, $_;
 
                     $_ = shift @input;
+                }
+
+                push @newfile, "#XXXX\n";   # marker -- delete me
+                # Add any entries that did not exist in the original filespec, but only in the new file (ie. changed from regular to softlink)
+                foreach my $key (keys %filespec) {
+                    next if( $key =~ /^(name|type|comment)$/ );
+                    push @newfile, "$key  = $filespec{$key}\n";
                 }
             }
         }
@@ -3401,16 +3439,16 @@ sub update_or_add_file_stanza_to_bundlefile {
 
     if( $found_entry eq 'yes' ) {
 
-        ssm_print qq(Updating:  Entry for "$name" in configuration file "$BUNDLEFILE{$name}" as type $filespec{type}.\n);
+        ssm_print qq(Updating:  Entry for "$filespec{name}" in configuration file "$BUNDLEFILE{$filespec{name}}" as type $filespec{type}.\n);
 
     } else {
 
-        ssm_print qq(Adding:  Entry for "$name" in configuration file "$BUNDLEFILE{$name}" as type $filespec{type}.\n);
+        ssm_print qq(Adding:  Entry for "$filespec{name}" in configuration file "$BUNDLEFILE{$filespec{name}}" as type $filespec{type}.\n);
 
         push @newfile,   "\n";
         push @newfile,   "[file]\n";
-        push @newfile,   "name       = $name\n";
-        push @newfile,   "comment    = $comment\n"                          if(defined $comment);
+        push @newfile,   "name       = $filespec{name}\n";
+        push @newfile,   "comment    = $filespec{comment}\n"                          if(defined $filespec{comment});
         push @newfile,   "type       = $filespec{type}\n"                   if(defined $filespec{type});
         push @newfile,   "owner      = $filespec{owner}\n"                  if(defined $filespec{owner});
         push @newfile,   "group      = $filespec{group}\n"                  if(defined $filespec{group});
@@ -3429,7 +3467,24 @@ sub update_or_add_file_stanza_to_bundlefile {
     print FILE @newfile;
     close(FILE);
 
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
+
     return $file;
+}
+
+#
+#   show_debug_output_for_filespec( $debug_prefix, %filespec );
+#
+sub show_debug_output_for_filespec {
+
+    my $debug_prefix = shift;
+    my %filespec   = @_;
+
+    foreach ("type", "name", "owner", "group", "mode", "md5sum", "target", "major", "minor") {
+        ssm_print "$debug_prefix \$filespec{$_} = $filespec{$_}\n" if( $filespec{$_} );
+    }
+
+    return 1;
 }
 
 
@@ -3907,6 +3962,8 @@ sub add_file_to_repo_type_nonRegular {
     $filespec{major}    = get_major($file)          if( ($filespec{type} eq 'character') or ($filespec{type} eq 'block') );
     $filespec{minor}    = get_minor($file)          if( ($filespec{type} eq 'character') or ($filespec{type} eq 'block') );;
 
+    #show_debug_output_for_filespec($debug_prefix, %filespec) if( $::o{debug} );
+
     my $tmp_file = update_or_add_file_stanza_to_bundlefile( %filespec );
 
     my $bundlefile = "$BUNDLEFILE{$file}";
@@ -3930,10 +3987,12 @@ sub add_file_to_repo_type_regular {
     my %filespec;
     $filespec{type}     = 'regular';
     $filespec{name}     = $file;
-    $filespec{md5sum}   = get_md5sum($file);
     $filespec{owner}    = get_uid($file);
     $filespec{group}    = get_gid($file);
     $filespec{mode}     = get_mode($file);
+    $filespec{md5sum}   = get_md5sum($file);
+
+    #show_debug_output_for_filespec($debug_prefix, %filespec) if( $::o{debug} );
 
     # Copy the file itself into the repo
     my $filename_in_repo = "$file/$filespec{md5sum}";
