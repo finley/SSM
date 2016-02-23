@@ -1,22 +1,3 @@
-Fix:  
-
-    Re-create scenario:
-    
-        echo helo > /tmp/testy
-        ssm -af /tmp/testy
-            # adds entry for regular file
-        rm /tmp/testy
-        ln -s /etc/hosts /tmp/testy
-        ssm -af /tmp/testy
-            # updates entry to be a softlink
-
-    Problem:
-
-        The last step does not add the new soft link specific
-        information, such as the target.
-
---
-
 Hello Brian,
 
    Thanks for working on managing files with restricted access in SSM.
@@ -29,6 +10,13 @@ Hello Brian,
      (b) The content for /etc/sysconfig/network-scripts/ifcfg-eth0 for some hosts  is "generated" within SSM.  With a hostname matching rule, this config file can be managed as a regular file.
 
 - Mark
+
+--
+
+Bug:
+    - remove unnecessary cruft from file types
+    ssm -af testy  # regular
+    ssm -af testy  # now it's a softlink, but the definition still includes mode
 
 --
 
