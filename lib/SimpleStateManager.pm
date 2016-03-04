@@ -3332,7 +3332,7 @@ sub update_or_add_file_stanza_to_bundlefile {
     my $timestamp = get_current_time_as_timestamp();
     my $hostname  = get_hostname();
     $filespec{comment} = "From $hostname on $timestamp";
-
+#XXX foreach my $key (keys %filespec) { print ">>FS  $key  $filespec{$key}\n"; }
     my $url  = "$::o{base_url}/$BUNDLEFILE{$filespec{name}}";
     my $bundlefile = get_file($url, 'error');
     open(FILE, "<$bundlefile") or die("Couldn't open $bundlefile for reading");
@@ -3374,49 +3374,88 @@ sub update_or_add_file_stanza_to_bundlefile {
 
                     #
                     # Allow for, but normalize, existing "key = value" or "key=value" type definitions.
-                    s#^name\s*=.*#name       = $filespec{name}#;
+                    s#^name\s*=#name       = $filespec{name}#;
 
-                    if(defined $filespec{comment}) {
-                        s/^comment\s*=.*/comment    = $filespec{comment}/;
-                    }
-                    if(defined $filespec{type}) {
-                        s/^type\s*=.*/type       = $filespec{type}/;
+                    if(m/^comment\s*=/) {
+                        if(defined $filespec{comment}) {
+                            s/^comment\s*=.*/comment    = $filespec{comment}/;
+                        } else {
+                            s/^(comment\s*=.*)/# $1/;
+                        }
                     }
 
-                    if(defined $filespec{owner}) {
-                        s/^owner\s*=.*/owner      = $filespec{owner}/;
+                    if(m/^type\s*=/) {
+                        if(defined $filespec{type}) {
+                            s/^type\s*=.*/type       = $filespec{type}/;
+                        } else {
+                            s/^(type\s*=.*)/# $1/;
+                        }
+                    }
+
+                    if(m/^owner\s*=/) {
+                        if(defined $filespec{owner}) {
+                            s/^owner\s*=.*/owner      = $filespec{owner}/;
+                        } else {
+                            s/^(owner\s*=.*)/# $1/;
+                        }
                         delete $filespec{owner};
                     }
-                    if(defined $filespec{group}) {
-                        s/^group\s*=.*/group      = $filespec{group}/;
+
+                    if(m/^group\s*=/) {
+                        if(defined $filespec{group}) {
+                            s/^group\s*=.*/group      = $filespec{group}/;
+                        } else {
+                            s/^(group\s*=.*)/# $1/;
+                        }
                         delete $filespec{group};
                     }
-                    if(defined $filespec{mode}) {
-                        s/^mode\s*=.*/mode       = $filespec{mode}/;
+
+                    if(m/^mode\s*=/) {
+                        if(defined $filespec{mode}) {
+                            s/^mode\s*=.*/mode    = $filespec{mode}/;
+                        } else {
+                            s/^(mode\s*=.*)/# $1/;
+                        }
                         delete $filespec{mode};
                     }
 
-                    #
-                    # When we match the md5sum bit, comment out the prior entry,
-                    # but keep it for posterity, then add the new entry too.
-                    #
-                    if( s/^(md5sum\s*=.*)/# $1/ ) {
+                    if(m/^md5sum\s*=/) {
+                        #
+                        # When we match the md5sum bit, comment out the prior entry,
+                        # but keep it for posterity, then add the new entry too.
+                        #
+                        s/^(md5sum\s*=.*)/# $1/;
                         if(defined $filespec{md5sum}) {
                             $_ .=       "md5sum     = $filespec{md5sum}  # $timestamp\n";
                             delete $filespec{md5sum};
                         }
-                    };
+                    }
 
-                    if(defined $filespec{target}) {
-                        s/^target\s*=.*/target     = $filespec{target}/;
+
+                    if(m/^target\s*=/) {
+                        if(defined $filespec{target}) {
+                            s/^target\s*=.*/target    = $filespec{target}/;
+                        } else {
+                            s/^(target\s*=.*)/# $1/;
+                        }
                         delete $filespec{target};
                     }
-                    if(defined $filespec{major}) {
-                        s/^major\s*=.*/major      = $filespec{major}/;
+
+                    if(m/^major\s*=/) {
+                        if(defined $filespec{major}) {
+                            s/^major\s*=.*/major    = $filespec{major}/;
+                        } else {
+                            s/^(major\s*=.*)/# $1/;
+                        }
                         delete $filespec{major};
                     }
-                    if(defined $filespec{minor}) {
-                        s/^minor\s*=.*/minor      = $filespec{minor}/;
+
+                    if(m/^minor\s*=/) {
+                        if(defined $filespec{minor}) {
+                            s/^minor\s*=.*/minor    = $filespec{minor}/;
+                        } else {
+                            s/^(minor\s*=.*)/# $1/;
+                        }
                         delete $filespec{minor};
                     }
 
@@ -3425,11 +3464,11 @@ sub update_or_add_file_stanza_to_bundlefile {
                     $_ = shift @input;
                 }
 
-                push @newfile, "#XXXX\n";   # marker -- delete me
                 # Add any entries that did not exist in the original filespec, but only in the new file (ie. changed from regular to softlink)
                 foreach my $key (keys %filespec) {
                     next if( $key =~ /^(name|type|comment)$/ );
-                    push @newfile, "$key  = $filespec{$key}\n";
+                    push @newfile, "$key    = $filespec{$key}\n";
+                    print ">>> $key      = $filespec{$key} <<<\n";
                 }
             }
         }
