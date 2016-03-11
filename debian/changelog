@@ -1,3 +1,10 @@
+simple-state-manager (0.6.5) stable; urgency=medium
+
+  * 7f39c37 Moving file system specific functions into a separate
+    library.
+
+ -- Brian Finley <bfinley@xbob>  Fri, 11 Mar 2016 16:05:48 -0600
+
 simple-state-manager (0.6.4) stable; urgency=medium
 
   * 7c02240 Feature - Verify package exists before adding to config w/--
