@@ -1,3 +1,26 @@
+simple-state-manager (0.6.4) stable; urgency=medium
+
+  * 7c02240 Feature - Verify package exists before adding to config w/--
+    add-package.
+  * 7575e21 Make sure irrelevant attributes are commented out if a file
+    changes type.
+  * 9c448a8 .
+  * 2aad2e6 - Fix bug where file in existing config changes type
+    (regular -> softlink), but type isn't updated.
+  * e5e62c0 .
+  * dea04fc .
+  * 7e4ac6f Add regression test: test for --add-file -- make sure dir or
+    file name is normalized before a) adding to configuration or b)
+    using after read from configuration.  In this case, a trailing slash
+    should be removed. 2015.10.11 -BEF-
+  * 568baf2 - Use apt-get's timestamp file to determine when a deb repo
+    cache was last updated.
+  * e45b7cd .
+  * ad37417 Normalize file & directory names in all operations to
+    prevent conflicts by duplicate names for the same file/dir.
+
+ -- Brian Finley <bfinley@xbob>  Fri, 11 Mar 2016 15:53:45 -0600
+
 simple-state-manager (0.6.3) stable; urgency=medium
 
   * 15afc63 - Fixed bug where updates to file sections in bundle file
