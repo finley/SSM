@@ -1,5 +1,5 @@
 #  
-#   Copyright (C) 2006-2015 Brian Elliott Finley
+#   Copyright (C) 2006-2016 Brian Elliott Finley
 #
 #    vi: set et ai ts=4 filetype=perl tw=0 number:
 # 
@@ -22,6 +22,7 @@ use Exporter;
                 remove_pkgs
                 update_pkg_availability_data
                 upgrade_pkgs
+                verify_pkgs_exist
             );
 
 use strict;
@@ -487,6 +488,33 @@ sub autoremove_pkgs {
 sub get_pkg_repo_update_time_stamp {
     return undef;
 }
+
+
+#
+# Usage:  verify_pkgs_exist( @packages );
+#
+sub verify_pkgs_exist {
+
+    my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
+    my @packages = @_;
+    my $return_code = 1;
+
+    # [$] yum --cacheonly info rsync >/dev/null 2>&1  && echo Yes || echo No
+
+    foreach my $pkg (@packages) {
+        my $cmd = qq(yum --cacheonly info $pkg >/dev/null 2>&1);
+        if( system($cmd) != 0 ) {
+            ssm_print "AddPkg:  $pkg NOT available.\n";
+            $return_code++;
+        } else {
+            ssm_print "AddPkg:  $pkg is available.\n";
+        }
+    }
+
+    return $return_code;
+}
+
 
 #
 ################################################################################

@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 
 #
-# Copyright (C) 2006-2015 Brian Elliott Finley <brian@thefinleys.com>
+# Copyright (C) 2006-2016 Brian Elliott Finley <brian@thefinleys.com>
 #
 
 use strict;
@@ -125,6 +125,16 @@ sub main {
     elsif($o{add_package}) {
 
         read_config_file();
+
+        if($::o{pkg_manager} eq 'none') {
+
+            ssm_print "\n";
+            ssm_print "ERROR:  No package manager specified in the Configuration File.\n";
+            ssm_print "        Please specify a package manager and try again.\n";
+            ssm_print qq(\n);
+
+            exit 1;
+        }
 
         ($error_level, $changes_made) = add_new_packages();
 

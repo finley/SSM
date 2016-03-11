@@ -1,5 +1,5 @@
 #  
-#   Copyright (C) 2006-2015 Brian Elliott Finley
+#   Copyright (C) 2006-2016 Brian Elliott Finley
 #
 #    vi: set filetype=perl tw=0 number:
 #
@@ -1035,6 +1035,38 @@ sub group_to_gid {
 }
 
 
+sub load_pkg_manager_functions {
+
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
+    if( ! $::o{pkg_manager} ) {
+        $::o{pkg_manager} = 'none';
+    }
+    
+    if( $::o{pkg_manager} eq "dpkg" 
+     or $::o{pkg_manager} eq "aptitude"
+     or $::o{pkg_manager} eq "apt-get") {
+        ssm_print "$debug_prefix require SimpleStateManager::Dpkg;\n" if($::o{debug});
+        require SimpleStateManager::Dpkg;
+        SimpleStateManager::Dpkg->import();
+    }
+    elsif( $::o{pkg_manager} eq "yum" ) {
+        ssm_print "$debug_prefix require SimpleStateManager::Yum;\n" if($::o{debug});
+        require SimpleStateManager::Yum;
+        SimpleStateManager::Yum->import();
+    }
+    elsif( $::o{pkg_manager} eq "none" ) {
+        ssm_print "$debug_prefix require SimpleStateManager::None;\n" if($::o{debug});
+        require SimpleStateManager::None;
+        SimpleStateManager::None->import();
+    }
+
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
+
+    return 1;
+}
+
+
 sub sync_state {
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
@@ -1043,27 +1075,7 @@ sub sync_state {
 
     unless($::o{only_files}) {
 
-        if( ! $::o{pkg_manager} ) {
-            $::o{pkg_manager} = 'none';
-        }
-
-        if( $::o{pkg_manager} eq "dpkg" 
-         or $::o{pkg_manager} eq "aptitude"
-         or $::o{pkg_manager} eq "apt-get") {
-            ssm_print "$debug_prefix require SimpleStateManager::Dpkg;\n" if($::o{debug});
-            require SimpleStateManager::Dpkg;
-            SimpleStateManager::Dpkg->import();
-        }
-        elsif( $::o{pkg_manager} eq "yum" ) {
-            ssm_print "$debug_prefix require SimpleStateManager::Yum;\n" if($::o{debug});
-            require SimpleStateManager::Yum;
-            SimpleStateManager::Yum->import();
-        }
-        elsif( $::o{pkg_manager} eq "none" ) {
-            ssm_print "$debug_prefix require SimpleStateManager::None;\n" if($::o{debug});
-            require SimpleStateManager::None;
-            SimpleStateManager::None->import();
-        }
+        load_pkg_manager_functions();
 
         if( defined $::o{upgrade_ssm_before_sync} and $::o{upgrade_ssm_before_sync} eq "yes" ) {
             upgrade_ssm() unless($::o{no});
@@ -2927,7 +2939,7 @@ sub get_file {
                 return undef;
             }
         } else {
-            copy($file, $tmp_file) or die "$debug_prefix Failed to copy($file, $tmp_file): $!";
+            copy($file, $tmp_file) or die "Failed to copy($file, $tmp_file): $!";
         }
 
     } elsif(    ($file =~ m#^http://# ) 
@@ -3849,8 +3861,23 @@ sub add_new_packages {
 
     push @{$::o{add_package}}, @ARGV;
 
-    add_packages_to_repo( @{$::o{add_package}} );
-    $CHANGES_MADE++;
+    my $return_code = verify_packages_exist(@{$::o{add_package}});
+
+    if( $return_code == 1 ) {
+
+        add_packages_to_repo(@{$::o{add_package}});
+        $CHANGES_MADE++;
+
+    } else {
+
+        ssm_print "\n";
+        ssm_print "ERROR:   One or more packages couldn't be found in this sytem's configured\n";
+        ssm_print "         package repositories.  Maybe check your spelling?\n";
+        ssm_print "\n";
+    }
+
+    my $errors = $return_code - 1;
+    $ERROR_LEVEL += $errors;
 
     return ($ERROR_LEVEL, $CHANGES_MADE);
 }
@@ -3921,6 +3948,21 @@ sub get_file_type {
     }
 
     return $type;
+}
+
+
+sub verify_packages_exist {
+
+    my @packages = @_;
+
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
+    load_pkg_manager_functions();
+    my $return_code = verify_pkgs_exist( @packages );
+
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
+
+    return $return_code;
 }
 
 
