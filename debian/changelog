@@ -1,3 +1,10 @@
+simple-state-manager (0.6.6) stable; urgency=medium
+
+  * c7d1b8d Fix bug where running 'ssm -af' on the same file multiple
+    times resulted in a double entry.
+
+ -- Brian Finley <bfinley@xbob>  Tue, 15 Mar 2016 00:31:30 -0500
+
 simple-state-manager (0.6.5) stable; urgency=medium
 
   * 7f39c37 Moving file system specific functions into a separate
