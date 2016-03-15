@@ -3344,7 +3344,7 @@ sub update_or_add_file_stanza_to_bundlefile {
     my $timestamp = get_current_time_as_timestamp();
     my $hostname  = get_hostname();
     $filespec{comment} = "From $hostname on $timestamp";
-#XXX foreach my $key (keys %filespec) { print ">>FS  $key  $filespec{$key}\n"; }
+
     my $url  = "$::o{base_url}/$BUNDLEFILE{$filespec{name}}";
     my $bundlefile = get_file($url, 'error');
     open(FILE, "<$bundlefile") or die("Couldn't open $bundlefile for reading");
@@ -3386,7 +3386,7 @@ sub update_or_add_file_stanza_to_bundlefile {
 
                     #
                     # Allow for, but normalize, existing "key = value" or "key=value" type definitions.
-                    s#^name\s*=#name       = $filespec{name}#;
+                    s#^name\s*=.*#name       = $filespec{name}#;
 
                     if(m/^comment\s*=/) {
                         if(defined $filespec{comment}) {
@@ -3424,7 +3424,7 @@ sub update_or_add_file_stanza_to_bundlefile {
 
                     if(m/^mode\s*=/) {
                         if(defined $filespec{mode}) {
-                            s/^mode\s*=.*/mode    = $filespec{mode}/;
+                            s/^mode\s*=.*/mode       = $filespec{mode}/;
                         } else {
                             s/^(mode\s*=.*)/# $1/;
                         }
@@ -4075,9 +4075,11 @@ sub add_file_to_repo_type_regular {
 
     #show_debug_output_for_filespec($debug_prefix, %filespec) if( $::o{debug} );
 
-    # Copy the file itself into the repo
-    my $filename_in_repo = "$file/$filespec{md5sum}";
-    copy_file_to_upstream_repo($file, $filename_in_repo);
+    # Copy the file itself into the repo, unless a version with the same md5sum is already there...
+    unless($MD5SUM{$file} and ($MD5SUM{$file} eq $filespec{md5sum}) ) {
+        my $filename_in_repo = "$file/$filespec{md5sum}";
+        copy_file_to_upstream_repo($file, $filename_in_repo);
+    }
 
     my $tmp_file = update_or_add_file_stanza_to_bundlefile( %filespec );
 
