@@ -105,7 +105,6 @@ use SimpleStateManager::Filesystem;
 #   execute_postscript
 #   execute_prescript
 #   fully_qualified_file_name
-#   fully_qualified_path
 #   generated_file_interactive
 #   _get_arch
 #   get_current_time_as_timestamp
@@ -1091,7 +1090,7 @@ sub sync_state {
 
         foreach my $file ( @{$::o{only_this_file}} ) {
 
-            $file = normalized_file_name( $file ); 
+            $file = fully_qualified_file_name($file);
 
             if($TYPE{$file}) {  # if type is specified, then it exists in the definition
                 $only_this_file_hash{$file} = 1;
@@ -1344,7 +1343,7 @@ sub get_pkgs_to_be_installed {
     #
     my %hash;
     foreach my $pkg (keys %::PKGS_FROM_STATE_DEFINITION) {
-        if(( ! $pkgs_currently_installed{$pkg} ) and ( $::PKGS_FROM_STATE_DEFINITION{$pkg} !~ m/\bunwanted\b/i )) {
+        if(( ! $pkgs_currently_installed{$pkg} ) and ( $::PKGS_FROM_STATE_DEFINITION{$pkg} !~ m/\b(unwanted|remove|delete|erase)\b/i )) {
             $hash{$pkg} = $::PKGS_FROM_STATE_DEFINITION{$pkg};
         }
     }
@@ -1505,6 +1504,12 @@ sub do_you_want_me_to {
     ssm_print $msg if(defined $msg);
 
     $_ = <STDIN>;
+    until($_) {
+        # Sometimes we manage to get here with no value in $_, so catch that
+        # case and avoid a harmless error message for the user. -BEF-
+        sleep 1;
+        $_ = <STDIN>;
+    }
 
     $_ =~ s/['"]//g;
 
@@ -2748,15 +2753,13 @@ sub diff_file {
         print "           $file does not yet exist, so diffing against /dev/null.\n";
         $file = '/dev/null';
     }
-    ssm_print "           <<<------------------------------------------------------>>>\n\n";
+    ssm_print "           <<< On This Machine            |       In the Repository >>>\n\n";
 
     my $cmd = "$diff -y $file $tmp_file";
 
     run_cmd($cmd, undef, 1);
 
     ssm_print "\n";
-    ssm_print "           ------------------------------------------------------------\n";
-    ssm_print "            Currently on This Machine   <-- | -->   Repository Version\n";
     ssm_print "           ------------------------------------------------------------\n";
     ssm_print "\n";
 
@@ -4720,16 +4723,6 @@ sub copy_file_to_upstream_repo {
     if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
 
     return 1;
-}
-
-
-sub fully_qualified_path {
-
-    my $file = shift;
-
-    my $dir = dirname($file) . "/" . basename($file);
-
-    return 
 }
 
 

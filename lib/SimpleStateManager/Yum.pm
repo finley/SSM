@@ -237,7 +237,7 @@ sub get_pending_pkg_changes {
 
             my $options = $::PKGS_FROM_STATE_DEFINITION{$pkg};
 
-            if($options =~ m/\bunwanted\b/i) {
+            if($options =~ m/\b(unwanted|remove|delete|erase)\b/i) {
 
                 $space_delimited_pkg_list{'remove'}  .= " $pkg" if($pkgs_already_installed{"$pkg.$basearch"});
 
@@ -267,7 +267,7 @@ sub get_pending_pkg_changes {
             if ($::PKGS_TARGET_STATE{$pkg} and ($::PKGS_TARGET_STATE{$pkg} ne 'remove')) {
                 ssm_print "WARNING: Package $pkg is now marked as $pending_pkg_changes{$pkg}, but was already marked as $::PKGS_TARGET_STATE{$pkg}\n";
 
-            } elsif ($::PKGS_FROM_STATE_DEFINITION{$pkg} and $::PKGS_FROM_STATE_DEFINITION{$pkg} !~ m/\bunwanted\b/i ) {
+            } elsif ($::PKGS_FROM_STATE_DEFINITION{$pkg} and $::PKGS_FROM_STATE_DEFINITION{$pkg} !~ m/\b(unwanted|remove|delete|erase)\b/i) {
                 ssm_print "WARNING: Package $pkg is now marked as $pending_pkg_changes{$pkg}, but is marked for install in the config.\n";
             }
 

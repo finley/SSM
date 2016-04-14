@@ -40,6 +40,7 @@ install:  all
 	
 	test -d ${bindir} || install -d -m 755 ${bindir}
 	install -m 755 bin/* 					${bindir}
+	cd ${bindir} && ln -sf ssm simple-state-manager
 	
 	@test ! -e ${bindir}/system-state-manager || \
 		(echo; echo; \

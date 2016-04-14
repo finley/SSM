@@ -1,3 +1,13 @@
+
+- Add ability to comment out '#' packages, when SSM says "need to install ...".
+
+- Add --rename 
+    ssm --rename /oldfile /newfile
+        - implies -only-files
+        - doesn't touch the file system unless --sync also invoked...
+
+--
+
 Hello Brian,
 
    Thanks for working on managing files with restricted access in SSM.

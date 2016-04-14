@@ -359,7 +359,7 @@ sub get_pending_pkg_changes {
 
             my $options = $::PKGS_FROM_STATE_DEFINITION{$pkg};
 
-            if($options =~ m/\bunwanted\b/i) {
+            if($options =~ m/\b(unwanted|remove|delete|erase)\b/i) {
 
                 $space_delimited_pkg_list{'remove'}  .= " $pkg";
 

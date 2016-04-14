@@ -232,28 +232,6 @@ sub validate_options {
         exit 1;
     }
 
-    unless($o{sync_state} or $o{analyze_config} or $o{add_file} or $o{add_package} or $o{summary}) { 
-        usage();
-        print "\n";
-        print "Try one of the following:\n";
-        print "\n";
-        print "  --sync\n";
-        print "  --summary\n";
-        print "  --add-file\n";
-        print "  --add-package\n";
-        print "  --analyze-config\n";
-        print "\n";
-        exit(1);
-    }
-
-    if($o{sync_state} and $o{analyze_config}) { 
-        print "\n";
-        print "INFO:    The --analyze-config option implies --sync.  In this case,\n";
-        print "         the --sync option is unnecessary.  Proceeding anyway...\n";
-        print "\n";
-        sleep 1;
-    }
-
     if($o{only_files} and $o{only_packages}) { 
         usage();
         print "\n";
@@ -269,30 +247,6 @@ sub validate_options {
         print "\n";
         exit(1);
     }
-
-    if( $o{only_this_file} and $o{only_files}) { 
-        print "\n";
-        print "INFO:    The --only-this-file implies --only-files.  In this case,\n";
-        print "         the --only-files option is unnecessary.  Proceeding anyway...\n";
-        print "\n";
-        sleep 1;
-    }
-
-    #if( $o{add_file} and $o{sync_state}) { 
-    #    print "\n";
-    #    print " The --add-file option overrides the --sync option.  Proceeding\n";
-    #    print " with --add-file.\n";
-    #    print "\n";
-    #    undef $o{sync_state};
-    #}
-
-    #if( $o{add_package} and $o{sync_state}) { 
-    #    print "\n";
-    #    print " The --add-package option overrides the --sync option.  Proceeding\n";
-    #    print " with --add-package.\n";
-    #    print "\n";
-    #    undef $o{sync_state};
-    #}
 
     if( $o{add_file} and $o{only_packages}) { 
         usage();
@@ -342,14 +296,51 @@ sub validate_options {
         exit(1);
     }
 
+    if($o{summary}) { 
+        $o{sync_state} = 1; 
+        $o{no} = 1; 
+    }
+
+    if($o{only_this_file}) { 
+        $o{sync_state} = 1; 
+    }
+
+    if($o{only_files}) { 
+        $o{sync_state} = 1; 
+    }
+
+    if($o{only_packages}) { 
+        $o{sync_state} = 1; 
+    }
+
     if($o{analyze_config}) { 
         $o{sync_state} = 1; 
         $o{no} = 1; 
     }
 
-    if($o{summary}) { 
-        $o{sync_state} = 1; 
-        $o{no} = 1; 
+    unless($o{sync_state} or $o{analyze_config} or $o{add_file} or $o{add_package} or $o{summary}) { 
+        usage();
+        print "\n";
+        print "Try one of the following:\n";
+        print "\n";
+        print "  --sync\n";
+        print "  --summary\n";
+        print "  --only-this-file FILE\n";
+        print "  --only-files\n";
+        print "  --only-packages\n";
+        print "  --add-file\n";
+        print "  --add-package\n";
+        print "  --analyze-config\n";
+        print "\n";
+        exit(1);
+    }
+
+    if($o{sync_state} and $o{analyze_config}) { 
+        print "\n";
+        print "INFO:    The --analyze-config option implies --sync.  In this case,\n";
+        print "         the --sync option is unnecessary.  Proceeding anyway...\n";
+        print "\n";
+        sleep 1;
     }
 
     return 1;
