@@ -1,3 +1,13 @@
+simple-state-manager (0.6.7) stable; urgency=medium
+
+  * ed89d1a - Use fully_qualified_file_name() when -otf w/relative path
+    file name - Catch and mitigate a harmless error message - Make
+    unwanted pkg specification more flexible - Improve help output and
+    options processing (no longer require --sync with -otf) - Create
+    symlink in bin dir on install "simple-state-manager -> ssm"
+
+ -- Brian Finley <bfinley@tbob>  Sun, 24 Apr 2016 14:27:58 -0500
+
 simple-state-manager (0.6.6) stable; urgency=medium
 
   * c7d1b8d Fix bug where running 'ssm -af' on the same file multiple

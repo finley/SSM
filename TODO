@@ -1,3 +1,12 @@
+- Allow non-root use
+
+    - only require root when it's actually needed:
+        - for accessing/changing a file
+        - for accessing/changing a repo
+
+- Add ability to do partial match of file names, such as:
+
+    ssm --summary -of "/path/to/files/*"
 
 - Add ability to comment out '#' packages, when SSM says "need to install ...".
 
