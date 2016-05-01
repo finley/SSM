@@ -2094,7 +2094,7 @@ sub unwanted_file_interactive {
             #
             # Decide what to do about it -- if anything
             #
-            take_file_action( $file, $action, 'yn#' );
+            take_file_action( $file, $action, 'yna#' );
         }
 
     } else {
