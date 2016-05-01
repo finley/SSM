@@ -1,3 +1,11 @@
+simple-state-manager (0.6.8) stable; urgency=medium
+
+  * c8c16e9 .
+  * 90366d2 When processing unwanted files, give option to add file to
+    repo.
+
+ -- Brian Finley <bfinley@tbob>  Sun, 01 May 2016 13:39:37 -0500
+
 simple-state-manager (0.6.7) stable; urgency=medium
 
   * ed89d1a - Use fully_qualified_file_name() when -otf w/relative path
