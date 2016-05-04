@@ -1089,7 +1089,10 @@ sub sync_state {
 
         foreach my $file ( @{$::o{only_this_file}} ) {
 
-            $file = fully_qualified_file_name($file);
+            my $fq_file = fully_qualified_file_name($file);
+            if(defined $fq_file) {
+                $file = $fq_file;
+            }
 
             if($TYPE{$file}) {  # if type is specified, then it exists in the definition
                 $only_this_file_hash{$file} = 1;
@@ -4709,20 +4712,37 @@ sub copy_file_to_upstream_repo {
 }
 
 
+#
+#   Takes a filename as specified by user, and turns into a fully qualified
+#   filename (if it's not already), preserving the user's vantage point with
+#   regard to symbolic links, etc.
+#
+#       If the user specifies the filename as     "../bar/baz",
+#       while sitting in                        "/opt/boo/",
+#       then it returns                         "/opt/bar/baz",
+#       even if "/opt" is a symlink pointing to "/foo", which would result in 
+#       a true absolute path of                 "/foo/bar/baz".
+#
 sub fully_qualified_file_name {
 
     my $file = shift;
 
+    if( ! -e $file ) {
+        return undef;
+    }
+
+    # Remember our initial working directory so we can return later
     my $working_dir = getcwd();
 
-    # cd into target dir, no matter how it was specified (ie.,
-    # ../my/dir)
-    chdir dirname( $file );
-    my $path = getcwd();
-    my $basename = basename($file);
-    my $fully_qualified_file_name = "$path/$basename";
+    my $file_name_relative_dir = dirname( $file );
 
-    # cd -
+    # cd into target dir, no matter how it was specified (ie., ../my/dir)
+    chdir $file_name_relative_dir;
+    my $fully_qualified_dir = getcwd();
+    my $basename = basename($file);
+    my $fully_qualified_file_name = "$fully_qualified_dir/$basename";
+
+    # Change back to our initial working directory
     chdir $working_dir;
 
     return $fully_qualified_file_name;
