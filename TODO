@@ -1,14 +1,9 @@
+- If Improper [file] definition due to unknown owner or group, then set as dependency not met, but handle gracefully.  No error message during conf file ingest.
+    
+
 --
 
 - ssm --list-bundles
-
---
-    BUG:  When directory+contents-unwanted, and one file exists but should be removed, other files that do exist and should be there are marked as having unmet dependencies.  Presumably because the directory they live in hasn't had it's dependencies met.
-
-    Not OK:  File /etc/yum.repos.d/HDP-UTILS.repo -> Unmet Dependencies:
-             /etc/yum.repos.d 
-
-                        NOTE: Options limited due to Unmet Dependencies
 
 --
 

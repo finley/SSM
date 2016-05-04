@@ -667,9 +667,8 @@ sub read_config_file {
                     ssm_print "         $unsatisfied";
                 }
                 ssm_print "\n";
-                if($::o{debug}) { ssm_print "read_config_file(): before $name is $::outstanding{$name}\n"; }
-                $::outstanding{$name} = 'b0rken';
-                if($::o{debug}) { ssm_print "read_config_file(): after $name is $::outstanding{$name}\n"; }
+
+                assign_state_to_thingy($name, 'b0rken');
 
                 $ERROR_LEVEL++; if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
 
@@ -883,7 +882,7 @@ sub read_config_file {
 
                     # And we start with a status of unknown, later to be
                     # determined as broken or fixed as appropriate.
-                    $::outstanding{$name} = 'unknown' unless(defined $::outstanding{$name}); 
+                    assign_state_to_thingy($name, 'unknown') unless(defined $::outstanding{$name}); 
                 }
             }
 
@@ -1148,7 +1147,6 @@ sub sync_state {
             unwanted_file_interactive($file);
         }
         elsif( $TYPE{$file} eq 'directory+contents-unwanted' ) {
-            directory_interactive($file);
             contents_unwanted_interactive($file);
         }
         elsif( $TYPE{$file} eq 'generated' ) {
@@ -1252,7 +1250,7 @@ sub check_depends_interactive {
             ssm_print "         $check_depends_results";
             ssm_print "\n";
         }
-        $::outstanding{$file} = 'unmet_deps';
+        assign_state_to_thingy($file, 'unmet_deps');
         $ERROR_LEVEL++;
         if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
 
@@ -1569,7 +1567,8 @@ sub ignore_file_interactive {
         return report_improper_file_definition($file);
     }
 
-    $::outstanding{$file} = 'fixed';
+    assign_state_to_thingy($file, 'fixed');
+
     ssm_print "OK:      Ignoring $file\n";
 
     return 1;
@@ -1633,8 +1632,7 @@ sub softlink_interactive {
     #
     unless( (defined $current_target) and ($current_target eq $TARGET{$file}) ) {
 
-        $::outstanding{$file} = 'b0rken';
-        if( $::o{debug} ) { print ">>>  Assigning $file as 'b0rken'\n"; }
+        assign_state_to_thingy($file, 'b0rken');
 
         ssm_print "Not OK:  Soft link $file -> $TARGET{$file}\n";
 
@@ -1656,7 +1654,7 @@ sub softlink_interactive {
 
     } else {
 
-        $::outstanding{$file} = 'fixed';
+        assign_state_to_thingy($file, 'fixed');
         ssm_print "OK:      Soft link $file -> $TARGET{$file}\n";
     }
 
@@ -1810,7 +1808,7 @@ sub special_file_interactive {
     my $fix_it = undef;
     if( defined($needs_fixing) ) {
 
-        $::outstanding{$file} = 'b0rken';
+        assign_state_to_thingy($file, 'b0rken');
 
         ssm_print "Not OK:  " . ucfirst($TYPE{$file}) . " file $file\n";
         unless( $::o{summary} ) {
@@ -1829,7 +1827,7 @@ sub special_file_interactive {
 
     } else {
 
-        $::outstanding{$file} = 'fixed';
+        assign_state_to_thingy($file, 'fixed');
         ssm_print "OK:      " . ucfirst($TYPE{$file}) . " file $file\n";
     }
 
@@ -1967,7 +1965,7 @@ sub contents_unwanted_interactive {
 
     my $dir   = shift;
 
-    $::outstanding{$dir} = 'fixed';
+    my $unwanted_files_that_were_not_removed;
 
     #
     # validate input
@@ -1977,21 +1975,16 @@ sub contents_unwanted_interactive {
         return report_improper_file_definition($dir);
     }
 
-    if( ! -e $dir ) {
-        #ssm_print "Not OK: Contents-unwanted directory $dir doesn't exist\n";
-        $::outstanding{$dir} = 'does not exist';
-        return 1;
+    unless($::o{summary}) {
+        ssm_print "INFO:    Processing contents-unwanted directory $dir\n";
     }
-    elsif( ! -d $dir ) {
-        #ssm_print "Not OK: Contents-unwanted directory $dir is not a directory\n";
-        $::outstanding{$dir} = 'not a directory';
-        return 1;
-    }
+
+    directory_interactive($dir);
+
 
     # state what we're doing
     # get list of files in directory
     my $file;
-    my $info_message_has_been_displayed;
     opendir(DIR,"$dir") or die "Can't open $dir for reading";
         #
         # See if each file matches a defined file
@@ -2006,10 +1999,6 @@ sub contents_unwanted_interactive {
             next if $file =~ /^\.\.?$/;
 
             # We got a hit!
-            unless($info_message_has_been_displayed or $::o{summary}) {
-                ssm_print "INFO:    Processing contents-unwanted directory $dir\n";
-                $info_message_has_been_displayed = 'yes';
-            }
             $file = "$dir/$file";
             ssm_print ">>> in_directory: $file\n" if( $::o{debug} );
             unless (defined $TYPE{$file}) {
@@ -2019,11 +2008,10 @@ sub contents_unwanted_interactive {
                 $TYPE{$file} = 'unwanted';
                 unwanted_file_interactive($file);
                 if($::outstanding{$file} ne 'fixed') {
-                    $::outstanding{$dir} = 'unwanted file(s) still exist(s)';
+                    $unwanted_files_that_were_not_removed .= "$file ";
                 }
             }
         }
-
     closedir(DIR);
 
     #
@@ -2033,8 +2021,10 @@ sub contents_unwanted_interactive {
     #
     if($::outstanding{$dir} eq 'fixed') {
         ssm_print "OK:      Contents-unwanted $dir\n";
+        assign_state_to_thingy($dir, 'fixed');
     } else {
         ssm_print "Not OK:  Contents-unwanted $dir\n";
+        assign_state_to_thingy($dir, $unwanted_files_that_were_not_removed);
     }
 
     return 1;
@@ -2067,8 +2057,7 @@ sub unwanted_file_interactive {
     # Should we actually fix it?
     if(defined($needs_fixing)) {
 
-        $::outstanding{$file} = 'b0rken';
-        if( $::o{debug} ) { print ">>>  Assigning $file as 'b0rken'\n"; }
+        assign_state_to_thingy($file, 'b0rken');
 
         if( -d $file ) {
             ssm_print "Not OK:  Unwanted directory exists: $file\n";
@@ -2099,7 +2088,7 @@ sub unwanted_file_interactive {
 
     } else {
 
-        $::outstanding{$file} = 'fixed';
+        assign_state_to_thingy($file, 'fixed');
         ssm_print "OK:      Unwanted $file doesn't exist\n";
 
     }
@@ -2140,8 +2129,7 @@ sub chown_and_chmod_interactive {
     # Should we actually fix it?
     if( defined($needs_fixing) ) {
 
-        $::outstanding{$file} = 'b0rken';
-        if( $::o{debug} ) { print ">>>  Assigning $file as 'b0rken'\n"; }
+        assign_state_to_thingy($file, 'b0rken');
 
         ssm_print "Not OK:  Chown+Chmod target $file\n";
 
@@ -2170,7 +2158,7 @@ sub chown_and_chmod_interactive {
 
     } else {
 
-        $::outstanding{$file} = 'fixed';
+        assign_state_to_thingy($file, 'fixed');
         ssm_print "OK:      Chown+Chmod target $file\n";
 
     }
@@ -2217,8 +2205,7 @@ sub directory_interactive {
     # Should we actually fix it?
     if( defined($needs_fixing) ) {
 
-        $::outstanding{$file} = 'b0rken';
-        if( $::o{debug} ) { print ">>>  Assigning $file as 'b0rken'\n"; }
+        assign_state_to_thingy($file, 'b0rken');
 
         ssm_print "Not OK:  Directory $file\n";
 
@@ -2249,7 +2236,7 @@ sub directory_interactive {
         }
 
     } else {
-        $::outstanding{$file} = 'fixed';
+        assign_state_to_thingy($file, 'fixed');
         ssm_print "OK:      Directory $file\n";
     }
 
@@ -2328,8 +2315,7 @@ sub generated_file_interactive {
     # Should we actually fix it?
     if( defined($needs_fixing) ) {
 
-        $::outstanding{$file} = 'b0rken';
-        if( $::o{debug} ) { print ">>>  Assigning $file as 'b0rken'\n"; }
+        assign_state_to_thingy($file, 'b0rken');
 
         ssm_print "Not OK:  Generated file $file\n";
 
@@ -2362,8 +2348,8 @@ sub generated_file_interactive {
         }
 
     } else {
-        $::outstanding{$file} = 'fixed';
-        if( $::o{debug} ) { print ">>>  Assigning $file as 'fixed'\n"; }
+        assign_state_to_thingy($file, 'fixed');
+        if( $::o{debug} ) { print ">>> Assigning $file as 'fixed'\n"; }
         ssm_print "OK:      Generated file $file\n";
     }
 
@@ -2419,8 +2405,7 @@ sub regular_file_interactive {
     # Should we actually fix it?
     if( defined($needs_fixing) ) {
 
-        $::outstanding{$file} = 'b0rken';
-        if( $::o{debug} ) { print ">>>  Assigning $file as 'b0rken'\n"; }
+        assign_state_to_thingy($file, 'b0rken');
 
         ssm_print "Not OK:  Regular file $file\n";
 
@@ -2455,7 +2440,7 @@ sub regular_file_interactive {
         }
             
     } else {
-        $::outstanding{$file} = 'fixed';
+        assign_state_to_thingy($file, 'fixed');
         ssm_print "OK:      Regular file $file\n";
     }
 
@@ -2625,12 +2610,12 @@ sub take_file_action {
 
         } elsif( $answer eq 'a' ) {
             $return_code = add_file_to_repo($file);
-            $::outstanding{$file} = 'fixed';
+            assign_state_to_thingy($file, 'fixed');
             $CHANGES_MADE++;
 
         } elsif( $answer eq '#' ) {
             $return_code = update_bundle_file_comment_out_entry($file);
-            $::outstanding{$file} = 'fixed';
+            assign_state_to_thingy($file, 'fixed');
             $CHANGES_MADE++;
 
         } elsif( $answer eq 'y' ) {
@@ -2654,7 +2639,9 @@ sub take_file_action {
                 if($::o{debug}) { ssm_print "return_code = $actions{$action}($file);\n"; }
                 $return_code = $actions{$action}($file);
 
-                $::outstanding{$file} = 'fixed'; #XXX is it really?  verify return code
+                assign_state_to_thingy($file, 'fixed');
+                    #XXX is it really?  verify return code
+
                 $CHANGES_MADE++;
 
             } else {
@@ -3070,8 +3057,7 @@ sub hardlink_interactive {
     # Should we actually fix it?
     if( defined($needs_fixing) ) {
 
-        $::outstanding{$file} = 'b0rken';
-        if( $::o{debug} ) { print ">>>  Assigning $file as 'b0rken'\n"; }
+        assign_state_to_thingy($file, 'b0rken');
 
         ssm_print "Not OK:  Hard link $file -> $TARGET{$file}\n";
 
@@ -3090,7 +3076,7 @@ sub hardlink_interactive {
 
     } else {
 
-        $::outstanding{$file} = 'fixed';
+        assign_state_to_thingy($file, 'fixed');
         ssm_print "OK:      Hard link $file -> $TARGET{$file}\n";
     }
 
@@ -3739,11 +3725,8 @@ sub check_depends {
     my $unsatisfied;
     my %pkgs_currently_installed;
 
-    unless( "$TYPE{$name}" eq 'directory' ) {
-        # add file's directory as dependency
-        my $dirname = dirname $name;
-        $DEPENDS{$name} .= " $dirname";
-    };
+    my $dirname = dirname $name;
+    $DEPENDS{$name} .= " $dirname";
 
     #
     # No dependencies to check?  That's OK.  Return success.
@@ -3787,7 +3770,7 @@ sub check_depends {
 
             } else {
                 if( $::o{debug} ) { 
-                    print ">>>>>  $_ exists, and isn't defined so it's mere existence makes it OK.\n"; 
+                    print ">>>>> $_ exists, and isn't defined so it's mere existence makes it OK.\n"; 
                 }
             }
 
@@ -4054,7 +4037,7 @@ sub add_file_to_repo_type_nonRegular {
     copy_file_to_upstream_repo($tmp_file, $bundlefile);
     unlink $tmp_file;
 
-    $::outstanding{$file} = 'fixed';
+    assign_state_to_thingy($file, 'fixed');
 
     if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
 
@@ -4090,7 +4073,7 @@ sub add_file_to_repo_type_regular {
     copy_file_to_upstream_repo($tmp_file, $bundlefile);
     unlink $tmp_file;
 
-    $::outstanding{$file} = 'fixed';
+    assign_state_to_thingy($file, 'fixed');
 
     if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
 
@@ -4743,6 +4726,20 @@ sub fully_qualified_file_name {
     chdir $working_dir;
 
     return $fully_qualified_file_name;
+}
+
+
+sub assign_state_to_thingy {
+
+    my $thingy = shift;
+    my $state = shift;
+
+    $::outstanding{$thingy} = $state;
+    if($::o{debug}) {
+        print qq(>>> assign_state_to_thingy(): "$thingy" => "$state"\n);
+    }
+
+    return 1;
 }
 
 
