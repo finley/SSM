@@ -240,6 +240,7 @@ sub get_pending_pkg_changes {
             if($options =~ m/\b(unwanted|remove|delete|erase)\b/i) {
 
                 $space_delimited_pkg_list{'remove'}  .= " $pkg" if($pkgs_already_installed{"$pkg.$basearch"});
+                $space_delimited_pkg_list{'remove'}  .= " $pkg" if($pkgs_already_installed{"$pkg.noarch"});
 
             } else {
 
@@ -248,6 +249,7 @@ sub get_pending_pkg_changes {
                 # again, so skip it.
                 #
                 next if( $pkgs_already_installed{"$pkg.$basearch"} );
+                next if( $pkgs_already_installed{"$pkg.noarch"} );
                 next if( $pkgs_already_installed{"$pkg"} );
 
                 $space_delimited_pkg_list{'install'}  .= " $pkg";
@@ -308,7 +310,7 @@ sub update_pkg_availability_data {
 
     #
     # Get the latest updates
-    my $cmd = 'yum check-update >/dev/null';
+    my $cmd = 'yum makecache fast >/dev/null';
     #
     # Run even if --no so that we don't get 'Unable to locate package X'
     # errors. -BEF-
