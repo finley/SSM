@@ -3946,7 +3946,8 @@ sub verify_packages_exist {
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
-    push my @packages_with_no_options, @packages;
+    my @packages_with_no_options;
+    push @packages_with_no_options, @packages;
     s/\s+.*// for @packages_with_no_options;
 
     load_pkg_manager_functions();
