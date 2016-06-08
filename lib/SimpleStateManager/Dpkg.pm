@@ -227,7 +227,22 @@ sub get_pkgs_currently_installed {
     foreach my $pkg (sort keys %{$pkg_cache}) {
         my $p_ref = $pkg_cache->{$pkg};
         if( $p_ref->{CurrentState} and $p_ref->{CurrentState} eq 'Installed' ) {
-            #print "get_pkgs_currently_installed() >> $pkg $p_ref->{CurrentVer}{VerStr}\n" if($main::o{debug});
+
+            #
+            # Sample output:
+            #
+            #   pkg isolinux:amd64
+            #   pkg ispell:amd64
+            #   pkg isync:amd64
+            #   pkg iucode-tool:amd64
+            #   pkg iw:amd64
+            #   pkg jadetex:amd64
+            #   pkg java-common:amd64
+            #   pkg javahelp2:amd64
+            #   pkg javascript-common:amd64
+            #   pkg jayatana:amd64
+            #   pkg jfsutils:amd64
+            #
             $pkgs_currently_installed{$pkg}{'current_version'}   = $p_ref->{CurrentVer}{VerStr};
             if ( my $c_ref = $policy->candidate($p_ref) ) {
                 $pkgs_currently_installed{$pkg}{'candidate_version'} = $c_ref->{VerStr} if( $c_ref->{VerStr} ne $p_ref->{CurrentVer}{VerStr} );
