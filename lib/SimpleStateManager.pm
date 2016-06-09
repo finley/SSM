@@ -1310,24 +1310,6 @@ sub email_log_file {
 }
 
 
-#sub get_pkgs_to_be_removed {
-#
-#    if( $::o{debug} ) { ssm_print "get_pkgs_to_be_removed()\n"; }
-#
-#    my %pkgs_currently_installed = get_pkgs_currently_installed();
-#
-#    my @array;
-#    foreach my $pkg ( keys %pkgs_currently_installed ) {
-#        if( ! defined($::PKGS_FROM_STATE_DEFINITION{$pkg}) or ($::PKGS_FROM_STATE_DEFINITION{$pkg} =~ m/\bunwanted\b/i )) {
-#        ssm_print ">>> remove: $pkg\n" if( $::o{debug} );
-#            push @array, $pkg;
-#        }
-#    }
-#    
-#    return @array;
-#}
-
-
 #
 # returns an array:  "pkg=version" or just "pkg"
 #   - packages not currently installed
@@ -1684,6 +1666,12 @@ sub install_hardlink {
 
     my $calling_function = (caller(1))[3];
     execute_prescript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
+
+    # If path doesn't exist, create it here
+    my $dir  = dirname($file);
+    eval { mkpath($dir) };
+    if($@) { ssm_print "Couldn’t create $dir: $@"; }
+
     remove_file($file);
     link($TARGET{$file}, $file) or die "Couldn't link($TARGET{$file}, $file) $!";
     execute_postscript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
@@ -1703,6 +1691,12 @@ sub install_softlink {
 
     my $calling_function = (caller(1))[3];
     execute_prescript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
+
+    # If path doesn't exist, create it here
+    my $dir  = dirname($file);
+    eval { mkpath($dir) };
+    if($@) { ssm_print "Couldn’t create $dir: $@"; }
+
     remove_file($file,'silent');
     symlink($TARGET{$file}, $file) or die "Couldn't symlink($TARGET{$file}, $file) $!";
     execute_postscript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
@@ -1721,6 +1715,12 @@ sub install_special_file {
 
     my $calling_function = (caller(1))[3];
     execute_prescript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
+
+    # If path doesn't exist, create it here
+    my $dir  = dirname($file);
+    eval { mkpath($dir) };
+    if($@) { ssm_print "Couldn’t create $dir: $@"; }
+
     remove_file($file);
 
     if($TYPE{$file} eq 'fifo') {
@@ -2642,15 +2642,16 @@ sub take_file_action {
                 if($::o{debug}) { ssm_print "return_code = $actions{$action}($file);\n"; }
                 $return_code = $actions{$action}($file);
 
-                assign_state_to_thingy($file, 'fixed');
-                    #XXX is it really?  verify return code
-
-                $CHANGES_MADE++;
+                if(defined $return_code and $return_code == 1) {
+                    assign_state_to_thingy($file, 'fixed');
+                    $CHANGES_MADE++;
+                } else {
+                    print "Failed: $action($file)\n";
+                }
 
             } else {
                 ssm_print "take_file_action() >> DEVELOPER PEBKAC ERROR 1: '$action' is not a valid action\n";
                 $return_code = 7;
-
             }
 
         } else {
@@ -2883,6 +2884,12 @@ sub install_file {
     my $calling_function = (caller(1))[3];
     execute_prescript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
     backup($file);
+
+    # If path doesn't exist, create it here
+    my $dir  = dirname($file);
+    eval { mkpath($dir) };
+    if($@) { ssm_print "Couldn’t create $dir: $@"; }
+
     remove_file($file, 'silent');
     copy($tmp_file, $file) or die "Failed to copy($tmp_file, $file): $!";
     unlink $tmp_file;
@@ -3728,15 +3735,9 @@ sub check_depends {
     my $unsatisfied;
     my %pkgs_currently_installed;
 
-    my $dirname = dirname $name;
-    $DEPENDS{$name} .= " $dirname";
-
     #
     # No dependencies to check?  That's OK.  Return success.
     if(! defined $DEPENDS{$name}) { return 1; }
-
-    # Singularize spaces
-    $DEPENDS{$name} =~ s/^\s+//;
 
     if( $::o{debug} ) { print ">>> Dependencies for $name: $DEPENDS{$name}\n"; }
     
@@ -3748,27 +3749,28 @@ sub check_depends {
     } 
 
     foreach( split(/\s+/, $DEPENDS{$name}) ) {
+        # Check file dependencies
         if( /^\// ) {
             if( $::o{debug} ) { print ">>>> Checking on status of $_\n"; }
             #
             # Must be a file.  
             #
-            my $file = $_;
-            if( ! -e $file) {  
+            my $file_dep = $_;
+            if( ! -e $file_dep) {  
                 # If it doesn't exist, fail dep check.
-                $unsatisfied .= "$file "; 
+                $unsatisfied .= "$file_dep "; 
                 if( $::o{debug} ) { print ">>>>>  $_ doesn't exist\n"; }
 
-            } elsif( defined $::outstanding{$file} and $::outstanding{$file} ne 'fixed') {
-
-                if($file =~ m|^$name|) {
-                    ssm_print "WARNING: You have $file specified as a dependency of $name, which is probably\n";
-                    ssm_print "         not a good idea, seing as how $name is a directory that holds $file\n";
+            } elsif( defined $::outstanding{$file_dep} and $::outstanding{$file_dep} ne 'fixed') {
+print "PASS_NUMBER $::PASS_NUMBER $::outstanding{$file_dep}\n";
+                if($file_dep =~ m|^$name|) {
+                    ssm_print "WARNING: You have $file_dep specified as a dependency of $name, which is probably\n";
+                    ssm_print "         not a good idea, seing as how $name is a directory that holds $file_dep\n";
                     ssm_print "         and could form a non-resolving dependency.\n";
                     sleep 1;
                 }
 
-                $unsatisfied .= "$file "; 
+                $unsatisfied .= "$file_dep "; 
                 if( $::o{debug} ) { print ">>>>>  $_ exists, but isn't considered 'fixed'\n"; }
 
             } else {
@@ -3776,12 +3778,16 @@ sub check_depends {
                     print ">>>>> $_ exists, and isn't defined so it's mere existence makes it OK.\n"; 
                 }
             }
-
-        } else {
+        } 
+        # Check package dependencies
+        else {
             #
             # Must be a package.  See if it's installed.
             my $pkg = $_;
-            if( ! defined $pkgs_currently_installed{$pkg} ) { $unsatisfied .= "$pkg "; }
+            if( ! defined $pkgs_currently_installed{$pkg} ) { 
+                $unsatisfied .= "$pkg "; 
+                print ">>>>> $pkg isn't installed, so keeping in the unsatisfied dependency list.\n";
+            }
         }
     }
 
