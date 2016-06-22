@@ -1769,8 +1769,6 @@ sub special_file_interactive {
         return report_improper_file_definition($file);
     }
 
-    if( ! check_depends_interactive($file) ) { return 1; }   # just return now if failed deps check
-
     # Does it need fixing?
     my $needs_fixing = undef;
     if( ! -e $file ) {
@@ -1805,6 +1803,8 @@ sub special_file_interactive {
     # Should we actually fix it?
     my $fix_it = undef;
     if( defined($needs_fixing) ) {
+
+        if( ! check_depends_interactive($file) ) { return 1; }
 
         assign_state_to_thingy($file, 'b0rken');
         declare_OK_or_Not_OK($file, 0);
@@ -2010,8 +2010,6 @@ sub unwanted_file_interactive {
         return report_improper_file_definition($file);
     }
 
-    # don't do "check_depends_interactive" for an unwanted file...
-
     # Does it need fixing?
     my $needs_fixing = undef;
     if( -e $file or -l $file ) {
@@ -2023,8 +2021,9 @@ sub unwanted_file_interactive {
     # Should we actually fix it?
     if(defined($needs_fixing)) {
 
-        assign_state_to_thingy($file, 'b0rken');
+        # don't do "check_depends_interactive" for an unwanted file...
 
+        assign_state_to_thingy($file, 'b0rken');
         declare_OK_or_Not_OK($file, 0);
 
         unless( $::o{summary} ) {
@@ -2060,8 +2059,6 @@ sub chown_and_chmod_interactive {
         return report_improper_file_definition($file);
     }
 
-    if( ! check_depends_interactive($file) ) { return 1; }   # just return now if failed deps check
-
     #
     # Does it need fixing?
     my $needs_fixing = undef;
@@ -2075,6 +2072,8 @@ sub chown_and_chmod_interactive {
     #
     # Should we actually fix it?
     if( defined($needs_fixing) ) {
+
+        if( ! check_depends_interactive($file) ) { return 1; }
 
         assign_state_to_thingy($file, 'b0rken');
         declare_OK_or_Not_OK($file, 0);
@@ -2109,8 +2108,6 @@ sub directory_interactive {
         return report_improper_file_definition($file);
     }
 
-    if( ! check_depends_interactive($file) ) { return 1; }   # just return now if failed deps check
-
     # Does it need fixing?
     my $needs_fixing = undef;
     my $set_ownership_and_permissions = undef;
@@ -2129,6 +2126,8 @@ sub directory_interactive {
 
     # Should we actually fix it?
     if( defined($needs_fixing) ) {
+
+        if( ! check_depends_interactive($file) ) { return 1; }
 
         assign_state_to_thingy($file, 'b0rken');
         declare_OK_or_Not_OK($file, 0);
@@ -2201,8 +2200,6 @@ sub generated_file_interactive {
 
     close(TMP);
 
-    if( ! check_depends_interactive($file) ) { return 1; }   # just return now if failed deps check
-
     #
     # Does it need fixing?
     my $needs_fixing = undef;
@@ -2228,6 +2225,8 @@ sub generated_file_interactive {
     #
     # Should we actually fix it?
     if( defined($needs_fixing) ) {
+
+        if( ! check_depends_interactive($file) ) { return 1; }
 
         assign_state_to_thingy($file, 'b0rken');
 
@@ -2285,8 +2284,6 @@ sub regular_file_interactive {
         return report_improper_file_definition($file);
     }
 
-    if( ! check_depends_interactive($file) ) { return 1; }   # just return now if failed deps check
-
     #
     # Does it need fixing?
     my $needs_fixing = undef;
@@ -2311,8 +2308,9 @@ sub regular_file_interactive {
     # Should we actually fix it?
     if( defined($needs_fixing) ) {
 
-        assign_state_to_thingy($file, 'b0rken');
+        if( ! check_depends_interactive($file) ) { return 1; }
 
+        assign_state_to_thingy($file, 'b0rken');
         ssm_print "Not OK:  Regular file $file\n";
 
         unless( $::o{summary} ) {
@@ -2919,8 +2917,6 @@ sub hardlink_interactive {
         return report_improper_file_definition($file);
     }
 
-    if( ! check_depends_interactive($file) ) { return 1; }   # just return now if failed deps check
-
     #
     # Does it need fixing?
     my $needs_fixing = undef;
@@ -2960,6 +2956,8 @@ sub hardlink_interactive {
     #
     # Should we actually fix it?
     if( defined($needs_fixing) ) {
+
+        if( ! check_depends_interactive($file) ) { return 1; }
 
         assign_state_to_thingy($file, 'b0rken');
         declare_OK_or_Not_OK($file, 0);
