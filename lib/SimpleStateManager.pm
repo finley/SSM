@@ -51,7 +51,7 @@ use strict;
 
 # Filesystem related
 use File::Copy;
-use File::Path;
+use File::Path qw(make_path);
 use File::Basename;
 use Unix::Mknod qw(:all);
 use File::stat qw(:FIELDS);
@@ -659,14 +659,13 @@ sub read_config_file {
                 $DEPENDS{$name} = $depends if(defined $depends);
             }
 
-            my $unsatisfied = check_depends($name);
-            if($unsatisfied ne "1") {
-                ssm_print "Not OK:  Service $name -> Unmet Dependencies";
-                unless( $::o{summary} ) {
-                    ssm_print ":\n";
-                    ssm_print "         $unsatisfied";
+            my ($retval, @unsatisfied) = check_depends($name);
+            if($retval eq 0) {
+
+                ssm_print "Not OK:  Service $name -> Unmet Dependencies\n";
+                foreach (@unsatisfied) {
+                    ssm_print "           - $_\n";
                 }
-                ssm_print "\n";
 
                 assign_state_to_thingy($name, 'b0rken');
 
@@ -1201,7 +1200,7 @@ sub sync_state {
     
     # Remove checked out SSM DB, if it exists.
     my $ou_path = "/tmp/ssm_db.repo.$$";
-    remove_file("$ou_path", 'silent');
+    remove_file("$ou_path");
 
 #    ssm_print "\n";
 #    ssm_print "Changes made:              $CHANGES_MADE\n";
@@ -1240,29 +1239,30 @@ sub check_depends_interactive {
 
     my $file = shift;
 
-    my $check_depends_results = check_depends($file);
+    my ($retval, @unsatisfied) = check_depends($file);
 
-    if($check_depends_results eq "1") {
-        return 1;
-    } 
-    else {
+    return 1 unless($retval eq 2);
 
-        ssm_print "Not OK:  File $file -> Unmet Dependencies";
-        unless( $::o{summary} ) {
-            ssm_print ":\n";
-            ssm_print "         $check_depends_results";
-            ssm_print "\n";
+    declare_OK_or_Not_OK($file, 0);
+    
+    unless( $::o{summary} ) {
+        ssm_print "\n";
+        ssm_print "           Unmet Dependencies:\n";
+        foreach (@unsatisfied) {
+            ssm_print "           - $_\n";
         }
-        assign_state_to_thingy($file, 'unmet_deps');
-        $ERROR_LEVEL++;
-        if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
-
-        my $action = 'null';
-        take_file_action( $file, $action, 'n#' ) unless($::o{yes});
-            # There is no "yes" action to take, so just skip if --yes.
-
-        return undef;
     }
+    
+    assign_state_to_thingy($file, 'unmet_deps');
+    
+    $ERROR_LEVEL++;
+    if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+    
+    my $action = 'null';
+    take_file_action( $file, $action, 'n#' ) unless($::o{yes});
+        # There is no "yes" action to take, so just skip if --yes.
+    
+    return undef;
 }
 
 
@@ -1553,14 +1553,13 @@ sub ignore_file_interactive {
     }
 
     assign_state_to_thingy($file, 'fixed');
-
-    ssm_print "OK:      Ignoring $file\n";
+    declare_OK_or_Not_OK($file, 1);
 
     return 1;
 }
 
+
 sub softlink_interactive {
-#XXX make it look more like hardlink -- see $needs_fixing
     # 
     # Accept either relative or absolute target, and implement as user
     # specifies.
@@ -1625,11 +1624,7 @@ sub softlink_interactive {
 
             my $action = 'install_softlink';
 
-            ssm_print "         Need to:\n";
-            ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
-            ssm_print "         - remove pre-existing file $file\n" if( -e $file );
-            ssm_print "         - create soft link\n";
-            ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
+            declare_file_actions($file, "create soft link $file");
 
             #
             # Decide what to do about it -- if anything
@@ -1669,7 +1664,8 @@ sub install_hardlink {
 
     # If path doesn't exist, create it here
     my $dir  = dirname($file);
-    eval { mkpath($dir) };
+    if(-e $dir and ! -d $dir) { remove_file($dir); }
+    eval { make_path($dir) };
     if($@) { ssm_print "Couldn’t create $dir: $@"; }
 
     remove_file($file);
@@ -1694,10 +1690,11 @@ sub install_softlink {
 
     # If path doesn't exist, create it here
     my $dir  = dirname($file);
-    eval { mkpath($dir) };
+    if(-e $dir and ! -d $dir) { remove_file($dir); }
+    eval { make_path($dir) };
     if($@) { ssm_print "Couldn’t create $dir: $@"; }
 
-    remove_file($file,'silent');
+    remove_file($file);
     symlink($TARGET{$file}, $file) or die "Couldn't symlink($TARGET{$file}, $file) $!";
     execute_postscript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
     
@@ -1718,7 +1715,8 @@ sub install_special_file {
 
     # If path doesn't exist, create it here
     my $dir  = dirname($file);
-    eval { mkpath($dir) };
+    if(-e $dir and ! -d $dir) { remove_file($dir); }
+    eval { make_path($dir) };
     if($@) { ssm_print "Couldn’t create $dir: $@"; }
 
     remove_file($file);
@@ -1752,7 +1750,6 @@ sub special_file_interactive {
 
     my $file   = shift;
 
-    #
     # validate input
     if( 
            !defined($file)          or ($file !~ m/\S/)
@@ -1774,7 +1771,6 @@ sub special_file_interactive {
 
     if( ! check_depends_interactive($file) ) { return 1; }   # just return now if failed deps check
 
-    #
     # Does it need fixing?
     my $needs_fixing = undef;
     if( ! -e $file ) {
@@ -1806,32 +1802,22 @@ sub special_file_interactive {
         }
     }
 
-    #
     # Should we actually fix it?
     my $fix_it = undef;
     if( defined($needs_fixing) ) {
 
         assign_state_to_thingy($file, 'b0rken');
+        declare_OK_or_Not_OK($file, 0);
 
-        ssm_print "Not OK:  " . ucfirst($TYPE{$file}) . " file $file\n";
         unless( $::o{summary} ) {
-            my $action = 'install_special_file';
-            ssm_print "         Need to:\n";
-            ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
-            ssm_print "         - remove pre-existing file $file\n" if( -e $file );
-            ssm_print "         - create $file as a $TYPE{$file} special file\n";
-            ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
-
-            #
-            # Decide what to do about it -- if anything
-            #
-            take_file_action( $file, $action, 'yn#' );
+            declare_file_actions($file, "create $file as a $TYPE{$file} special file");
+            take_file_action( $file, 'install_special_file', 'yn#' );
         }
 
     } else {
 
         assign_state_to_thingy($file, 'fixed');
-        ssm_print "OK:      " . ucfirst($TYPE{$file}) . " file $file\n";
+        declare_OK_or_Not_OK($file, 1);
     }
 
     return 1;
@@ -1968,9 +1954,6 @@ sub contents_unwanted_interactive {
 
     my $dir   = shift;
 
-    my $unwanted_files_that_were_not_removed;
-
-    #
     # validate input
     if(    !defined($dir)        or ($dir        !~ m#^/#)
         or !defined($TYPE{$dir}) or ($TYPE{$dir} !~ m/\S/)
@@ -1978,56 +1961,38 @@ sub contents_unwanted_interactive {
         return report_improper_file_definition($dir);
     }
 
-    unless($::o{summary}) {
-        ssm_print "INFO:    Processing contents-unwanted directory $dir\n";
-    }
-
     directory_interactive($dir);
-
 
     # state what we're doing
     # get list of files in directory
-    my $file;
-    opendir(DIR,"$dir") or die "Can't open $dir for reading";
-        #
-        # See if each file matches a defined file
-        #   * test this to be sure that:
-        #       If /etc/iptables.d/stuff/monkey is defined, make sure it is
-        #       not removed, even if /etc/iptables.d/stuff is not explicitly
-        #       defined.  It is implicitly defined.  Ie.: match on left hand
-        #       side of string if necessary.
-        #
-        while (defined ($file = readdir DIR) ) {
+    if(-d $dir) {
 
-            next if $file =~ /^\.\.?$/;
+        my @files;
+        my $file;
+        opendir(DIR,"$dir") or die "Can't open $dir for reading";
+            #
+            # See if each file matches a defined file
+            #   * test this to be sure that:
+            #       If /etc/iptables.d/stuff/monkey is defined, make sure it is
+            #       not removed, even if /etc/iptables.d/stuff is not explicitly
+            #       defined.  It is implicitly defined.  Ie.: match on left hand
+            #       side of string if necessary.
+            #
+            #XXX while (defined ($file = readdir DIR) ) {
+            #
+            while ($file = readdir DIR) {
 
-            # We got a hit!
-            $file = "$dir/$file";
-            ssm_print ">>> in_directory: $file\n" if( $::o{debug} );
-            unless (defined $TYPE{$file}) {
-                #
-                # For each file that isn't defined:  unwanted_file_interactive($file);
-                #
-                $TYPE{$file} = 'unwanted';
-                unwanted_file_interactive($file);
-                if($::outstanding{$file} ne 'fixed') {
-                    $unwanted_files_that_were_not_removed .= "$file ";
-                }
+                next if $file =~ /^\.\.?$/;
+                $file = "$dir/$file";
+                push(@files, $file) unless (defined $TYPE{$file});
             }
-        }
-    closedir(DIR);
+        closedir(DIR);
 
-    #
-    # As per the top of this subroutine, $::outstanding{$dir} will be set
-    # to 'fixed' unless we leave something unresolved in the middle of the
-    # routine. -BEF-
-    #
-    if($::outstanding{$dir} eq 'fixed') {
-        ssm_print "OK:      Contents-unwanted $dir\n";
-        assign_state_to_thingy($dir, 'fixed');
-    } else {
-        ssm_print "Not OK:  Contents-unwanted $dir\n";
-        assign_state_to_thingy($dir, $unwanted_files_that_were_not_removed);
+        foreach $file (sort @files) {
+            ssm_print ">>> in_directory: $file\n" if( $::o{debug} );
+            $TYPE{$file} = 'unwanted';
+            unwanted_file_interactive($file);
+        }
     }
 
     return 1;
@@ -2038,7 +2003,6 @@ sub unwanted_file_interactive {
 
     my $file   = shift;
 
-    #
     # validate input
     if(    !defined($file)        or ($file        !~ m#^/#)
         or !defined($TYPE{$file}) or ($TYPE{$file} !~ m/\S/)
@@ -2048,7 +2012,6 @@ sub unwanted_file_interactive {
 
     # don't do "check_depends_interactive" for an unwanted file...
 
-    #
     # Does it need fixing?
     my $needs_fixing = undef;
     if( -e $file or -l $file ) {
@@ -2062,38 +2025,19 @@ sub unwanted_file_interactive {
 
         assign_state_to_thingy($file, 'b0rken');
 
-        if( -d $file ) {
-            ssm_print "Not OK:  Unwanted directory exists: $file\n";
-        } else {
-            ssm_print "Not OK:  Unwanted file exists: $file\n";
-        }
+        declare_OK_or_Not_OK($file, 0);
 
         unless( $::o{summary} ) {
-            my $action = 'remove_file';
-            if( -d $file ) {
-                ssm_print "         Need to:\n";
-                ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
-                ssm_print "         - remove the contents of $file\n";
-                ssm_print "         - remove $file\n";
-                ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
-            } else {
-                ssm_print "         Need to:\n";
-                ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
-                ssm_print "         - remove $file\n";
-                ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
-            }
 
-            #
-            # Decide what to do about it -- if anything
-            #
-            take_file_action( $file, $action, 'yna#' );
+            #XXX declare_file_actions($file, "remove $file_or_dir $file");
+            declare_file_actions($file, "remove $file");
+            take_file_action( $file, 'remove_file', 'yna#' );
         }
 
     } else {
 
         assign_state_to_thingy($file, 'fixed');
-        ssm_print "OK:      Unwanted $file doesn't exist\n";
-
+        declare_OK_or_Not_OK($file, 1);
     }
 
     return 1;
@@ -2133,37 +2077,18 @@ sub chown_and_chmod_interactive {
     if( defined($needs_fixing) ) {
 
         assign_state_to_thingy($file, 'b0rken');
-
-        ssm_print "Not OK:  Chown+Chmod target $file\n";
+        declare_OK_or_Not_OK($file, 0);
 
         unless( $::o{summary} ) {
-            my $action = 'set_ownership_and_permissions';
-            if( ! -e $file ) {
-                ssm_print "         Need to:\n";
-                ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
-                ssm_print "         - create empty file\n";
-                ssm_print "         - set ownership and permissions\n";
-                ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
-            } else {
-                ssm_print "         Need to:\n";
-                ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
-                ssm_print "         - set ownership and permissions\n";
-                diff_ownership_and_permissions($file, 12);
-                ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
-            }
 
-            #
-            # Decide what to do about it -- if anything
-            #
-            take_file_action( $file, $action, 'yn#' );
-
+            declare_file_actions($file);
+            take_file_action( $file, 'set_ownership_and_permissions', 'yn#' );
         }
 
     } else {
 
         assign_state_to_thingy($file, 'fixed');
-        ssm_print "OK:      Chown+Chmod target $file\n";
-
+        declare_OK_or_Not_OK($file, 1);
     }
 
     return 1;
@@ -2174,7 +2099,6 @@ sub directory_interactive {
 
     my $file   = shift;
 
-    #
     # validate input
     if(    !defined($file)         or ($file !~ m#^/#)
         or !defined($TYPE{$file})  or ($TYPE{$file} !~ m/\S/)
@@ -2187,7 +2111,6 @@ sub directory_interactive {
 
     if( ! check_depends_interactive($file) ) { return 1; }   # just return now if failed deps check
 
-    #
     # Does it need fixing?
     my $needs_fixing = undef;
     my $set_ownership_and_permissions = undef;
@@ -2204,43 +2127,31 @@ sub directory_interactive {
         $set_ownership_and_permissions = 1;
     } 
 
-    #
     # Should we actually fix it?
     if( defined($needs_fixing) ) {
 
         assign_state_to_thingy($file, 'b0rken');
-
-        ssm_print "Not OK:  Directory $file\n";
+        declare_OK_or_Not_OK($file, 0);
 
         unless( $::o{summary} ) {
             
             my $action;
 
-            ssm_print "         Need to:\n";
             if( defined($set_ownership_and_permissions) ) {
 
-                $action = 'set_ownership_and_permissions';
-                ssm_print "         - fix ownership and permissions\n";
-                diff_ownership_and_permissions($file, 12);
+                declare_file_actions($file);
+                take_file_action( $file, 'set_ownership_and_permissions', 'yn#' );
 
             } else {
 
-                $action = 'install_directory';
-                ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
-                ssm_print "         - create directory\n";
-                ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
-
+                declare_file_actions($file, "create directory $file");
+                take_file_action( $file, 'install_directory', 'yn#' );
             }
-
-            #
-            # Decide what to do about it -- if anything
-            #
-            take_file_action( $file, $action, 'yn#' );
         }
 
     } else {
         assign_state_to_thingy($file, 'fixed');
-        ssm_print "OK:      Directory $file\n";
+        declare_OK_or_Not_OK($file, 1);
     }
 
     return 1;
@@ -2326,25 +2237,17 @@ sub generated_file_interactive {
 
             my $action;
 
-            ssm_print "         Need to:\n";
             if( defined($set_ownership_and_permissions) ) {
 
                 $action = 'set_ownership_and_permissions';
+                ssm_print "         Need to:\n";
                 ssm_print "         - fix ownership and permissions\n";
                 diff_ownership_and_permissions($file, 12);
 
             } else {
 
                 $action = 'install_file';
-                ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
-                ssm_print "         - generate file\n";
-                if( -e $file and ! uid_gid_and_mode_match($file) ) {
-                    # Also inform user about perms issue. -BEF-
-                    ssm_print "         - fix ownership and permissions\n";
-                    diff_ownership_and_permissions($file, 12);
-                }
-                ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
-
+                declare_file_actions($file, "generate file $file");
             }
 
             take_file_action( $file, $action, 'ynd#' );
@@ -2416,24 +2319,17 @@ sub regular_file_interactive {
 
             my $action;
 
-            ssm_print "         Need to:\n";
             if( defined($set_ownership_and_permissions) ) {
 
                 $action = 'set_ownership_and_permissions';
+                ssm_print "         Need to:\n";
                 ssm_print "         - fix ownership and permissions:\n";
                 diff_ownership_and_permissions($file, 12);
 
             } else {
 
                 $action = 'install_file';
-                ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
-                ssm_print "         - copy version from repo\n";
-                if( -e $file and ! uid_gid_and_mode_match($file) ) {
-                    # Also inform user about perms issue. -BEF-
-                    ssm_print "         - fix ownership and permissions\n";
-                    diff_ownership_and_permissions($file, 12);
-                }
-                ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
+                declare_file_actions($file, "install file from repo $file");
             }
 
             #
@@ -2589,16 +2485,12 @@ sub take_file_action {
         } 
         else {
 
-            my $unsatisfied = check_depends($file);
-            if($unsatisfied ne "1") {
-                #
-                # $prompts should be limited to N and # if depends are not met, so we
-                # strip out all prompt characters except for "n" for no, and "#" for
-                # comment out. -BEF-
-                #
+            my ($retval, @unsatisfied) = check_depends($file);
+            if($retval eq 2) {
+
                 $prompts =~ s/[^n#]//g;
                 ssm_print "\n";
-                ssm_print "           NOTE: Options limited due to Unmet Dependencies\n";
+                ssm_print "           NOTE: 'Y' is not an option due to Unmet Dependencies\n";
             }
 
             $answer = do_you_want_me_to($prompts);
@@ -2833,10 +2725,11 @@ sub install_directory {
     my $calling_function = (caller(1))[3];
     execute_prescript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
 
-    if(-e $file) { remove_file($file, 'silent'); }
+    if(-e $file and ! -d $file) { remove_file($file); }
 
     my $dir = $file;
-    eval { mkpath($dir) };
+    if(-e $dir and ! -d $dir) { remove_file($dir); }
+    eval { make_path($dir) };
     if($@) { ssm_print "Couldn’t create $dir: $@"; }
 
     set_ownership_and_permissions($file);
@@ -2887,10 +2780,11 @@ sub install_file {
 
     # If path doesn't exist, create it here
     my $dir  = dirname($file);
-    eval { mkpath($dir) };
+    if(-e $dir and ! -d $dir) { remove_file($dir); }
+    eval { make_path($dir) };
     if($@) { ssm_print "Couldn’t create $dir: $@"; }
 
-    remove_file($file, 'silent');
+    remove_file($file);
     copy($tmp_file, $file) or die "Failed to copy($tmp_file, $file): $!";
     unlink $tmp_file;
 
@@ -3068,26 +2962,18 @@ sub hardlink_interactive {
     if( defined($needs_fixing) ) {
 
         assign_state_to_thingy($file, 'b0rken');
-
-        ssm_print "Not OK:  Hard link $file -> $TARGET{$file}\n";
+        declare_OK_or_Not_OK($file, 0);
 
         unless( $::o{summary} ) {
 
-            my $action = 'install_hardlink';
-
-            ssm_print "         Need to:\n";
-            ssm_print "         - $PRESCRIPT{$file}\n" if($PRESCRIPT{$file});
-            ssm_print "         - remove pre-existing file $file\n" if( -e $file );
-            ssm_print "         - create hard link\n";
-            ssm_print "         - $POSTSCRIPT{$file}\n" if($POSTSCRIPT{$file});
-
-            take_file_action( $file, $action, 'yn#' );
+            declare_file_actions($file, "create hard link $file");
+            take_file_action($file, 'install_hardlink', 'yn#');
         }
 
     } else {
 
         assign_state_to_thingy($file, 'fixed');
-        ssm_print "OK:      Hard link $file -> $TARGET{$file}\n";
+        declare_OK_or_Not_OK($file, 1);
     }
 
     if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
@@ -3221,8 +3107,10 @@ sub uid_gid_and_mode_match {
 
 
 sub get_hostname {
+
     my $hostname = `hostname -f`;
     chomp $hostname;
+
     return $hostname;
 }
 
@@ -3721,8 +3609,12 @@ sub turn_service_into_file_entry {
 
 
 #
-# Returns '1' if dependencies are satisfied
-# Returns a list of unsatisfied dependencies if unsatisfied
+#   Usage:
+#
+#       my ($retval, @unsatisfied) = check_depends($file);
+#
+# Returns $retval eq '1' and @unsatisfied is empty, if dependencies are satisfied
+# Returns $retval eq '2' and @unsatisfied as a list of unsatisfied dependencies, if unsatisfied
 #
 sub check_depends {
 
@@ -3732,7 +3624,7 @@ sub check_depends {
         return 1;
     }
 
-    my $unsatisfied;
+    my @unsatisfied;
     my %pkgs_currently_installed;
 
     #
@@ -3749,34 +3641,47 @@ sub check_depends {
     } 
 
     foreach( split(/\s+/, $DEPENDS{$name}) ) {
+        #
         # Check file dependencies
+        #
         if( /^\// ) {
+
             if( $::o{debug} ) { print ">>>> Checking on status of $_\n"; }
             #
             # Must be a file.  
             #
             my $file_dep = $_;
+
+            if($file_dep =~ m|^$name/|) {
+
+                my $calling_function = (caller(1))[3];
+                if($calling_function eq 'SimpleStateManager::take_file_action') {
+
+                    ssm_print "\n";
+
+                    ssm_print "           WARNING: $name has $file_dep specified as a dependency.  This is\n";
+                    ssm_print "           WARNING: probably not a good idea, as $file_dep would have to be\n";
+                    ssm_print "           WARNING: a file inside $name (as a directory).  This could lead\n";
+                    ssm_print "           WARNING: to a non-resolvable dependency.\n";
+
+                    sleep 1;
+                }
+            }
+
             if( ! -e $file_dep) {  
+
                 # If it doesn't exist, fail dep check.
-                $unsatisfied .= "$file_dep "; 
+                push @unsatisfied, $file_dep;
                 if( $::o{debug} ) { print ">>>>>  $_ doesn't exist\n"; }
 
             } elsif( defined $::outstanding{$file_dep} and $::outstanding{$file_dep} ne 'fixed') {
-print "PASS_NUMBER $::PASS_NUMBER $::outstanding{$file_dep}\n";
-                if($file_dep =~ m|^$name|) {
-                    ssm_print "WARNING: You have $file_dep specified as a dependency of $name, which is probably\n";
-                    ssm_print "         not a good idea, seing as how $name is a directory that holds $file_dep\n";
-                    ssm_print "         and could form a non-resolving dependency.\n";
-                    sleep 1;
-                }
 
-                $unsatisfied .= "$file_dep "; 
+                push @unsatisfied, $file_dep;
                 if( $::o{debug} ) { print ">>>>>  $_ exists, but isn't considered 'fixed'\n"; }
 
             } else {
-                if( $::o{debug} ) { 
-                    print ">>>>> $_ exists, and isn't defined so it's mere existence makes it OK.\n"; 
-                }
+
+                if( $::o{debug} ) { print ">>>>> $_ exists, and isn't defined so it's mere existence makes it OK.\n"; }
             }
         } 
         # Check package dependencies
@@ -3785,16 +3690,16 @@ print "PASS_NUMBER $::PASS_NUMBER $::outstanding{$file_dep}\n";
             # Must be a package.  See if it's installed.
             my $pkg = $_;
             if( ! defined $pkgs_currently_installed{$pkg} ) { 
-                $unsatisfied .= "$pkg "; 
+                push @unsatisfied, $pkg;
                 print ">>>>> $pkg isn't installed, so keeping in the unsatisfied dependency list.\n";
             }
         }
     }
 
-    if(defined $unsatisfied) { return $unsatisfied; }
-
-    return 1;
+    # Looks like we have some unresolved issues.  Get thee to a counselor...
+    if(@unsatisfied) { return (2, @unsatisfied); }
 }
+
 
 #
 # do we check for recursion loops?  Nah.  Not yet, anyway. ;-) -BEF-
@@ -4244,15 +4149,15 @@ sub _which {
 
 #
 # Usage: remove_file($file);
-#        remove_file($file,'silent');
+#        remove_file($file,'verbose');
 #
 sub remove_file {
 
-    my $file        = shift;
-    my $silent      = shift;
+    my $file         = shift;
+    my $verbose      = shift;
     my $run_scripts  = shift;
 
-    ssm_print "         FIXING:  Removing: $file\n" unless( defined $silent );
+    ssm_print "         FIXING:  Removing: $file\n" if( defined $verbose );
 
     if($::o{debug}) { ssm_print "remove_file($file)\n"; }
 
@@ -4579,7 +4484,7 @@ sub update_package_repository_info_interactive {
 
     $return_code = update_pkg_availability_data();
 
-    mkpath("$STATE_DIR", 0, 0775) unless( -e $STATE_DIR );
+    make_path("$STATE_DIR", 0, 0775) unless( -e $STATE_DIR );
     touch $PKG_REPO_UPDATE_TIMESTAMP_FILE;
 
     if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
@@ -4696,8 +4601,8 @@ sub copy_file_to_upstream_repo {
         umask 000;
         my $path = "$repo_dir/$dir";
         $path =~ s|/+|/|g;
-        eval { mkpath("$path", 0, 0775) };
-        if($::o{debug}) { ssm_print qq($debug_prefix mkpath "$path", 0, 0775\n); }
+        eval { make_path("$path", 0, 0775) };
+        if($::o{debug}) { ssm_print qq($debug_prefix make_path "$path", 0, 0775\n); }
         if($@) { ssm_print "Couldn’t create $dir: $@"; }
 
         #
@@ -4773,8 +4678,133 @@ sub assign_state_to_thingy {
 }
 
 
+sub declare_file_actions {
+    
+    my $file = shift;
+    my $optional_notice = shift;
+
+    my $dir  = dirname($file);
+    my $dir_will_be_removed;
+
+    ssm_print "         Need to:\n";
+
+    if($PRESCRIPT{$file}) {
+        ssm_print "         - $PRESCRIPT{$file}\n";
+    }
+
+    if(   -e $dir   and ! -d $dir  ) {
+        ssm_print "         - remove file $dir\n";
+    }
+
+    if( $TYPE{$file} ne 'directory'  and  $TYPE{$file} ne 'directory+contents-unwanted') {
+
+        if( -e $file  and  -d $file ) {
+            ssm_print "         - remove directory $file\n";
+            $dir_will_be_removed = 1;
+        }
+
+        if( ! -e $dir   or  ! -d $dir  ) {
+            ssm_print "         - create directory $dir\n";
+        }
+    }
+
+    if( $TYPE{$file} eq 'chown+chmod'  and  ! -e $file ) {
+        ssm_print "         - create empty file $file\n";
+    }
+
+    if( $optional_notice ) {
+        ssm_print "         - $optional_notice\n";
+    }
+
+    if(
+            ( ! defined $dir_will_be_removed    )
+        and ( $TYPE{$file} ne 'unwanted'        )
+        and ( -e $file                          )
+        and ( ! uid_gid_and_mode_match($file)   )
+      ) {
+
+        ssm_print "         - set ownership and permissions\n";
+        diff_ownership_and_permissions($file, 12);
+    }
+
+    if($POSTSCRIPT{$file}) {
+        ssm_print "         - $POSTSCRIPT{$file}\n";
+    }
+
+    return 1;
+}
+
+
+#
+#   Usage:
+#       declare_OK_or_Not_OK($file, $is_OK);
+#       or declare_OK_or_Not_OK($file, $is_OK, "custom append message");
+#
+#           - Where $is_OK can be 1 (for OK).  Anything else is treated as Not OK.
+#
+sub declare_OK_or_Not_OK {
+
+    my $file            = shift;
+    my $is_OK           = shift;
+    my $append_message  = shift;
+
+    my $state;
+    if("$is_OK" eq "1") {
+        $state = "OK:      ";
+    } else {
+        $state = "Not OK:  ";
+    }
+
+    #XXX
+    #my $file_or_dir;
+    #if( -d $file ) {
+    #    $file_or_dir = 'file';
+    #} else {
+    #    $file_or_dir = 'directory';
+    #}
+
+    my $type = ucfirst($TYPE{$file});
+    if($TYPE{$file} eq 'hardlink') {
+        $type = 'Hard Link';
+    }
+    elsif($TYPE{$file} eq 'softlink') {
+        $type = 'Soft Link';
+    }
+    elsif($TYPE{$file} eq 'block') {
+        $type = 'Block (special file)';
+    }
+    elsif($TYPE{$file} eq 'character') {
+        $type = 'Character (special file)';
+    }
+    elsif($TYPE{$file} eq 'chown+chmod') {
+        $type = 'Chown+Chmod';
+    }
+    elsif($TYPE{$file} eq 'directory+contents-unwanted') {
+        $type = 'Directory (w/contents unwanted)';
+    }
+    elsif($TYPE{$file} eq 'fifo') {
+        $type = 'FIFO (special file)';
+    }
+
+    my $message = $state . $type . ": " . $file;
+
+
+    if($TYPE{$file} eq 'hardlink'  or  $TYPE{$file} eq 'softlink') {
+        $message .= " -> $TARGET{$file}";
+    }
+
+
+    if($append_message) {
+        $message .= " -> $append_message";
+    }
+
+    ssm_print $message . "\n";
+
+    return 1;
+}
+
+
 #
 ################################################################################
 
 1;
-
