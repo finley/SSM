@@ -319,6 +319,7 @@ sub _initialize_log_file {
     return 1;
 }
 
+
 sub read_config_file {
 
     _initialize_variables();
@@ -893,7 +894,7 @@ sub read_config_file {
 
     if( $::o{analyze_config} ) {
 
-        @analyze = sort multisort @analyze;
+        @analyze = sort multisort @analyze; #XXX why sort and multisort ?
 
         # Prepend Titles after sorting
         unshift @analyze, "-------- ------- ------";
@@ -2028,7 +2029,6 @@ sub unwanted_file_interactive {
 
         unless( $::o{summary} ) {
 
-            #XXX declare_file_actions($file, "remove $file_or_dir $file");
             declare_file_actions($file, "remove $file");
             take_file_action( $file, 'remove_file', 'yna#' );
         }
@@ -2488,7 +2488,12 @@ sub take_file_action {
 
                 $prompts =~ s/[^n#]//g;
                 ssm_print "\n";
-                ssm_print "           NOTE: 'Y' is not an option due to Unmet Dependencies\n";
+                ssm_print "           NOTE: 'Y' is not an option due to these Unmet Dependencies:\n";
+                ssm_print "\n";
+                foreach (sort @unsatisfied) {
+                    chomp;
+                    ssm_print "                 $_\n";
+                }
             }
 
             $answer = do_you_want_me_to($prompts);
@@ -3455,7 +3460,7 @@ sub add_bundlefile_stanza_to_bundlefile {
     push @newstanza, "$new_bundlefile\n";
     push @newstanza,   "\n";
 
-    ssm_print qq(Adding:  The following bundles stanza to configuration file "$parent_bundlefile".\n);
+    ssm_print qq(Adding:  The following bundles stanza to configuration file "$parent_bundlefile":\n);
     ssm_print "\n";
     foreach (@newstanza) {
         ssm_print qq(  $_);
@@ -3484,6 +3489,10 @@ sub add_bundlefile_stanza_to_bundlefile {
     print FILE @newfile;
     close(FILE);
     copy_file_to_upstream_repo($file, $parent_bundlefile);
+
+    # Now that the files have been updated and put in place, add the new
+    # bundlefile to the "it exists list"
+    $BUNDLEFILE_LIST{$new_bundlefile} = 1;
 
     return 1;
 }
@@ -3689,7 +3698,7 @@ sub check_depends {
             my $pkg = $_;
             if( ! defined $pkgs_currently_installed{$pkg} ) { 
                 push @unsatisfied, $pkg;
-                print ">>>>> $pkg isn't installed, so keeping in the unsatisfied dependency list.\n";
+                if( $::o{debug} ) { print ">>>>> $pkg isn't installed, so keeping in the unsatisfied dependency list.\n"; }
             }
         }
     }
@@ -4021,11 +4030,11 @@ sub choose_valid_bundlefile {
         return undef;
     }
 
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
     if(! defined $proposed_bundlefile) {
         $proposed_bundlefile = $::o{bundlefile};
     }
-
-    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     # If a bundlefile was specified on the command line
     if($proposed_bundlefile) {
@@ -4786,11 +4795,9 @@ sub declare_OK_or_Not_OK {
 
     my $message = $state . $type . ": " . $file;
 
-
     if($TYPE{$file} eq 'hardlink'  or  $TYPE{$file} eq 'softlink') {
         $message .= " -> $TARGET{$file}";
     }
-
 
     if($append_message) {
         $message .= " -> $append_message";
