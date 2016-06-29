@@ -1071,10 +1071,9 @@ sub sync_state {
 
     $CHANGES_MADE = 0;
 
+    load_pkg_manager_functions();
+
     unless($::o{only_files}) {
-
-        load_pkg_manager_functions();
-
         if( defined $::o{upgrade_ssm_before_sync} and $::o{upgrade_ssm_before_sync} eq "yes" ) {
             upgrade_ssm() unless($::o{no});
         }
@@ -1325,14 +1324,15 @@ sub get_pkgs_to_be_installed {
     #
     # If it's in the state definition, but not installed, install it.
     #
-    my %hash;
+    my %pkgs_to_be_installed;
     foreach my $pkg (keys %::PKGS_FROM_STATE_DEFINITION) {
+
         if(( ! $pkgs_currently_installed{$pkg} ) and ( $::PKGS_FROM_STATE_DEFINITION{$pkg} !~ m/\b(unwanted|remove|delete|erase)\b/i )) {
-            $hash{$pkg} = $::PKGS_FROM_STATE_DEFINITION{$pkg};
+            $pkgs_to_be_installed{$pkg} = $::PKGS_FROM_STATE_DEFINITION{$pkg};
         }
     }
 
-    return (keys %hash);
+    return (keys %pkgs_to_be_installed);
 }
 
 
@@ -3643,7 +3643,22 @@ sub check_depends {
     #
     # Only check for pkgs if there's a pkg in the dependency list.  pkg
     # checking is an expensive process. -BEF-
+    #
     if($DEPENDS{$name} =~ m/(^|\s)\w/ ) {    # Match package names in the list
+
+        if( $::o{pkg_manager} eq 'none' ) {
+            ssm_print "\n";
+            ssm_print "           ERROR: No package manager is specified, but this configuration item\n";
+            ssm_print "           ERROR: specifies one or more packages as dependencies.\n";
+            ssm_print "           ERROR:\n";
+            ssm_print "           ERROR:   $name\n";
+            ssm_print "           ERROR:\n";
+            ssm_print "           ERROR: Please review this item in config file $BUNDLEFILE{$name}\n";
+            ssm_print "\n";
+
+            exit 1;
+        }
+
         %pkgs_currently_installed = get_pkgs_currently_installed();
     } 
 

@@ -220,12 +220,13 @@ sub get_pkgs_currently_installed {
         $pkg_changes_made = undef;
     }
 
-    #
-    # returns a hash: package => version
-    #
     my %pkgs_currently_installed;
-    foreach my $pkg (sort keys %{$pkg_cache}) {
-        my $p_ref = $pkg_cache->{$pkg};
+
+    foreach (sort keys %{$pkg_cache}) {
+
+        my ($pkg, $pkg_arch) = split(/:/);
+
+        my $p_ref = $pkg_cache->{"$pkg:$pkg_arch"};
         if( $p_ref->{CurrentState} and $p_ref->{CurrentState} eq 'Installed' ) {
 
             #
@@ -243,9 +244,12 @@ sub get_pkgs_currently_installed {
             #   pkg jayatana:amd64
             #   pkg jfsutils:amd64
             #
-            $pkgs_currently_installed{$pkg}{'current_version'}   = $p_ref->{CurrentVer}{VerStr};
+
+            $pkgs_currently_installed{"$pkg:$pkg_arch"}{'current_version'}   = $p_ref->{CurrentVer}{VerStr};
+            $pkgs_currently_installed{$pkg}{$pkg_arch}{'current_version'}  = $p_ref->{CurrentVer}{VerStr};
+
             if ( my $c_ref = $policy->candidate($p_ref) ) {
-                $pkgs_currently_installed{$pkg}{'candidate_version'} = $c_ref->{VerStr} if( $c_ref->{VerStr} ne $p_ref->{CurrentVer}{VerStr} );
+                $pkgs_currently_installed{"$pkg:$pkg_arch"}{'candidate_version'} = $c_ref->{VerStr} if( $c_ref->{VerStr} ne $p_ref->{CurrentVer}{VerStr} );
             }
         }
     }

@@ -407,8 +407,7 @@ sub get_pkgs_currently_installed {
     
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
-
-    my %hash;
+    my %pkgs_currently_installed;
 
     if( $::o{pkg_manager} eq 'yum' ) {
 
@@ -433,8 +432,14 @@ sub get_pkgs_currently_installed {
                 #   expat.i386              1.95.8-8.2.1    installed       
                 #   expat.x86_64            1.95.8-8.2.1    installed  
                 #
-                my ($pkg, $version, $state) = split;
-                if( $state eq 'installed' ) {
+#my ($pkg_and_arch, $version, $state) = split; XXX
+
+                if( m/^(\S+)\.(\S+)\s+(\S+)\s+installed/ ) {
+                    my $pkg         = $1;
+                    my $pkg_arch    = $2;
+                    my $version     = $3;
+                    my $state       = $4;
+
                     # 
                     # RPM can import GPG keys to validate signatures on
                     # packages.  But why, oh why, Red Hat, do these
@@ -443,8 +448,11 @@ sub get_pkgs_currently_installed {
                     #
                     # This skips over them. -BEF-
                     next if($pkg =~ m/^gpg-pubkey\.\(none\)$/);
-                    $hash{$pkg} = $version;
-                    ssm_print "$debug_prefix PKG $pkg = $version\n" if( $::o{debug} );
+
+                    $pkgs_currently_installed{"$pkg.$pkg_arch"} = $version; # allows testing for existence of "package.arch"
+                    $pkgs_currently_installed{$pkg}{$pkg_arch} = $version;  # allows testing for existence of "package", but arch is still discernable
+
+                    ssm_print "$debug_prefix PKG $pkg.$pkg_arch = $version\n" if( $::o{debug} );
                 }
         }
         close(FILE);
@@ -452,7 +460,7 @@ sub get_pkgs_currently_installed {
 
     if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; sleep 2; }
 
-    return %hash;
+    return %pkgs_currently_installed;
 }
 
 
