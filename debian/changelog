@@ -1,3 +1,37 @@
+simple-state-manager (0.6.9) stable; urgency=medium
+
+  * 95e262d - Always invoke load_pkg_manager_functions(), even if
+    pkg_manager = none. - Improve get_pkgs_currently_installed()
+    functions to return pkg info both with and without arch info to make
+    it easy for testing against packages declared in conf files, whether
+    they use arch info or not. - Warn if pkg declared as dependency, if
+    pkg_manager not defined.
+  * e8c3fb3 - Fix bug where newly added bundlefile is treated as not yet
+    being in the configuration.
+  * a787905 .
+  * 1e02b67 - Don't do check_depends_interactive() if  ain't b0rken.
+  * baf99ab - improve check_depends() function.  Return $retval as well
+    as @array of   unsatisfied dependencies (if any). - use common
+    function declare_OK_or_Not_OK() to simplify code and to   make
+    output on file states more consistent across file type specific
+    functions.
+  * e27a801 - auto-create path when fixing non-existent file if path
+    doesn't exist; check return code from function calls in
+    take_file_action()
+  * 960294c - document what installed package list output looks like
+  * 884b54e Fix: Parentheses missing around "my" list at /usr/lib/simple-
+    state-manager/SimpleStateManager.pm line 3949"
+  * ab76fe8 --add-packages:  strip off options, such as 'unwanted',
+    before checking to see if package exists
+  * 8613556 - Handle noarch packages w/unwanted packages using Yum
+  * f16695a - Properly handle situation where -otf /tmp/dir/file is
+    specified, but /tmp/dir doesn't yet exist.
+  * 6a195bc - Fix bug where When directory+contents-unwanted, and one
+    file exists   but should be removed, other files that do exist and
+    should be there   are marked as having unmet dependencies.
+
+ -- Brian Finley <bfinley@tbob>  Thu, 30 Jun 2016 15:29:51 -0500
+
 simple-state-manager (0.6.8) stable; urgency=medium
 
   * c8c16e9 .
