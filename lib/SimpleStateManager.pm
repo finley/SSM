@@ -4506,7 +4506,15 @@ sub update_package_repository_info_interactive {
 
     $return_code = update_pkg_availability_data();
 
-    make_path("$STATE_DIR", 0, 0775) unless( -e $STATE_DIR );
+    unless( -e $STATE_DIR ) {
+
+        my $path = $STATE_DIR;
+
+        if($::o{debug}) { ssm_print qq/$debug_prefix make_path "$path", { verbose => 0, mode => 0775, }) \n/; } 
+        eval { make_path("$path", { verbose => 0, mode => 0775, }) };
+        if($@) { ssm_print "Couldn’t create $path: $@"; }
+    }
+
     touch $PKG_REPO_UPDATE_TIMESTAMP_FILE;
 
     if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
@@ -4623,9 +4631,9 @@ sub copy_file_to_upstream_repo {
         umask 000;
         my $path = "$repo_dir/$dir";
         $path =~ s|/+|/|g;
-        eval { make_path("$path", 0, 0775) };
-        if($::o{debug}) { ssm_print qq($debug_prefix make_path "$path", 0, 0775\n); }
-        if($@) { ssm_print "Couldn’t create $dir: $@"; }
+        if($::o{debug}) { ssm_print qq/$debug_prefix make_path "$path", { verbose => 0, mode => 0775, }) \n/; } 
+        eval { make_path("$path", { verbose => 0, mode => 0775, }) };
+        if($@) { ssm_print "Couldn’t create $path: $@"; }
 
         #
         # Copy up the contents
