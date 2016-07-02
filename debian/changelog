@@ -2,7 +2,7 @@ simple-state-manager (0.7.1) stable; urgency=medium
 
   * 0fb20f4 - fix annoying 0 509 dirs in local dir bug.
 
- -- Brian Finley <bfinley@tbob>  Sat, 02 Jul 2016 14:18:29 -0500
+ -- Brian Finley <brian@thefinleys.com>  Sat, 02 Jul 2016 14:18:29 -0500
 
 simple-state-manager (0.6.9) stable; urgency=medium
 
@@ -36,7 +36,7 @@ simple-state-manager (0.6.9) stable; urgency=medium
     file exists   but should be removed, other files that do exist and
     should be there   are marked as having unmet dependencies.
 
- -- Brian Finley <bfinley@tbob>  Thu, 30 Jun 2016 15:29:51 -0500
+ -- Brian Finley <brian@thefinleys.com>  Thu, 30 Jun 2016 15:29:51 -0500
 
 simple-state-manager (0.6.8) stable; urgency=medium
 
@@ -44,7 +44,7 @@ simple-state-manager (0.6.8) stable; urgency=medium
   * 90366d2 When processing unwanted files, give option to add file to
     repo.
 
- -- Brian Finley <bfinley@tbob>  Sun, 01 May 2016 13:39:37 -0500
+ -- Brian Finley <brian@thefinleys.com>  Sun, 01 May 2016 13:39:37 -0500
 
 simple-state-manager (0.6.7) stable; urgency=medium
 
@@ -54,21 +54,21 @@ simple-state-manager (0.6.7) stable; urgency=medium
     options processing (no longer require --sync with -otf) - Create
     symlink in bin dir on install "simple-state-manager -> ssm"
 
- -- Brian Finley <bfinley@tbob>  Sun, 24 Apr 2016 14:27:58 -0500
+ -- Brian Finley <brian@thefinleys.com>  Sun, 24 Apr 2016 14:27:58 -0500
 
 simple-state-manager (0.6.6) stable; urgency=medium
 
   * c7d1b8d Fix bug where running 'ssm -af' on the same file multiple
     times resulted in a double entry.
 
- -- Brian Finley <bfinley@xbob>  Tue, 15 Mar 2016 00:31:30 -0500
+ -- Brian Finley <brian@thefinleys.com>  Tue, 15 Mar 2016 00:31:30 -0500
 
 simple-state-manager (0.6.5) stable; urgency=medium
 
   * 7f39c37 Moving file system specific functions into a separate
     library.
 
- -- Brian Finley <bfinley@xbob>  Fri, 11 Mar 2016 16:05:48 -0600
+ -- Brian Finley <brian@thefinleys.com>  Fri, 11 Mar 2016 16:05:48 -0600
 
 simple-state-manager (0.6.4) stable; urgency=medium
 
@@ -91,7 +91,7 @@ simple-state-manager (0.6.4) stable; urgency=medium
   * ad37417 Normalize file & directory names in all operations to
     prevent conflicts by duplicate names for the same file/dir.
 
- -- Brian Finley <bfinley@xbob>  Fri, 11 Mar 2016 15:53:45 -0600
+ -- Brian Finley <brian@thefinleys.com>  Fri, 11 Mar 2016 15:53:45 -0600
 
 simple-state-manager (0.6.3) stable; urgency=medium
 
@@ -113,7 +113,7 @@ simple-state-manager (0.6.3) stable; urgency=medium
   * 418f55e Update copyright date
   * 4d939b3 put expectations closer to result
 
- -- Brian Finley <bfinley@xbob>  Tue, 28 Jul 2015 15:28:01 -0500
+ -- Brian Finley <brian@thefinleys.com>  Tue, 28 Jul 2015 15:28:01 -0500
 
 simple-state-manager (0.6.2) stable; urgency=medium
 
