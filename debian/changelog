@@ -1,3 +1,9 @@
+simple-state-manager (0.7.1) stable; urgency=medium
+
+  * 0fb20f4 - fix annoying 0 509 dirs in local dir bug.
+
+ -- Brian Finley <bfinley@tbob>  Sat, 02 Jul 2016 14:18:29 -0500
+
 simple-state-manager (0.6.9) stable; urgency=medium
 
   * 95e262d - Always invoke load_pkg_manager_functions(), even if

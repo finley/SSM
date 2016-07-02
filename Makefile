@@ -157,6 +157,7 @@ $(TOPDIR)/tmp/${package}-$(VERSION).tar.bz2:  clean
 	@echo '# Scrape-n-paste'
 	@echo 'vim VERSION'
 	@echo 'ver=$$(cat VERSION)'
+	@echo 'echo $$ver'
 	@echo 
 	@echo '# deb pkg bits first'
 	@echo 'git log `git describe --tags --abbrev=0`..HEAD --oneline > /tmp/${package}.gitlog'
