@@ -3276,11 +3276,11 @@ sub update_or_add_file_stanza_to_bundlefile {
 
                     #
                     # Allow for, but normalize, existing "key = value" or "key=value" type definitions.
-                    s#^name\s*=.*#name       = $filespec{name}#;
+                    s#^name\s*=.*#name        = $filespec{name}#;
 
                     if(m/^comment\s*=/) {
                         if(defined $filespec{comment}) {
-                            s/^comment\s*=.*/comment    = $filespec{comment}/;
+                            s/^comment\s*=.*/comment     = $filespec{comment}/;
                         } else {
                             s/^(comment\s*=.*)/# $1/;
                         }
@@ -3288,7 +3288,7 @@ sub update_or_add_file_stanza_to_bundlefile {
 
                     if(m/^type\s*=/) {
                         if(defined $filespec{type}) {
-                            s/^type\s*=.*/type       = $filespec{type}/;
+                            s/^type\s*=.*/type        = $filespec{type}/;
                         } else {
                             s/^(type\s*=.*)/# $1/;
                         }
@@ -3296,7 +3296,7 @@ sub update_or_add_file_stanza_to_bundlefile {
 
                     if(m/^owner\s*=/) {
                         if(defined $filespec{owner}) {
-                            s/^owner\s*=.*/owner      = $filespec{owner}/;
+                            s/^owner\s*=.*/owner       = $filespec{owner}/;
                         } else {
                             s/^(owner\s*=.*)/# $1/;
                         }
@@ -3305,7 +3305,7 @@ sub update_or_add_file_stanza_to_bundlefile {
 
                     if(m/^group\s*=/) {
                         if(defined $filespec{group}) {
-                            s/^group\s*=.*/group      = $filespec{group}/;
+                            s/^group\s*=.*/group       = $filespec{group}/;
                         } else {
                             s/^(group\s*=.*)/# $1/;
                         }
@@ -3314,7 +3314,7 @@ sub update_or_add_file_stanza_to_bundlefile {
 
                     if(m/^mode\s*=/) {
                         if(defined $filespec{mode}) {
-                            s/^mode\s*=.*/mode       = $filespec{mode}/;
+                            s/^mode\s*=.*/mode        = $filespec{mode}/;
                         } else {
                             s/^(mode\s*=.*)/# $1/;
                         }
@@ -3328,7 +3328,7 @@ sub update_or_add_file_stanza_to_bundlefile {
                         #
                         s/^(md5sum\s*=.*)/# $1/;
                         if(defined $filespec{md5sum}) {
-                            $_ .=       "md5sum     = $filespec{md5sum}  # $timestamp\n";
+                            $_ .=       "md5sum      = $filespec{md5sum}  # $timestamp\n";
                             delete $filespec{md5sum};
                         }
                     }
@@ -3336,7 +3336,7 @@ sub update_or_add_file_stanza_to_bundlefile {
 
                     if(m/^target\s*=/) {
                         if(defined $filespec{target}) {
-                            s/^target\s*=.*/target    = $filespec{target}/;
+                            s/^target\s*=.*/target     = $filespec{target}/;
                         } else {
                             s/^(target\s*=.*)/# $1/;
                         }
@@ -3345,7 +3345,7 @@ sub update_or_add_file_stanza_to_bundlefile {
 
                     if(m/^major\s*=/) {
                         if(defined $filespec{major}) {
-                            s/^major\s*=.*/major    = $filespec{major}/;
+                            s/^major\s*=.*/major     = $filespec{major}/;
                         } else {
                             s/^(major\s*=.*)/# $1/;
                         }
@@ -3354,7 +3354,7 @@ sub update_or_add_file_stanza_to_bundlefile {
 
                     if(m/^minor\s*=/) {
                         if(defined $filespec{minor}) {
-                            s/^minor\s*=.*/minor    = $filespec{minor}/;
+                            s/^minor\s*=.*/minor     = $filespec{minor}/;
                         } else {
                             s/^(minor\s*=.*)/# $1/;
                         }
@@ -3369,8 +3369,8 @@ sub update_or_add_file_stanza_to_bundlefile {
                 # Add any entries that did not exist in the original filespec, but only in the new file (ie. changed from regular to softlink)
                 foreach my $key (keys %filespec) {
                     next if( $key =~ /^(name|type|comment)$/ );
-                    push @newfile, "$key    = $filespec{$key}\n";
-                    print ">>> $key      = $filespec{$key} <<<\n";
+                    push @newfile, "$key     = $filespec{$key}\n";
+                    print ">>> $key       = $filespec{$key} <<<\n";
                 }
             }
         }
@@ -3388,17 +3388,17 @@ sub update_or_add_file_stanza_to_bundlefile {
 
         push @newfile,   "\n";
         push @newfile,   "[file]\n";
-        push @newfile,   "name       = $filespec{name}\n";
-        push @newfile,   "comment    = $filespec{comment}\n"                          if(defined $filespec{comment});
-        push @newfile,   "type       = $filespec{type}\n"                   if(defined $filespec{type});
-        push @newfile,   "owner      = $filespec{owner}\n"                  if(defined $filespec{owner});
-        push @newfile,   "group      = $filespec{group}\n"                  if(defined $filespec{group});
-        push @newfile,   "mode       = $filespec{mode}\n"                   if(defined $filespec{mode});
+        push @newfile,   "name        = $filespec{name}\n";
+        push @newfile,   "comment     = $filespec{comment}\n"                          if(defined $filespec{comment});
+        push @newfile,   "type        = $filespec{type}\n"                   if(defined $filespec{type});
+        push @newfile,   "owner       = $filespec{owner}\n"                  if(defined $filespec{owner});
+        push @newfile,   "group       = $filespec{group}\n"                  if(defined $filespec{group});
+        push @newfile,   "mode        = $filespec{mode}\n"                   if(defined $filespec{mode});
 
-        push @newfile,   "target     = $filespec{target}\n"                 if(defined $filespec{target});
-        push @newfile,   "md5sum     = $filespec{md5sum}  # $timestamp\n"   if(defined $filespec{md5sum});
-        push @newfile,   "major      = $filespec{major}\n"                  if(defined $filespec{major});
-        push @newfile,   "minor      = $filespec{minor}\n"                  if(defined $filespec{minor});
+        push @newfile,   "target      = $filespec{target}\n"                 if(defined $filespec{target});
+        push @newfile,   "md5sum      = $filespec{md5sum}  # $timestamp\n"   if(defined $filespec{md5sum});
+        push @newfile,   "major       = $filespec{major}\n"                  if(defined $filespec{major});
+        push @newfile,   "minor       = $filespec{minor}\n"                  if(defined $filespec{minor});
         push @newfile,   "\n";
 
     }
