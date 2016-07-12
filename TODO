@@ -1,3 +1,41 @@
+- Add "--export | -e" feature.
+
+    Example use:
+
+    --export EXPORTED_REPO_DIR --bundle-file bundle.mgmt
+      or
+    --export EXPORTED_REPO_DIR --regex-match 'regex'
+
+        Creates a new config file in EXPORTED_REPO_DIR, with all the configuration
+        elements from the specified --bundle-file or --regex-match.  Repo
+        contents for included files is also copied into EXPORTED_REPO_DIR.
+
+        This can be run multiple times into the same EXPORTED_REPO_DIR with
+        different portions of a configuration to create a series of new bundle
+        files containing bundle file specific elements.
+
+        The resultant EXPORTED_REPO_DIR can then be packaged up and shipped out
+        as a "known state" to be re-used on other machines.
+
+        DEFAULTS:  As the goal of this option is for sharing of config data, it
+        is designed to be "safe" by default, by only including the current
+        state of the configuration.  Historical elements, such as earlier
+        versions of files, time stamps, etc. are stripped out, leaving a
+        pristine sharable config.  For elements with multiple instances and
+        prioritization, only the element with winning priority is included.
+
+    OPTIONS:
+
+    --full-history
+
+        Includes all history for specified configuration elements.  This
+        includes prior file versions and each declaration of a config element,
+        not just the one with the winning priority.
+
+
+
+- Use /var/log/ssm/ directory for log files
+
 - If Improper [file] definition due to unknown owner or group, then set as dependency not met, but handle gracefully.  No error message during conf file ingest.
 
 --
