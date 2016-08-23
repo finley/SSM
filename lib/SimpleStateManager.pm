@@ -4314,7 +4314,7 @@ sub autoremove_packages_interactive {
 
         if( $pending_pkg_changes{'-autoremove_unsupported'} ) {
 
-            ssm_print "WARNING: Package autoremoves -> not supported by this package manager\n";
+            ssm_print INFO:     Package autoremoves -> not supported by this package manager\n";
 
         } else {
 
