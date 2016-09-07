@@ -73,6 +73,7 @@ GetOptions(
     "af|add-file|add-files=s@"          => \$o{add_file},
     "ap|add-package|add-packages=s@"    => \$o{add_package},
     "bf|bundlefile=s"                   => \$o{bundlefile},
+    "rename-file=s@"                    => \$o{rename_file},
     "analyze-config"                    => \$o{analyze_config},
 ) or usage() and exit(1);
 
@@ -114,6 +115,34 @@ sub main {
 
         } else {
             ssm_print "Tried to add $changes_made files.\n";
+            ssm_print "Encountered $error_level errors.\n";
+            ssm_print qq(\n);
+
+            email_log_file();
+
+            exit $error_level;
+        }
+    }
+    elsif($o{rename_file}) {
+
+        read_config_file();
+
+        ($error_level, $changes_made) = rename_file();
+
+        if( $main::o{debug} ) { 
+            ssm_print "ssm:main(), rename_file results:\n";
+            ssm_print "  \$changes_made:            $changes_made\n";
+            ssm_print "  \$error_level:             $error_level\n";
+            ssm_print "\n";
+        }
+        ssm_print "-------------------------------\n";
+        if($error_level == 0) {
+            ssm_print "Renamed $changes_made files.\n";
+            ssm_print "Encountered $error_level errors.\n";
+            ssm_print qq(\n);
+
+        } else {
+            ssm_print "Tried to rename $changes_made files.\n";
             ssm_print "Encountered $error_level errors.\n";
             ssm_print qq(\n);
 
@@ -232,6 +261,7 @@ sub validate_options {
         exit 1;
     }
 
+    # only_files
     if($o{only_files} and $o{only_packages}) { 
         usage();
         print "\n";
@@ -240,6 +270,7 @@ sub validate_options {
         exit(1);
     }
 
+    # only_this_file conflicts
     if( $o{only_this_file} and $o{only_packages}) { 
         usage();
         print "\n";
@@ -248,6 +279,7 @@ sub validate_options {
         exit(1);
     }
 
+    # add_file conflicts
     if( $o{add_file} and $o{only_packages}) { 
         usage();
         print "\n";
@@ -256,18 +288,49 @@ sub validate_options {
         exit(1);
     }
 
-    if( $o{add_file} and $o{add_package}) { 
-        usage();
-        print "\n";
-        print "The --add-file and --add-package options conflict.  Use one or the other.\n";
-        print "\n";
-        exit(1);
+    if( $o{rename_file} ) {
+        if(
+                $o{add_package} 
+                or $o{sync_state}
+                or $o{summary} 
+                or $o{only_packages} 
+                or $o{only_files} 
+                or $o{only_this_file} 
+                or $o{add_file}
+                or $o{add_package}
+                #or $o{rename_file}
+                or $o{analyze_config}
+            ) { 
+            usage();
+            print "\n";
+            print "The --rename-file option conflicts with one or more of the other options used.\n";
+            print "\n";
+            exit(1);
+        }
+        elsif( ! $ARGV[0] ) {
+            usage();
+            print "\n";
+            print "Make sure that both FILE and NEWFILE are specified...\n";
+            print "\n";
+            print "  Try --rename-file FILE NEWFILE\n";
+            print "\n";
+            exit(1);
+        }
+        elsif( $ARGV[1] ) {
+            usage();
+            print "\n";
+            print "More than two file names were specified...\n";
+            print "\n";
+            print "  Try --rename-file FILE NEWFILE\n";
+            print "\n";
+            exit(1);
+        }
     }
 
     if( $o{add_package} and $o{only_files}) { 
         usage();
         print "\n";
-        print "The --add-package and --only-files options conflict.  Use one or the other.\n";
+        print "The --add-package option conflicts with one or more of the other options used.\n";
         print "\n";
         exit(1);
     }
@@ -318,7 +381,14 @@ sub validate_options {
         $o{no} = 1; 
     }
 
-    unless($o{sync_state} or $o{analyze_config} or $o{add_file} or $o{add_package} or $o{summary}) { 
+    unless(
+        $o{sync_state} 
+        or $o{analyze_config} 
+        or $o{add_file} 
+        or $o{add_package} 
+        or $o{summary}
+        or $o{rename_file}
+        ) { 
         usage();
         print "\n";
         print "Try one of the following:\n";
@@ -331,6 +401,7 @@ sub validate_options {
         print "  --add-file\n";
         print "  --add-package\n";
         print "  --analyze-config\n";
+        print "  --rename-file FILE NEWFILE\n";
         print "\n";
         exit(1);
     }
@@ -457,6 +528,10 @@ OPTIONS
         Implies "--no" and "--sync".  Does not include diff output on files that
         are out of sync.  Only shows a one line summary for each configuration
         element.
+
+    --rename-file FILE NEWFILE
+
+        Rename FILE to NEWFILE in the repository, and mark FILE as unwanted.
 
     --debug
 

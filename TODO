@@ -1,3 +1,42 @@
+- Consider an unwanted file as existing in the definition:
+
+	root@sysmgmt1.ls2.gbi.lenovo.com:/install/ssm# psh wn0103 ssm --summary | grep -i 'not ok' | xcoll
+	====================================
+	wn0103
+	====================================
+	Not OK:  Regular file /etc/group
+	Not OK:  Regular file /etc/passwd
+	Not OK:  Regular file /etc/shadow
+	Not OK:  Unwanted: /etc/yum.repos.d/.bu_backups
+	
+	root@sysmgmt1.ls2.gbi.lenovo.com:/install/ssm# psh wn0103 ssm --summary -otf /etc/yum.repos.d/.bu_backups
+	wn0103:
+	wn0103: ERROR:  The following files were specified with --only-this-file, but do
+	wn0103:         not exist in the definition:
+	wn0103:
+	wn0103:           /etc/yum.repos.d/.bu_backups
+	wn0103:
+	wn0103: *** ssh exited with error code 1.
+
+- Add a --not-ok sub option for --summary
+    - Only shows entries that are _NOT OK_
+
+- Add bzip2 to dep list
+
+- Add a '--rollback DATESTAMP' feature that ties into the "audit" capability.
+
+- Add an audit=on global option that automatically creates and checks things into a local git repo.
+
+- Add a '--list THINGY' option, where THINGY can be:
+        - packages
+        - files
+        - bundles
+
+- Consider this syntax and arguments for apt-get operations:
+
+    apt-get --only-upgrade install xcat*
+
+
 - Add "--export | -e" feature.
 
     Example use:
@@ -40,10 +79,6 @@
 
 --
 
-- ssm --list-bundles
-
---
-
 - Allow non-root use
 
     - only require root when it's actually needed:
@@ -55,11 +90,6 @@
     ssm --summary -of "/path/to/files/*"
 
 - Add ability to comment out '#' packages, when SSM says "need to install ...".
-
-- Add --rename 
-    ssm --rename /oldfile /newfile
-        - implies -only-files
-        - doesn't touch the file system unless --sync also invoked...
 
 --
 
@@ -245,19 +275,6 @@ Add a "apt-get -f install" bit at the appropriate point.
 
 --
 
-- add feature:
-    - ssm --rename /old/file/name /new/file/name
-
-        Renames a file in the repository.
-
-        What it really does is make a copy of the file in the repository to the
-        new name, and updates the specified configuration with it's new name
-        and the date of the change.  This leaves the original file in place for
-        audit purposes.
-
-
---
-
 - Send highest level statements to syslog
     - Not OK
     - OK
@@ -336,11 +353,6 @@ Add a "apt-get -f install" bit at the appropriate point.
 
     WARNING: Configuration file in /etc/ssm/default is $CONF_FILE,
     but $EXPLICIT_CONF is being used instead...
-
-- add a '--list THINGY' option, where THINGY can be:
-        - packages
-        - files
-        - bundles
 
 - Make bundles read-only be default, so that when doing an --add-file from one
   node class, you don't overwrite settings for a more general node class.

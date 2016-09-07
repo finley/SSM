@@ -45,6 +45,7 @@ use Exporter;
                 email_log_file
                 add_new_files
                 add_new_packages
+                rename_file
             );
 
 use strict;
@@ -298,7 +299,31 @@ sub get_current_time_as_timestamp {
 
 sub _initialize_log_file {
 
-    my $log_file = "/var/log/" . basename($0);
+    my $log_dir  = "/var/log/ssm";
+    my $log_file = $log_dir . "/" . basename($0);
+
+    if( ! -d $log_dir ) {
+
+        my $tmp_file;
+
+        if( -f $log_dir ) {
+
+            my $file = $log_dir;
+            $tmp_file = choose_tmp_file();
+
+            copy("$file","$tmp_file") or die "Couldn't copy $file to $tmp_file\n";
+            unlink $file;
+        }
+
+        my $dir = $log_dir;
+        eval { make_path("$dir", { verbose => 0, mode => 0775, }) };
+        if($@) { 
+            print "Couldn’t create ssm log dir $dir\n";
+            exit 1;
+        }
+
+        move("$tmp_file","$log_file") or die "Couldn't move $tmp_file to $log_file\n";
+    }
 
     my $starting_lognumber = 1;
     my $ending_lognumber = 49;
@@ -4314,7 +4339,7 @@ sub autoremove_packages_interactive {
 
         if( $pending_pkg_changes{'-autoremove_unsupported'} ) {
 
-            ssm_print INFO:     Package autoremoves -> not supported by this package manager\n";
+            ssm_print "INFO:     Package autoremoves -> not supported by this package manager\n";
 
         } else {
 
@@ -4829,6 +4854,95 @@ sub declare_OK_or_Not_OK {
     ssm_print $message . "\n";
 
     return 1;
+}
+
+
+sub rename_file {
+
+    my $file = shift @{$::o{rename_file}};
+    my $newfile = shift @ARGV;
+
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
+    if($BUNDLEFILE{$newfile}) {
+        #
+        # Prevent people from accidentally running twice in a row and
+        # accidentally turning their new file into an 'unwanted' file...
+        #
+        ssm_print qq(\n);
+        ssm_print "WARNING: Rename target $newfile already has an entry in the configuration.\n";
+        ssm_print "         Not renaming.\n";
+        ssm_print qq(\n);
+        $ERROR_LEVEL++;
+
+        return ($ERROR_LEVEL, $CHANGES_MADE);
+    }
+
+    my $bundlefile = $BUNDLEFILE{$file};
+    my $tmp_bundlefile;
+
+    #
+    #   Grab filespec info from existing file definition read in from the
+    #   config file
+    #
+    my %filespec;
+    $filespec{type}     = $TYPE{$file};
+    $filespec{name}     = $file;
+    $filespec{owner}    = $OWNER{$file}     if($OWNER{$file});
+    $filespec{group}    = $GROUP{$file}     if($GROUP{$file});
+    $filespec{mode}     = $MODE{$file}      if($MODE{$file});
+    $filespec{target}   = $TARGET{$file}    if($TARGET{$file});
+    $filespec{major}    = $MAJOR{$file}     if($MAJOR{$file});
+    $filespec{minor}    = $MINOR{$file}     if($MINOR{$file});
+    $filespec{md5sum}   = $MD5SUM{$file}    if($MD5SUM{$file});
+
+    #
+    # 1) Get a copy of the existing file, if it's a regular file, then use the
+    #    copy_file_to_upstream_repo function to plop it back in the repo, but
+    #    with it's new name.  If it has no md5sum, then there's no file in the
+    #    repo to copy to a new name. ;-)
+    #
+    if($filespec{md5sum}) {
+        my $url = qq($::o{base_url}/$file/$MD5SUM{$file});
+        my $tmp_file = get_file($url, 'warn');
+        my $filename_in_repo = "$newfile/$filespec{md5sum}";
+        copy_file_to_upstream_repo($tmp_file, $filename_in_repo);
+    }
+
+    #
+    # 2) Add stanza based on existing filespec, but with new file name, using
+    #    existing bundlefile.
+    #
+    $filespec{name} = $newfile;
+    $BUNDLEFILE{$newfile} = $bundlefile;
+    #
+    $tmp_bundlefile = update_or_add_file_stanza_to_bundlefile( %filespec );
+    copy_file_to_upstream_repo($tmp_bundlefile, $bundlefile);
+    unlink $tmp_bundlefile;
+
+    #
+    # 3) Update filespec info stanza for old file name, but change to be
+    #    'unwanted'
+    #
+    $filespec{name}     = $file;
+    $filespec{type}     = 'unwanted';
+    delete $filespec{owner};
+    delete $filespec{group};
+    delete $filespec{mode};
+    delete $filespec{target};
+    delete $filespec{major};
+    delete $filespec{minor};
+    delete $filespec{md5sum};
+    #
+    $tmp_bundlefile = update_or_add_file_stanza_to_bundlefile( %filespec );
+    copy_file_to_upstream_repo($tmp_bundlefile, $bundlefile);
+    unlink $tmp_bundlefile;
+
+    $CHANGES_MADE++;
+
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
+
+    return ($ERROR_LEVEL, $CHANGES_MADE);
 }
 
 
