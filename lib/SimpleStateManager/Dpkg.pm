@@ -141,19 +141,17 @@ sub install_pkgs {
         ssm_print "FIXING:  Packages -> Downloading...\n";
         #
         # -q=2          -- quiet level 2
-        # --yes         -- assume "yes" as answer to all prompts and run non-interactively.  Some actions still prompt, therefore the need for --force-yes below.
-        # --force-yes   -- don't prompt
+        # --yes         -- assume "yes" as answer to all prompts and run non-interactively.  Some actions still prompt, therefore the need for --allow-downgrades --allow-remove-essential below.
         # --download-only   -- download files to local cache, but don't install
-        $cmd = 'DEBIAN_FRONTEND=noninteractive apt-get -q=2 --force-yes --yes --download-only install';
+        $cmd = 'DEBIAN_FRONTEND=noninteractive apt-get -q=2 --allow-downgrades --allow-remove-essential --yes --download-only install';
         run_cmd($cmd);
 
         ssm_print "FIXING:  Packages -> Installing...\n";
         #
         # -q=2          -- quiet level 2
-        # --yes         -- assume "yes" as answer to all prompts and run non-interactively.  Some actions still prompt, therefore the need for --force-yes below.
-        # --force-yes   -- don't prompt
+        # --yes         -- assume "yes" as answer to all prompts and run non-interactively.  Some actions still prompt, therefore the need for --allow-downgrades --allow-remove-essential below.
         # -o Dpkg::Options::="--force-confold"  --  don't overwrite existing config files
-        $cmd = 'DEBIAN_FRONTEND=noninteractive apt-get -q=2 --force-yes --yes -o Dpkg::Options::="--force-confold" install' . $pkgs;
+        $cmd = 'DEBIAN_FRONTEND=noninteractive apt-get -q=2 --allow-downgrades --allow-remove-essential --yes -o Dpkg::Options::="--force-confold" install' . $pkgs;
         run_cmd($cmd);
 
         # Remove any packages lying around in the cache.  Again.
@@ -166,7 +164,7 @@ sub install_pkgs {
 #    #
 #    # Test for broken packages
 #    if( test_for_broken_packages() ) {
-#        apt_get_fix_broken();
+#        apt_get_fix_broken(); Maybe, apt-get -f install ?
 #        if( test_for_broken_packages() ) {
 #            #
 #            #   Still b0rken
@@ -195,9 +193,9 @@ sub remove_pkgs {
         ssm_print "FIXING:  Packages -> Removing.\n";
         #
         # -q=2          -- quiet level 2
-        # --yes         -- assume "yes" as answer to all prompts and run non-interactively.  Some actions still prompt, therefore the need for --force-yes below.
-        # --force-yes   -- don't prompt
-        $cmd = 'DEBIAN_FRONTEND=noninteractive apt-get -q=2 --force-yes --yes remove' . $cmd;
+        # --yes         -- assume "yes" as answer to all prompts and run non-interactively.  Some actions still prompt, therefore the need for --allow-downgrades --allow-remove-essential below.
+        # --allow-downgrades --allow-remove-essential   -- don't prompt
+        $cmd = 'DEBIAN_FRONTEND=noninteractive apt-get -q=2 --allow-downgrades --allow-remove-essential --yes remove' . $cmd;
         run_cmd($cmd);
     }
 

@@ -4464,6 +4464,7 @@ sub install_packages_interactive {
             }
         }
 
+        my @installs;
         my @sort_list;
         foreach my $pkg (sort keys %pending_pkg_changes) {
 
@@ -4471,13 +4472,28 @@ sub install_packages_interactive {
             my $pad = get_pad($max_length - length($action));
 
             push @sort_list, "- ${action}${pad} $pkg";
+
+            if($action ne 'remove') {
+                #
+                # If it's not a remove, then it's either an upgrade or an
+                # install, and we handle them both the same way. 
+                #
+                push @installs, $pkg;
+                #
+                # So why do we ignore 'remove' entries?  It's because the
+                # package managers handle that atomically when the install of
+                # one package requires the removal of another.  In other words,
+                # doing the 'install' will automatically result in the 'remove'
+                # of the other packages. -BEF-
+                #
+            }
         }
 
         foreach my $line (sort @sort_list) {
             ssm_print "         $line\n";
         }
 
-        take_pkg_action('install_pkgs', (keys %pending_pkg_changes) );
+        take_pkg_action('install_pkgs', @installs );
 
     } else {
         ssm_print "OK:      Package installs\n";
