@@ -2678,17 +2678,19 @@ sub diff_file {
                 $diff = _which($_);
                 last if( defined($diff) );
             }
-            $diff_cmd = "$diff -y";
+            #$diff_cmd = "$diff -y";
+            $diff_cmd = "$diff -u";
         }
     } else {
-        if($::o{diff_non_interactive}) {
+        if($::o{diff_interactive}) {
             $diff_cmd = $::o{diff_interactive};
         } else {
             foreach( "colordiff", "diff") {
                 $diff = _which($_);
                 last if( defined($diff) );
             }
-            $diff_cmd = "$diff -y";
+            #$diff_cmd = "$diff -y";
+            $diff_cmd = "$diff -u";
         }
     }
 
@@ -2880,7 +2882,8 @@ sub get_file {
 
     $failure_behavior = 'error' if( ! defined $failure_behavior );
 
-    my $tmp_file = choose_tmp_file();
+    my $base_file_name = "/tmp/repo-version_of_file";
+    my $tmp_file = choose_tmp_file($base_file_name);
 
     # remove multiple slashes anywhere but after a protocol specifier
     $file =~ s#([^:/])/+#$1/#g;
@@ -2944,14 +2947,19 @@ sub get_file {
 
 #
 # my $tmp_file = choose_tmp_file();
+# my $tmp_file = choose_tmp_file($base_file_name);
 #
 sub choose_tmp_file {
 
+    my $file = shift;
+
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(1))[3] . ":" . (caller(1))[2] . "() " . (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
-    my $count = 0;
-    my $file = "/tmp/system-state-manager_tmp_file";
+    unless($file) {
+        $file = "/tmp/system-state-manager_tmp_file";
+    }
 
+    my $count = 0;
     while( -e "$file.$count" ) {
         $count++;
     }
