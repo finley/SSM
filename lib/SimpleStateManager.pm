@@ -46,12 +46,14 @@ use Exporter;
                 add_new_files
                 add_new_packages
                 rename_file
+                export_config
             );
 
 use strict;
 
 # Filesystem related
 use File::Copy;
+#                 Use 'make_path' as preferred to 'mkpath' or 'mkdir -p'
 use File::Path qw(make_path);
 use File::Basename;
 use Unix::Mknod qw(:all);
@@ -200,6 +202,7 @@ my (
     %BUNDLEFILE,  # name of bundlefile where each file or package is defined
     %BUNDLEFILE_LIST,   # simple list of bundle files
     %TMPFILE,     # name of a temporary file associated with a file
+    %GLOBAL_ENTRIES,    # simple list of global variables
 );
 
 my $OUTSTANDING_PACKAGES_TO_INSTALL   = 0;
@@ -491,31 +494,47 @@ sub read_config_file {
                 # Allow "key = value" or "key=value" type definitions.
                 s/\s*=\s*/ /o;
 
-                if( m/^pkg_manager\s+(.*)(\s|#|$)/ )                { $::o{pkg_manager} = lc($1); }
-                if( m/^pkg_manager_autoremove\s+(.*)(\s|#|$)/ )     { $::o{pkg_manager_autoremove} = lc($1); }
-                if( m/^base_ur[il]\s+(.*)(\s|#|$)/ )                { $::o{base_url} = $1; }
-                if( m/^upload_url\s+(.*)(\s|#|$)/ )                 { $::o{upload_url} = $1; }
-                if( m/^email_log_to\s+(.*)(\s|#|$)/ )               { $::o{email_log_to} = $1; }
-                if( m/^log_file_perms\s+(.*)(\s|#|$)/ )             { $::o{log_file_perms} = $1; }
-                if( m/^remove_running_kernel\s+(.*)(\s|#|$)/ )      { $::o{remove_running_kernel} = $1; }
-                if( m/^upgrade_ssm_before_sync\s+(.*)(\s|#|$)/ )    { $::o{upgrade_ssm_before_sync} = $1; }
-                if( m/^pkg_repo_update\s+(.*)(\s|#|$)/ )            { $::o{pkg_repo_update} = $1; }
-                if( m/^pkg_repo_update_window\s+(.*)(\s|#|$)/ )     { $::o{pkg_repo_update_window} = $1; }
+                foreach my $option_name ( "pkg_manager", 
+                                          "pkg_manager_autoremove", 
+                                          "upload_url", 
+                                          "email_log_to", 
+                                          "log_file_perms", 
+                                          "remove_running_kernel", 
+                                          "upgrade_ssm_before_sync", 
+                                          "pkg_repo_update", 
+                                          "pkg_repo_update_window", 
+                                          "base_url", 
+                                          "git_url", 
+                                          "svn_url", 
 
-                ###############################################################################
-                #
-                # BEGIN  deprecated, but leave in for warning messages, etc.
-                #
-                if( m/^git_ur[il]\s+(.*)(\s|#|$)/ )                 { $::o{git_url} = $1; }  
-                if( m/^svn_ur[il]\s+(.*)(\s|#|$)/ )                 { $::o{svn_url} = $1; }  
-                #
-                # END  deprecated
-                #
-                ###############################################################################
+                                          # Deprecated versions using URI
+                                          "base_uri", 
+                                        ) {
+
+                    if( m/^$option_name\s+(.*)(\s|#|$)/ ) { 
+
+                        $::o{$option_name} = lc($1); 
+
+                        $BUNDLEFILE{$option_name} = $bundlefile if(defined $bundlefile);
+                        #   It's possible that a global value was passed as an
+                        #   argument, outside of a bundlefile
+                    }
+                }
 
                 $_ = shift @input;
             }
 
+            #
+            # Standardize on URL, but support deprecated URI
+            #
+            if($::o{base_uri} and ! $::o{base_url}) {
+                $::o{base_url} = $::o{base_uri};
+            }
+
+
+            ######################################################################## 
+            #
+            #   BEGIN Let's set some defaults, eh?
             #
             # If base_url is using the file:// style URL, then we can assume that
             # upload_url should be the same, unless explicitly specified. -BEF-
@@ -541,16 +560,21 @@ sub read_config_file {
                 $::o{pkg_manager} = 'none';
             }
 
+            if( ! defined $::o{remove_running_kernel} ) { 
+                # Default to "no"
+                $::o{remove_running_kernel} = 'no';
+            }
+
+            #
+            #   END Let's set some defaults, eh?
+            #
+            ######################################################################## 
+ 
             #
             # Make sure it's one we support
             #
             unless( $valid_pkg_managers{$::o{pkg_manager}} ) {
                 please_specify_a_valid_pkg_manager();
-            }
-
-            if( ! defined $::o{remove_running_kernel} ) { 
-                # Default to "no"
-                $::o{remove_running_kernel} = 'no';
             }
         } 
 
@@ -566,8 +590,10 @@ sub read_config_file {
                     # do nothing
                 }
 
-                # Match only the first entry on the line.  This allows 
-                # for comments after an entry. -BEF-
+                #
+                # Match only the first entry on the line.  This allows for
+                # comments after an entry. -BEF-
+                #
                 elsif( m/^([\S]+)/ ) {
                     push( @input, _include_bundle($1) );
                 }
@@ -2642,16 +2668,27 @@ sub diff_file {
     }
 
     my $diff;
+    my $diff_cmd;
     if( $::o{no} or $::o{yes}) {
-        # Never use colordiff if non-interactive
-        foreach( "diff") {
-            $diff = _which($_);
-            last if( defined($diff) );
+        if($::o{diff_non_interactive}) {
+            $diff_cmd = $::o{diff_non_interactive};
+        } else {
+            # Never use colordiff if non-interactive
+            foreach( "diff") {
+                $diff = _which($_);
+                last if( defined($diff) );
+            }
+            $diff_cmd = "$diff -y";
         }
     } else {
-        foreach( "colordiff", "diff") {
-            $diff = _which($_);
-            last if( defined($diff) );
+        if($::o{diff_non_interactive}) {
+            $diff_cmd = $::o{diff_interactive};
+        } else {
+            foreach( "colordiff", "diff") {
+                $diff = _which($_);
+                last if( defined($diff) );
+            }
+            $diff_cmd = "$diff -y";
         }
     }
 
@@ -2666,7 +2703,7 @@ sub diff_file {
     }
     ssm_print "           <<< On This Machine            |       In the Repository >>>\n\n";
 
-    my $cmd = "$diff -y $file $tmp_file";
+    my $cmd = qq($diff_cmd "$file" "$tmp_file");
 
     run_cmd($cmd, undef, 1);
 
@@ -2851,8 +2888,8 @@ sub get_file {
     if( ($file =~ m#^file://#) or ($file =~ m#^/#) ) {
 
         $file =~ s#file://#/#;
-        $file =~ s/(\s+|#).*//;
-        if( ! -e $file ) {
+
+        if( ! -e "$file" ) {
             if( $failure_behavior eq 'error' ) {
                 ssm_print_always "ERROR: $file doesn't exist...\n\n" unless($silent);
                 exit 1;
@@ -4953,6 +4990,85 @@ sub rename_file {
     $tmp_bundlefile = update_or_add_file_stanza_to_bundlefile( %filespec );
     copy_file_to_upstream_repo($tmp_bundlefile, $bundlefile);
     unlink $tmp_bundlefile;
+
+    $CHANGES_MADE++;
+
+    if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
+
+    return ($ERROR_LEVEL, $CHANGES_MADE);
+}
+
+
+sub list_bundlefiles {
+
+    foreach my $bundlefile (sort keys %BUNDLEFILE_LIST) {
+        ssm_print "Bundle:  $bundlefile\n";
+    }
+
+    return ($ERROR_LEVEL, $CHANGES_MADE);
+}
+
+
+sub export_config {
+
+    my $export_dir  = $::o{export_config};
+    my $dir = $export_dir;
+
+    my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
+
+    if( -e $dir and ! -d $dir ) {
+        ssm_print "\n";
+        ssm_print "ERROR:  EXPORT_DIR $dir exists, but is not a directory.\n";
+        ssm_print "        Exiting with no action taken.\n";
+        ssm_print "\n";
+
+        $ERROR_LEVEL++;
+
+        return ($ERROR_LEVEL, $CHANGES_MADE);
+    }
+
+    # foreach bundlefile in list of bundlefiles
+    foreach my $bundlefile (sort keys %BUNDLEFILE_LIST) {
+
+        #print "bundlefile $bundlefile\n";
+
+        #
+        #   1) open target bundlefile for writing, and add each element
+        #
+        my $file = "$dir/$bundlefile";
+        my $path = dirname($file);
+
+        # If path doesn't exist, create it here
+        #
+        #   We do this for every bundlefile, because bundlefiles can live in
+        #   directories.  Technically, they can live on remote URLs also, so I
+        #   suppose we need to add code to handle that also... XXX
+        #
+        #   Should we:
+        #   a) Leave them as remote references, and not pull them down? (I
+        #      kinda like this one best -BEF-)
+        #   b) Pull the files down into EXPORT_DIR and give them a unique 
+        #      local name?
+        #
+        eval { make_path($path) };
+        if($@) { ssm_print "Couldn’t create $path: $@"; }
+
+        open(FILE,">$file") or die("Couldn't open $file for writing");
+            #   foreach $global_entry
+            #       write entry to target bundlefile
+            for my $global_entry (sort keys %{$::o}) {
+                print "Global Entry $global_entry\n";
+            }
+
+            #   foreach $file in sorted list
+            #       if type 'regular', copy file into EXPORT_DIR repo
+            #       write file entry to target bundlefile
+
+            #   foreach $package
+            #       write entry to target bundlefile
+
+        close(FILE);
+    }
 
     $CHANGES_MADE++;
 

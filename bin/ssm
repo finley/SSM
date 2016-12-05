@@ -75,6 +75,7 @@ GetOptions(
     "bf|bundlefile=s"                   => \$o{bundlefile},
     "rename-file=s@"                    => \$o{rename_file},
     "analyze-config"                    => \$o{analyze_config},
+    "export-config=s"                   => \$o{export_config},
 ) or usage() and exit(1);
 
 my $error_level = 0;
@@ -189,6 +190,31 @@ sub main {
             exit $error_level;
         }
     } 
+    elsif($o{export_config}) {
+
+        read_config_file();
+
+        ($error_level) = export_config();
+
+        if( $main::o{debug} ) { 
+            ssm_print "ssm:main(), export_config results:\n";
+            ssm_print "  \$error_level:             $error_level\n";
+            ssm_print "\n";
+        }
+        ssm_print "-------------------------------\n";
+        if($error_level == 0) {
+            ssm_print "Encountered $error_level errors.\n";
+            ssm_print qq(\n);
+
+        } else {
+            ssm_print "Encountered $error_level errors.\n";
+            ssm_print qq(\n);
+
+            email_log_file();
+
+            exit $error_level;
+        }
+    }
 
 
     if($o{sync_state}) {
@@ -300,6 +326,7 @@ sub validate_options {
                 or $o{add_package}
                 #or $o{rename_file}
                 or $o{analyze_config}
+                or $o{export_config}
             ) { 
             usage();
             print "\n";
@@ -388,6 +415,7 @@ sub validate_options {
         or $o{add_package} 
         or $o{summary}
         or $o{rename_file}
+        or $o{export_config}
         ) { 
         usage();
         print "\n";
@@ -402,6 +430,7 @@ sub validate_options {
         print "  --add-package\n";
         print "  --analyze-config\n";
         print "  --rename-file FILE NEWFILE\n";
+        print "  --export-config EXPORT_DIR\n";
         print "\n";
         exit(1);
     }
@@ -412,6 +441,28 @@ sub validate_options {
         print "         the --sync option is unnecessary.  Proceeding anyway...\n";
         print "\n";
         sleep 1;
+    }
+
+    if( $o{export_config} ) {
+        if(
+                $o{add_package}
+                or $o{sync_state}
+                or $o{summary} 
+                #or $o{only_packages} 
+                #or $o{only_files} 
+                #or $o{only_this_file} 
+                or $o{add_file}
+                or $o{add_package}
+                or $o{rename_file}
+                or $o{analyze_config}
+                #or $o{export_config}
+            ) { 
+            usage();
+            print "\n";
+            print "The --export-config option conflicts with one or more of the other options used.\n";
+            print "\n";
+            exit(1);
+        }
     }
 
     return 1;
@@ -494,6 +545,20 @@ OPTIONS
         specified.
 
         Defaults to the main config file.
+
+    --export-config EXPORT_DIR
+
+        Creates a copy of the configuration in EXPORT_DIR that matches the
+        current configuration state.  
+        
+        DEFAULTS:  As the primary goal of this option is for sharing of config
+        data, it is designed to be "safe" by default, by ONLY including the
+        current state of the configuration.  Historical elements, such as
+        earlier versions of files, time stamps, etc. are stripped out, leaving
+        a pristine sharable config.  
+        
+        XXX For elements with multiple instances and prioritization, only the
+        element with winning priority is included. XXX
 
     --config URL
 
