@@ -1,3 +1,17 @@
+- Handle this gracefully:
+
+    ssm -ap packagename
+        # adds package (duh)
+
+    ssm -rp packagename     
+        # -rp == --remove-package (new argument)
+        #   - comments out existing entry w/timestamp
+        #   - adds new entry with packagename set to unwanted
+
+    ssm -ap packagename     
+        # - should comment out the remove-package entry with a timestamp, and
+        # add a new entry called "add package"
+
 - on summary output, include bundle for each element off to the right
 
 - on diff screens, show timestamp of local and repo versions
