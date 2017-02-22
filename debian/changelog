@@ -1,3 +1,29 @@
+simple-state-manager (0.7.2) stable; urgency=medium
+
+  * 51d45f4 .
+  * c79cb17 - Improve diff_file() routine.  Use unified by default.
+    Better indication of which file is the repo file vs. local file.
+  * d25cb4c - Improve/simplify global options processing - Improvements
+    to diff_file() routine in preparation of supporting user specified
+    diff programs/options. - Remove one odd regex substitution in the
+    get_file() routine.  I couldn't figure out why it is there and it
+    was causing problems in files with spaces in the name:  $file =~
+    s/(s+|#).*//; - Add list_bundlefiles() routine - Add export_config()
+    routine - Add initial code for --export-config option
+  * 96f9c9c - Improve handling of packages (with any pkg manager) when
+    install or   upgrade of one package requires the removal of another.
+    - Fix warning about deprecated --force-yes option with apt-get
+    and/or   dpkg as package manager.
+  * 4166223 - Write log files to /var/log/ssm, instead of /var/log. -
+    Add --rename FILE NEWFILE feature.
+  * 7ca1775 Verbiage
+  * a0161ea - Add new file entries with spaces that are a multiple of 4,
+    for easier tabbing when editing config files manually. ;-)
+  * f5f305d .
+  * 2069316 Deb pkg tweaks
+
+ -- Brian Finley <bfinley@tbob>  Wed, 22 Feb 2017 17:08:58 -0600
+
 simple-state-manager (0.7.1) stable; urgency=medium
 
   * 0fb20f4 - fix annoying 0 509 dirs in local dir bug.

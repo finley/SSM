@@ -1,3 +1,11 @@
+- Allow "i" for Ignore as an option in this situation:
+
+	Not OK:  Unwanted: /etc/apt/sources.list.d/google-chrome.list.save
+	         Need to:
+	         - remove /etc/apt/sources.list.d/google-chrome.list.save
+	         Shall I do this? [N/y/a/i/#/?]: i
+
+
 - Handle this gracefully:
 
     ssm -ap packagename
