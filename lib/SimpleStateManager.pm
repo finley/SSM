@@ -257,6 +257,7 @@ sub ssm_print {
 sub _initialize_variables {
 
     (   %::PKGS_FROM_STATE_DEFINITION,
+        %::VARS_FROM_STATE_DEFINITION,
         %TYPE,
         %MODE,
         %OWNER,
@@ -273,6 +274,7 @@ sub _initialize_variables {
         %GENERATOR,
         %BUNDLEFILE,
         %BUNDLEFILE_LIST,
+        #XXX Really really need to turn these into a single canonical structure, where changing one file name changes it everwhere...
     ) = ();
     
     $ERROR_LEVEL = 0;
@@ -943,7 +945,87 @@ sub read_config_file {
                 return report_improper_file_definition($name);
             }
         }
+
+        # 
+        # [variables] section
+        #
+        elsif( m/^\[variables\]/ ) {
+
+            $_ = shift @input;
+            until( m/$stanza_terminator/ ) {
+
+                if( m/$comment/ ) {
+                    # do nothing
+                } else {
+                    my ($var, $expression) = split(/=/);
+                    $var =~ s/^\s+//;   # Strip spaces from the front (shouldn't happen)
+                    $var =~ s/\s+$//;   # and back of the var name.
+
+                    if(defined $::VARS_FROM_STATE_DEFINITION{$var}) {
+                        ssm_print_always "[variables]: \$$var is defined more than once.\n";
+                        # XXX Later fix this to handle priorities? -BEF-
+                        exit 1;
+
+                    } else {
+                        $::VARS_FROM_STATE_DEFINITION{$var} = `$expression`;
+                        chomp $::VARS_FROM_STATE_DEFINITION{$var};
+                    }
+
+                    if($::o{debug}) { 
+                        ssm_print_always "[variables]: $var => $::VARS_FROM_STATE_DEFINITION{$var}\n";
+                    }
+
+                    #
+                    # For --analyze-config option. -BEF-
+                    my $priority = 0;
+                    push @analyze, qq($priority \$$var $bundlefile);
+                }
+
+                $_ = shift @input;
+            }
+        }
     }  
+
+    #
+    # Do variable substitutions
+    #
+    foreach my $var (keys %::VARS_FROM_STATE_DEFINITION) {
+
+        #
+        #   Process substitutions in file _names_
+        #
+        foreach my $file (keys %TYPE) {
+
+            my $orig_file = $file;
+            if( $file =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g ) {
+                #print "BEFORE: $orig_file\n";
+                #print "AFTER:  $file\n";
+                if( $TYPE{$orig_file}            ) { $TYPE{$file}            = delete $TYPE{$orig_file}               ;}
+                if( $MODE{$orig_file}            ) { $MODE{$file}            = delete $MODE{$orig_file}               ;}
+                if( $OWNER{$orig_file}           ) { $OWNER{$file}           = delete $OWNER{$orig_file}              ;}
+                if( $GROUP{$orig_file}           ) { $GROUP{$file}           = delete $GROUP{$orig_file}              ;}
+                if( $MD5SUM{$orig_file}          ) { $MD5SUM{$file}          = delete $MD5SUM{$orig_file}             ;}
+                if( $MAJOR{$orig_file}           ) { $MAJOR{$file}           = delete $MAJOR{$orig_file}              ;}
+                if( $MINOR{$orig_file}           ) { $MINOR{$file}           = delete $MINOR{$orig_file}              ;}
+                if( $TARGET{$orig_file}          ) { $TARGET{$file}          = delete $TARGET{$orig_file}             ;}
+                if( $PRESCRIPT{$orig_file}       ) { $PRESCRIPT{$file}       = delete $PRESCRIPT{$orig_file}          ;}
+                if( $POSTSCRIPT{$orig_file}      ) { $POSTSCRIPT{$file}      = delete $POSTSCRIPT{$orig_file}         ;}
+                if( $DEPENDS{$orig_file}         ) { $DEPENDS{$file}         = delete $DEPENDS{$orig_file}            ;}
+                if( $DETAILS{$orig_file}         ) { $DETAILS{$file}         = delete $DETAILS{$orig_file}            ;}
+                if( $PRIORITY{$orig_file}        ) { $PRIORITY{$file}        = delete $PRIORITY{$orig_file}           ;}
+                if( $GENERATOR{$orig_file}       ) { $GENERATOR{$file}       = delete $GENERATOR{$orig_file}          ;}
+                    #XXX Really really need to turn these into a single canonical structure, where changing one file name changes it everwhere...
+            }
+        }
+
+        #
+        #   Process substitutions in generators
+        #
+        foreach my $file (keys %GENERATOR) {
+            $GENERATOR{$file} =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g;
+        }
+    }
+
 
     if( $::o{analyze_config} ) {
 
