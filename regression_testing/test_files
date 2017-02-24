@@ -40,7 +40,7 @@ run_cmd() {
 }
 
 cmd="sudo ssm -c $conf --sync --summary"
-expectations="Expect 4 warnings, 3 OK, the rest Not OK"
+expectations="Expect 4 warnings, 6 OK, the rest Not OK"
 run_cmd
 
 cmd="sudo ssm -c $conf --sync --no"
