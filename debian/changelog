@@ -1,3 +1,9 @@
+simple-state-manager (0.7.4) stable; urgency=medium
+
+  * 8ece8cc Add multi-line variable evaluator capability
+
+ -- Brian Finley <bfinley@tbob>  Fri, 24 Feb 2017 14:44:53 -0600
+
 simple-state-manager (0.7.3) stable; urgency=medium
 
   * f8ff8d7 Add feature: [variables] section, w/file name and generator
