@@ -1053,7 +1053,10 @@ sub read_config_file {
                 if( $DETAILS{$orig_file}         ) { $DETAILS{$file}         = delete $DETAILS{$orig_file}            ;}
                 if( $PRIORITY{$orig_file}        ) { $PRIORITY{$file}        = delete $PRIORITY{$orig_file}           ;}
                 if( $GENERATOR{$orig_file}       ) { $GENERATOR{$file}       = delete $GENERATOR{$orig_file}          ;}
-                    #XXX Really really need to turn these into a single canonical structure, where changing one file name changes it everwhere...
+
+                    #    XXX Really really need to turn these into a single
+                    #    canonical structure, where changing one file name changes
+                    #    it everwhere...
             }
         }
 
@@ -1062,6 +1065,13 @@ sub read_config_file {
         #
         foreach my $file (keys %GENERATOR) {
             $GENERATOR{$file} =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g;
+        }
+
+        #
+        #   Process [variables] substitutions in depends
+        #
+        foreach my $file (keys %DEPENDS) {
+            $DEPENDS{$file} =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g;
         }
     }
 
