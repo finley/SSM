@@ -325,7 +325,9 @@ sub _initialize_log_file {
             exit 1;
         }
 
-        move("$tmp_file","$log_file") or die "Couldn't move $tmp_file to $log_file\n";
+        if( $tmp_file ) {
+            move("$tmp_file","$log_file") or die "Couldn't move $tmp_file to $log_file\n";
+        }
     }
 
     my $starting_lognumber = 1;
@@ -2696,14 +2698,13 @@ sub diff_file {
 
     ssm_print "\n";
     ssm_print "           <<<------------------------------------------------------>>>\n";
-    ssm_print "           Here's a diff between the file on your system (left side) and the\n";
-    ssm_print "           one in the repository (right side).\n";
-    if( ! -e $file ) {
+    ssm_print "           Here's a diff between the file on your system (on top ---)\n";
+    ssm_print "           and the file from the repository (on bottom +++).\n";
+    if( ! -e "$file" ) {
         print "\n";
         print "           $file does not yet exist, so diffing against /dev/null.\n";
         $file = '/dev/null';
     }
-    ssm_print "           <<< On This Machine            |       In the Repository >>>\n\n";
 
     my $cmd = qq($diff_cmd "$file" "$tmp_file");
 
