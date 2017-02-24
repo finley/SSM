@@ -853,7 +853,7 @@ sub read_config_file {
                 } elsif($key eq 'generator') { 
 
                     # Match HERE documents, but ignore unquoted leading or trailing spaces. -BEF-
-                    if( $value =~ m/^<<\s*(.*)\s*$/ ) {
+                    if( $value =~ m/^\s*<<\s*(.*)\s*$/ ) {
 
                         #
                         # Ok, cool!  We got ourselves a multi-line generator on our hands...
@@ -957,7 +957,8 @@ sub read_config_file {
                 if( m/$comment/ ) {
                     # do nothing
                 } else {
-                    my ($var, $expression) = split(/=/);
+
+                    my ($var, $expression) = split(/=/, $_, 2);
                     $var =~ s/^\s+//;   # Strip spaces from the front (shouldn't happen)
                     $var =~ s/\s+$//;   # and back of the var name.
 
@@ -966,10 +967,48 @@ sub read_config_file {
                         # XXX Later fix this to handle priorities? -BEF-
                         exit 1;
 
-                    } else {
-                        $::VARS_FROM_STATE_DEFINITION{$var} = `$expression`;
-                        chomp $::VARS_FROM_STATE_DEFINITION{$var};
                     }
+
+                    next if(! defined $expression);
+
+                    ## Match HERE documents, but ignore unquoted leading or trailing spaces. -BEF-
+                    if( $expression =~ m/^\s*<<\s*(.*)\s*$/ ) {
+
+                        #
+                        # Ok, cool!  We got ourselves a multi-line expression on our hands...
+                        #
+                        my $here_target = $1;
+
+                        # read in the rest of the document.
+                        $expression = "";
+                        $_ = shift @input;
+                        until( m/^$here_target$/ ) {
+                            $expression .= $_;
+                            $_ = shift @input;
+                        }
+                    }
+
+                    #
+                    # Take the expression and write it into an executable file and capture the output value
+                    my $expression_script = choose_tmp_file();
+                    open(FILE,">$expression_script") or die("Couldn't open $expression_script for writing.");
+                    print FILE $expression;
+                    close(FILE);
+                    chmod oct(700), $expression_script;
+                    
+                    # Execute expression and capture results
+                    if( $::o{debug} ) { print ">>>  The Expressionist(tm): $expression_script\n"; }
+                    
+                    my $value;
+                    open(INPUT,"$expression_script|") or die("Couldn't run $expression_script $!");
+                    while(<INPUT>) {
+                        $value .= $_;
+                    }
+                    close(INPUT);
+                    unlink $expression_script;
+                    
+                    chomp $value;
+                    $::VARS_FROM_STATE_DEFINITION{$var} = $value;
 
                     if($::o{debug}) { 
                         ssm_print_always "[variables]: $var => $::VARS_FROM_STATE_DEFINITION{$var}\n";
@@ -992,7 +1031,7 @@ sub read_config_file {
     foreach my $var (keys %::VARS_FROM_STATE_DEFINITION) {
 
         #
-        #   Process substitutions in file _names_
+        #   Process [variables] substitutions in file _names_
         #
         foreach my $file (keys %TYPE) {
 
@@ -1019,7 +1058,7 @@ sub read_config_file {
         }
 
         #
-        #   Process substitutions in generators
+        #   Process [variables] substitutions in generators
         #
         foreach my $file (keys %GENERATOR) {
             $GENERATOR{$file} =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g;
