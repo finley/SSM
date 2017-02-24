@@ -1,3 +1,13 @@
+simple-state-manager (0.7.3) stable; urgency=medium
+
+  * f8ff8d7 Add feature: [variables] section, w/file name and generator
+    content substitution.
+  * 2353913 - Fixed minor bug where diff fails on file with spaces in
+    the name. - Fixed bug where first run generates error about
+    /var/log/ssm.
+
+ -- Brian Finley <bfinley@tbob>  Thu, 23 Feb 2017 22:51:07 -0600
+
 simple-state-manager (0.7.2) stable; urgency=medium
 
   * 51d45f4 .
