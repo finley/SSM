@@ -2423,6 +2423,7 @@ sub generated_file_interactive {
             if( defined($set_ownership_and_permissions) ) {
 
                 $action = 'set_ownership_and_permissions';
+                ssm_print "\n";
                 ssm_print "         Need to:\n";
                 ssm_print "         - fix ownership and permissions\n";
                 diff_ownership_and_permissions($file, 12);
@@ -2504,6 +2505,7 @@ sub regular_file_interactive {
             if( defined($set_ownership_and_permissions) ) {
 
                 $action = 'set_ownership_and_permissions';
+                ssm_print "\n";
                 ssm_print "         Need to:\n";
                 ssm_print "         - fix ownership and permissions:\n";
                 diff_ownership_and_permissions($file, 12);
@@ -4934,6 +4936,7 @@ sub declare_file_actions {
     my $dir  = dirname($file);
     my $dir_will_be_removed;
 
+    ssm_print "\n";
     ssm_print "         Need to:\n";
 
     if($PRESCRIPT{$file}) {
