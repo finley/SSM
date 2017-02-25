@@ -1,3 +1,51 @@
+- Add "--move-to-bundle BUNDLENAME"
+    
+    Say you have added /etc/hosts, assuming it's in bundle.common, but
+    it ends up in xcat1.domain.com. You could then do:
+
+        ssm --move-to-bundle bundle.common --file /etc/hosts [FILE ...]
+
+    Alternates:
+
+        ssm --move-to-bundle bundle.common --package zsh [PKG ...]
+        ssm --move-to-bundle bundle.common --bundle bundle.bond-10g [BUNDLE ...]
+    
+- Add "--priority NN" option to --add-file and --add-pkg directives
+
+- Add "--modify" option to work in conjunction with --priority and --depends options.
+
+    Examples:
+        ssm --modify --file /etc/hosts --priority NN
+        ssm --modify --file /etc/hosts --depends "PKG1 /filename1 [[PKG ...][FILE ...]]"
+
+- Add "--show-details" option to show details for any configuration element:
+
+    Examples:
+
+        $ ssm --show-details --file /etc/hosts
+
+        #
+        #   In bundle: bundle.common
+        #
+        [file]
+        name       = /etc/hosts
+        comment    = From ipa1.lenovoguru.net on 2017-02-20 13:26:36
+        type       = regular
+        owner      = root
+        group      = root
+        mode       = 0644
+        md5sum     = 87f107b00bb8557ce09daae38f16cb45  # 2017-02-20 13:26:36
+
+
+        $ ssm --show-details --package kvm
+
+        #
+        #   In bundle: bundle.hypervisor
+        #
+        [packages]
+        kvm priority=7
+
+
 - Allow "i" for Ignore as an option in this situation:
 
 	Not OK:  Unwanted: /etc/apt/sources.list.d/google-chrome.list.save
