@@ -1443,7 +1443,7 @@ sub check_depends_interactive {
     if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
     
     my $action = 'null';
-    take_file_action( $file, $action, 'n#' ) unless($::o{yes});
+    take_file_action( $file, $action, 'ni#' ) unless($::o{yes});
         # There is no "yes" action to take, so just skip if --yes.
     
     return undef;
@@ -1597,7 +1597,7 @@ sub run_cmd {
 
 #
 # Usage:  my $answer = do_you_want_me_to($prompts);
-#          where $prompts is one or more of 'ynda'
+#          where $prompts is one or more of 'ynda#i'
 #
 sub do_you_want_me_to {
 
@@ -1654,6 +1654,12 @@ sub do_you_want_me_to {
         $::o{answer_implications_explained}{'#'} = 'yes';
         $i_had_to_explain_something = 1;
         }
+    if($prompts =~ m/i/ and ! defined $::o{answer_implications_explained}{'i'}) {
+        $explanation .= qq/           i -> Set this file as type "ignored" in the configuration.\n/;
+        $::o{answer_implications_explained}{'i'} = 'yes';
+        $i_had_to_explain_something = 1;
+        }
+
 
     if(! defined $::o{answer_implications_explained}{help}) {
         $explanation .= qq/           ? -> Show help info for each of these options.\n/;
@@ -1708,6 +1714,9 @@ sub do_you_want_me_to {
 
     } elsif( m/^#$/i ) {
         return '#';
+
+    } elsif( m/^i$/i ) {
+        return 'i';
 
     } elsif( m/^\?$/i ) {
         $::o{answer_implications_explained} = undef;
@@ -1814,7 +1823,7 @@ sub softlink_interactive {
             #
             # Decide what to do about it -- if anything
             #
-            take_file_action( $file, $action, 'yn#' );
+            take_file_action( $file, $action, 'yni#' );
         }
 
     } else {
@@ -1996,7 +2005,7 @@ sub special_file_interactive {
 
         unless( $::o{summary} ) {
             declare_file_actions($file, "create $file as a $TYPE{$file} special file");
-            take_file_action( $file, 'install_special_file', 'yn#' );
+            take_file_action( $file, 'install_special_file', 'yni#' );
         }
 
     } else {
@@ -2214,7 +2223,7 @@ sub unwanted_file_interactive {
         unless( $::o{summary} ) {
 
             declare_file_actions($file, "remove $file");
-            take_file_action( $file, 'remove_file', 'yna#' );
+            take_file_action( $file, 'remove_file', 'ynai#' );
         }
 
     } else {
@@ -2265,7 +2274,7 @@ sub chown_and_chmod_interactive {
         unless( $::o{summary} ) {
 
             declare_file_actions($file);
-            take_file_action( $file, 'set_ownership_and_permissions', 'yn#' );
+            take_file_action( $file, 'set_ownership_and_permissions', 'yni#' );
         }
 
     } else {
@@ -2323,12 +2332,12 @@ sub directory_interactive {
             if( defined($set_ownership_and_permissions) ) {
 
                 declare_file_actions($file);
-                take_file_action( $file, 'set_ownership_and_permissions', 'yn#' );
+                take_file_action( $file, 'set_ownership_and_permissions', 'yni#' );
 
             } else {
 
                 declare_file_actions($file, "create directory $file");
-                take_file_action( $file, 'install_directory', 'yn#' );
+                take_file_action( $file, 'install_directory', 'yni#' );
             }
         }
 
@@ -2434,7 +2443,7 @@ sub generated_file_interactive {
                 declare_file_actions($file, "generate file $file");
             }
 
-            take_file_action( $file, $action, 'ynd#' );
+            take_file_action( $file, $action, 'yndi#' );
         }
 
     } else {
@@ -2519,7 +2528,7 @@ sub regular_file_interactive {
             #
             # Decide what to do about it -- if anything
             #
-            take_file_action( $file, $action, 'ynda#' );
+            take_file_action( $file, $action, 'yndai#' );
         }
             
     } else {
@@ -2625,6 +2634,7 @@ sub take_pkg_action {
 #       - n - no
 #       - d - diff
 #       - a - add
+#       - i - ignore
 #       - # - comment out
 #
 sub take_file_action {
@@ -2699,6 +2709,11 @@ sub take_file_action {
 
         } elsif( $answer eq '#' ) {
             $return_code = update_bundle_file_comment_out_entry($file);
+            assign_state_to_thingy($file, 'fixed');
+            $CHANGES_MADE++;
+
+        } elsif( $answer eq 'i' ) {
+            $return_code = add_file_to_repo($file, "ignore");
             assign_state_to_thingy($file, 'fixed');
             $CHANGES_MADE++;
 
@@ -3174,7 +3189,7 @@ sub hardlink_interactive {
         unless( $::o{summary} ) {
 
             declare_file_actions($file, "create hard link $file");
-            take_file_action($file, 'install_hardlink', 'yn#');
+            take_file_action($file, 'install_hardlink', 'yni#');
         }
 
     } else {
@@ -4120,6 +4135,7 @@ sub add_packages_to_repo {
 sub add_file_to_repo {
 
     my $file = shift;
+    my $type = shift;   # allow explicit declaration of type (e.g.: ignored, directory+contents-unwanted, etc.)
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
@@ -4135,7 +4151,10 @@ sub add_file_to_repo {
         $BUNDLEFILE{$file} = choose_valid_bundlefile();
     }
 
-    my $type = get_file_type($file);
+    if( ! defined $type ) {
+        $type = get_file_type($file);
+    }
+
     if($type eq 'non-existent') {
         ssm_print "ERROR:   File $file does not appear to exist!\n";
         $ERROR_LEVEL++;
@@ -4166,9 +4185,9 @@ sub add_file_to_repo_type_nonRegular {
     my %filespec;
     $filespec{type}     = $type;
     $filespec{name}     = $file;
-    $filespec{owner}    = get_uid($file);
-    $filespec{group}    = get_gid($file);
-    $filespec{mode}     = get_mode($file)       unless( ($filespec{type} eq 'softlink') );
+    $filespec{owner}    = get_uid($file)        unless( ($filespec{type} eq 'ignore') );
+    $filespec{group}    = get_gid($file)        unless( ($filespec{type} eq 'ignore') );
+    $filespec{mode}     = get_mode($file)       unless( ($filespec{type} eq 'ignore') or ($filespec{type} eq 'softlink') );
     $filespec{target}   = readlink($file)           if( ($filespec{type} eq 'softlink') );
     $filespec{major}    = get_major($file)          if( ($filespec{type} eq 'character') or ($filespec{type} eq 'block') );
     $filespec{minor}    = get_minor($file)          if( ($filespec{type} eq 'character') or ($filespec{type} eq 'block') );;
