@@ -1073,6 +1073,20 @@ sub read_config_file {
         foreach my $file (keys %DEPENDS) {
             $DEPENDS{$file} =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g;
         }
+
+        #
+        #   Process [variables] substitutions in postscripts
+        #
+        foreach my $file (keys %POSTSCRIPT) {
+            $POSTSCRIPT{$file} =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g;
+        }
+
+        #
+        #   Process [variables] substitutions in postscripts
+        #
+        foreach my $file (keys %PRESCRIPT) {
+            $PRESCRIPT{$file} =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g;
+        }
     }
 
 
