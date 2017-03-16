@@ -225,7 +225,6 @@ my %CONF;
               
 
 my (
-    %OWNER,
     %GROUP,
     %MD5SUM,
     %MAJOR,
@@ -296,7 +295,6 @@ sub _initialize_variables {
     (   %::PKGS_FROM_STATE_DEFINITION,
         %::VARS_FROM_STATE_DEFINITION,
         %CONF,
-        %OWNER,
         %GROUP,
         %MD5SUM,
         %MAJOR,
@@ -960,8 +958,8 @@ sub read_config_file {
                 if( defined $name ) {
                     $CONF{$etype}{$name}{type}       = $type       if(defined $type);
                     $CONF{$etype}{$name}{mode}       = $mode       if(defined $mode);
-                    $OWNER{$name}      = $owner      if(defined $owner);
-                    $GROUP{$name}      = $group      if(defined $group);
+                    $CONF{$etype}{$name}{owner}      = $owner      if(defined $owner);
+                    $CONF{$etype}{$name}{group}      = $group      if(defined $group);
                     $MD5SUM{$name}     = $md5sum     if(defined $md5sum);
                     $MAJOR{$name}      = $major      if(defined $major);
                     $MINOR{$name}      = $minor      if(defined $minor);
@@ -1110,8 +1108,8 @@ sub read_config_file {
                 if( defined $name ) {
                     $CONF{$etype}{$name}{type}       = $type       if(defined $type);
                     $CONF{$etype}{$name}{mode}       = $mode       if(defined $mode);
-                    $OWNER{$name}      = $owner      if(defined $owner);
-                    $GROUP{$name}      = $group      if(defined $group);
+                    $CONF{$etype}{$name}{owner}      = $owner      if(defined $owner);
+                    $CONF{$etype}{$name}{group}      = $group      if(defined $group);
                     $MD5SUM{$name}     = $md5sum     if(defined $md5sum);
                     $MAJOR{$name}      = $major      if(defined $major);
                     $MINOR{$name}      = $minor      if(defined $minor);
@@ -1332,8 +1330,10 @@ sub turn_usernames_into_uids {
 
     my $etype = 'file';
 
-    foreach(keys %OWNER) {
-        $OWNER{$_} = user_to_uid($OWNER{$_});
+    foreach my $name (keys %{$CONF{$etype}}) {
+        if(defined $CONF{$etype}{$name}{owner}) {
+            $CONF{$etype}{$name}{owner} = user_to_uid($CONF{$etype}{$name}{owner});
+        }
     }
     return 1;
 }
@@ -1343,8 +1343,10 @@ sub turn_groupnames_into_gids {
 
     my $etype = 'file';
 
-    foreach(keys %GROUP) {
-        $GROUP{$_} = group_to_gid($GROUP{$_});
+    foreach my $name (keys %{$CONF{$etype}}) {
+        if(defined $CONF{$etype}{$name}{group}) {
+            $CONF{$etype}{$name}{group} = group_to_gid($CONF{$etype}{$name}{group});
+        }
     }
     return 1;
 }
@@ -2115,8 +2117,8 @@ sub special_file_interactive {
            !defined($name)          or ($name !~ m/\S/)
         or !defined($CONF{$etype}{$name}{type})   or ($CONF{$etype}{$name}{type} !~ m/\S/)
         or !defined($CONF{$etype}{$name}{mode})   or ($CONF{$etype}{$name}{mode} !~ m/^\d+$/)
-        or !defined($OWNER{$name})  or ($OWNER{$name} !~ m/\S/)
-        or !defined($GROUP{$name})  or ($GROUP{$name} !~ m/\S/)
+        or !defined($CONF{$etype}{$name}{owner})  or ($CONF{$etype}{$name}{owner} !~ m/\S/)
+        or !defined($CONF{$etype}{$name}{group})  or ($CONF{$etype}{$name}{group} !~ m/\S/)
         or (
                 (($CONF{$etype}{$name}{type} eq 'character') or ($CONF{$etype}{$name}{type} eq 'block')) 
                 and 
@@ -2202,7 +2204,7 @@ sub diff_ownership_and_permissions {
     $i = 0; until ($i eq $spaces) { $i++ ; ssm_print " "; }
     ssm_print "from:  $m - $u:$g\n";
 
-    ($m, $u, $g) = ($CONF{$etype}{$name}{mode}, (getpwuid $OWNER{$name})[0], (getgrgid $GROUP{$name})[0]);
+    ($m, $u, $g) = ($CONF{$etype}{$name}{mode}, (getpwuid $CONF{$etype}{$name}{owner})[0], (getgrgid $CONF{$etype}{$name}{group})[0]);
     $i = 0; until ($i eq $spaces) { $i++ ; ssm_print " "; }
     ssm_print "to:    $m - $u:$g\n";
 
@@ -2303,7 +2305,7 @@ sub set_ownership_and_permissions {
 
     touch($name);
 
-    chown $OWNER{$name}, $GROUP{$name}, $name;
+    chown $CONF{$etype}{$name}{owner}, $CONF{$etype}{$name}{group}, $name;
     chmod oct($CONF{$etype}{$name}{mode}), $name;
 
     return 1;
@@ -2416,8 +2418,8 @@ sub chown_and_chmod_interactive {
     if(    !defined($name)         or ($name !~ m#^/#)
         or !defined($CONF{$etype}{$name}{type})  or ($CONF{$etype}{$name}{type} !~ m/\S/)
         or !defined($CONF{$etype}{$name}{mode})  or ($CONF{$etype}{$name}{mode} !~ m/^\d+$/)
-        or !defined($OWNER{$name}) or ($OWNER{$name} !~ m/\S/)
-        or !defined($GROUP{$name}) or ($GROUP{$name} !~ m/\S/)
+        or !defined($CONF{$etype}{$name}{owner}) or ($CONF{$etype}{$name}{owner} !~ m/\S/)
+        or !defined($CONF{$etype}{$name}{group}) or ($CONF{$etype}{$name}{group} !~ m/\S/)
     ) {
         return report_improper_file_definition($name);
     }
@@ -2466,8 +2468,8 @@ sub directory_interactive {
     if(    !defined($name)         or ($name !~ m#^/#)
         or !defined($CONF{$etype}{$name}{type})  or ($CONF{$etype}{$name}{type} !~ m/\S/)
         or !defined($CONF{$etype}{$name}{mode})  or ($CONF{$etype}{$name}{mode} !~ m/^\d+$/)
-        or !defined($OWNER{$name}) or ($OWNER{$name} !~ m/\S/)
-        or !defined($GROUP{$name}) or ($GROUP{$name} !~ m/\S/)
+        or !defined($CONF{$etype}{$name}{owner}) or ($CONF{$etype}{$name}{owner} !~ m/\S/)
+        or !defined($CONF{$etype}{$name}{group}) or ($CONF{$etype}{$name}{group} !~ m/\S/)
     ) {
         return report_improper_file_definition($name);
     }
@@ -2533,8 +2535,8 @@ sub generated_file_interactive {
     if(    !defined($name)             or ($name             !~ m#^/#   )
         or !defined($CONF{$etype}{$name}{type})      or ($CONF{$etype}{$name}{type}      !~ m/\S/   )
         or !defined($CONF{$etype}{$name}{mode})      or ($CONF{$etype}{$name}{mode}      !~ m/^\d+$/)
-        or !defined($OWNER{$name})     or ($OWNER{$name}     !~ m/\S/   )
-        or !defined($GROUP{$name})     or ($GROUP{$name}     !~ m/\S/   )
+        or !defined($CONF{$etype}{$name}{owner})     or ($CONF{$etype}{$name}{owner}     !~ m/\S/   )
+        or !defined($CONF{$etype}{$name}{group})     or ($CONF{$etype}{$name}{group}     !~ m/\S/   )
         or !defined($CONF{$etype}{$name}{generator}) or ($CONF{$etype}{$name}{generator} !~ m/\S/   )
     ) {
         return report_improper_file_definition($name);
@@ -2644,8 +2646,8 @@ sub regular_file_interactive {
     if(    !defined($name)          or ($name          !~ m#^/#   )
         or !defined($CONF{$etype}{$name}{type})   or ($CONF{$etype}{$name}{type}   !~ m/\S/   )
         or !defined($CONF{$etype}{$name}{mode})   or ($CONF{$etype}{$name}{mode}   !~ m/^\d+$/)
-        or !defined($OWNER{$name})  or ($OWNER{$name}  !~ m/\S/   )
-        or !defined($GROUP{$name})  or ($GROUP{$name}  !~ m/\S/   )
+        or !defined($CONF{$etype}{$name}{owner})  or ($CONF{$etype}{$name}{owner}  !~ m/\S/   )
+        or !defined($CONF{$etype}{$name}{group})  or ($CONF{$etype}{$name}{group}  !~ m/\S/   )
         or !defined($MD5SUM{$name}) or ($MD5SUM{$name} !~ m/\S/   )
     ) {
         return report_improper_file_definition($name);
@@ -3446,10 +3448,10 @@ sub report_improper_file_definition {
     if(defined($CONF{$etype}{$name}{mode})) { ssm_print "  mode   = $CONF{$etype}{$name}{mode}\n";
                        } else { ssm_print "  mode   =\n"; }
 
-    if(defined($OWNER{$name})) { ssm_print "  owner  = $OWNER{$name}\n";
+    if(defined($CONF{$etype}{$name}{owner})) { ssm_print "  owner  = $CONF{$etype}{$name}{owner}\n";
                         } else { ssm_print "  owner  =\n"; }
 
-    if(defined($GROUP{$name})) { ssm_print "  group  = $GROUP{$name}\n";
+    if(defined($CONF{$etype}{$name}{group})) { ssm_print "  group  = $CONF{$etype}{$name}{group}\n";
                         } else { ssm_print "  group  =\n"; }
 
     if(defined($MAJOR{$name})) { ssm_print "  major  = $MAJOR{$name}\n";
@@ -3502,8 +3504,8 @@ sub uid_gid_and_mode_match {
     my $mode  = sprintf "%04o", $st_mode & 07777;
 
     if(    (   $mode == $CONF{$etype}{$name}{mode}  )
-        and( $st_uid == $OWNER{$name} )
-        and( $st_gid == $GROUP{$name} ) ) {
+        and( $st_uid == $CONF{$etype}{$name}{owner} )
+        and( $st_gid == $CONF{$etype}{$name}{group} ) ) {
 
         return 1;
     }
@@ -5295,8 +5297,8 @@ sub rename_file {
     my %filespec;
     $filespec{type}     = $CONF{$etype}{$name}{type};
     $filespec{name}     = $name;
-    $filespec{owner}    = $OWNER{$name}     if($OWNER{$name});
-    $filespec{group}    = $GROUP{$name}     if($GROUP{$name});
+    $filespec{owner}    = $CONF{$etype}{$name}{owner}     if($CONF{$etype}{$name}{owner});
+    $filespec{group}    = $CONF{$etype}{$name}{group}     if($CONF{$etype}{$name}{group});
     $filespec{mode}     = $CONF{$etype}{$name}{mode}      if($CONF{$etype}{$name}{mode});
     $filespec{target}   = $CONF{$etype}{$name}{target}    if($CONF{$etype}{$name}{target});
     $filespec{major}    = $MAJOR{$name}     if($MAJOR{$name});
