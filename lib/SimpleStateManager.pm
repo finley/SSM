@@ -225,7 +225,6 @@ my %CONF;
               
 
 my (
-    %DETAILS,     # runlevel information for services
     %GENERATOR,   # script or command to run to generate a generated file
     %BUNDLEFILE,  # name of bundlefile where each file or package is defined
 
@@ -288,7 +287,6 @@ sub _initialize_variables {
     (   %::PKGS_FROM_STATE_DEFINITION,
         %::VARS_FROM_STATE_DEFINITION,
         %CONF,
-        %DETAILS,
         %GENERATOR,
         %BUNDLEFILE,
         %BUNDLEFILE_LIST,
@@ -706,7 +704,7 @@ sub read_config_file {
 
             $name = normalized_file_name( $name ); 
 
-            if( (defined $name) and (defined $DETAILS{$name}) ) {
+            if( (defined $name) and (defined $CONF{$etype}{$name}{details}) ) {
                 ssm_print_always "\n";
                 ssm_print_always "ERROR: Multiple (conflicting) definitions for:\n";
                 ssm_print_always "\n";
@@ -731,7 +729,7 @@ sub read_config_file {
             # Assign the values to hashes
             #
             if( defined $name ) {
-                $DETAILS{$name} = $details if(defined $details);
+                $CONF{$etype}{$name}{details} = $details if(defined $details);
                 $CONF{$etype}{$name}{depends} = $depends if(defined $depends);
             }
 
@@ -749,7 +747,7 @@ sub read_config_file {
 
             } else {
 
-                if(defined $DETAILS{$name}) {
+                if(defined $CONF{$etype}{$name}{details}) {
                     turn_service_into_file_entry($name);
                 } else {
                     report_improper_service_definition($name);
@@ -3392,7 +3390,7 @@ sub report_improper_service_definition {
     ssm_print "\n";
     ssm_print "  name   = $name\n";
 
-    if(defined($DETAILS{$name})) { ssm_print "  mode   = $DETAILS{$name}\n";
+    if(defined($CONF{$etype}{$name}{details})) { ssm_print "  mode   = $CONF{$etype}{$name}{details}\n";
                           } else { ssm_print "  mode   =\n"; }
 
     if(defined($CONF{$etype}{$name}{depends})) { ssm_print "  depends   = $CONF{$etype}{$name}{depends}\n";
@@ -3971,7 +3969,7 @@ sub turn_service_into_file_entry {
     my $dir = "/etc";
 
     my %details;
-    foreach( split(/\s+/, $DETAILS{$name}) ) {
+    foreach( split(/\s+/, $CONF{$etype}{$name}{details}) ) {
         my ($level, $prefix) = split(/:/);
         $details{$level} = ${prefix};
     }
