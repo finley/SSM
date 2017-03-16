@@ -225,8 +225,6 @@ my %CONF;
               
 
 my (
-    %GROUP,
-    %MD5SUM,
     %MAJOR,
     %MINOR,
     %PRESCRIPT,   # script or command to be run before installing a file
@@ -295,8 +293,6 @@ sub _initialize_variables {
     (   %::PKGS_FROM_STATE_DEFINITION,
         %::VARS_FROM_STATE_DEFINITION,
         %CONF,
-        %GROUP,
-        %MD5SUM,
         %MAJOR,
         %MINOR,
         %PRESCRIPT,
@@ -960,7 +956,7 @@ sub read_config_file {
                     $CONF{$etype}{$name}{mode}       = $mode       if(defined $mode);
                     $CONF{$etype}{$name}{owner}      = $owner      if(defined $owner);
                     $CONF{$etype}{$name}{group}      = $group      if(defined $group);
-                    $MD5SUM{$name}     = $md5sum     if(defined $md5sum);
+                    $CONF{$etype}{$name}{md5sum}     = $md5sum     if(defined $md5sum);
                     $MAJOR{$name}      = $major      if(defined $major);
                     $MINOR{$name}      = $minor      if(defined $minor);
                     $CONF{$etype}{$name}{target}     = $target     if(defined $target);
@@ -1110,7 +1106,7 @@ sub read_config_file {
                     $CONF{$etype}{$name}{mode}       = $mode       if(defined $mode);
                     $CONF{$etype}{$name}{owner}      = $owner      if(defined $owner);
                     $CONF{$etype}{$name}{group}      = $group      if(defined $group);
-                    $MD5SUM{$name}     = $md5sum     if(defined $md5sum);
+                    $CONF{$etype}{$name}{md5sum}     = $md5sum     if(defined $md5sum);
                     $MAJOR{$name}      = $major      if(defined $major);
                     $MINOR{$name}      = $minor      if(defined $minor);
                     $CONF{$etype}{$name}{target}     = $target     if(defined $target);
@@ -2563,7 +2559,7 @@ sub generated_file_interactive {
         unlink $generator_script;
 
         seek(TMP, 0, 0);
-        $MD5SUM{$name} = Digest::MD5->new->addfile(*TMP)->hexdigest;
+        $CONF{$etype}{$name}{md5sum} = Digest::MD5->new->addfile(*TMP)->hexdigest;
 
     close(TMP);
 
@@ -2648,7 +2644,7 @@ sub regular_file_interactive {
         or !defined($CONF{$etype}{$name}{mode})   or ($CONF{$etype}{$name}{mode}   !~ m/^\d+$/)
         or !defined($CONF{$etype}{$name}{owner})  or ($CONF{$etype}{$name}{owner}  !~ m/\S/   )
         or !defined($CONF{$etype}{$name}{group})  or ($CONF{$etype}{$name}{group}  !~ m/\S/   )
-        or !defined($MD5SUM{$name}) or ($MD5SUM{$name} !~ m/\S/   )
+        or !defined($CONF{$etype}{$name}{md5sum}) or ($CONF{$etype}{$name}{md5sum} !~ m/\S/   )
     ) {
         return report_improper_file_definition($name);
     }
@@ -2948,7 +2944,7 @@ sub md5sum_match {
 
     open(FILE, "<$name") or die "Can’t open ’$name’ for reading: $!";
         binmode(FILE);
-        if( Digest::MD5->new->addfile(*FILE)->hexdigest eq $MD5SUM{$name} ) {
+        if( Digest::MD5->new->addfile(*FILE)->hexdigest eq $CONF{$etype}{$name}{md5sum} ) {
             return 1;
         }
     close(FILE);
@@ -2983,7 +2979,7 @@ sub diff_file {
             $tmp_file = $TMPFILE{$name};
 
         } else {
-            $url = qq($::o{base_url}/$name/$MD5SUM{$name});
+            $url = qq($::o{base_url}/$name/$CONF{$etype}{$name}{md5sum});
             $tmp_file = get_file($url, 'warn');
             $unlink = 'yes';
         }
@@ -3161,7 +3157,7 @@ sub install_file {
 
         } else {
 
-            $url = qq($::o{base_url}/$name/$MD5SUM{$name});
+            $url = qq($::o{base_url}/$name/$CONF{$etype}{$name}{md5sum});
             $tmp_file = get_file($url, 'warn');
         }
     }
@@ -3460,7 +3456,7 @@ sub report_improper_file_definition {
     if(defined($MINOR{$name})) { ssm_print "  minor  = $MINOR{$name}\n";
                         } else { ssm_print "  minor  =\n"; }
 
-    if(defined($MD5SUM{$name})) { ssm_print "  md5sum = $MD5SUM{$name}\n";
+    if(defined($CONF{$etype}{$name}{md5sum})) { ssm_print "  md5sum = $CONF{$etype}{$name}{md5sum}\n";
                          } else { ssm_print "  md5sum =\n"; }
 
     if(defined($CONF{$etype}{$name}{prescript})) { ssm_print "  prescript = $CONF{$etype}{$name}{prescript}\n";
@@ -4402,6 +4398,7 @@ sub add_file_to_repo_type_nonRegular {
 sub add_file_to_repo_type_regular {
 
     my $name   = shift;
+    my $etype = 'file';
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
@@ -4416,7 +4413,7 @@ sub add_file_to_repo_type_regular {
     #show_debug_output_for_filespec($debug_prefix, %filespec) if( $::o{debug} );
 
     # Copy the file itself into the repo, unless a version with the same md5sum is already there...
-    unless($MD5SUM{$name} and ($MD5SUM{$name} eq $filespec{md5sum}) ) {
+    unless($CONF{$etype}{$name}{md5sum} and ($CONF{$etype}{$name}{md5sum} eq $filespec{md5sum}) ) {
         my $filename_in_repo = "$name/$filespec{md5sum}";
         copy_file_to_upstream_repo($name, $filename_in_repo);
     }
@@ -5303,7 +5300,7 @@ sub rename_file {
     $filespec{target}   = $CONF{$etype}{$name}{target}    if($CONF{$etype}{$name}{target});
     $filespec{major}    = $MAJOR{$name}     if($MAJOR{$name});
     $filespec{minor}    = $MINOR{$name}     if($MINOR{$name});
-    $filespec{md5sum}   = $MD5SUM{$name}    if($MD5SUM{$name});
+    $filespec{md5sum}   = $CONF{$etype}{$name}{md5sum}    if($CONF{$etype}{$name}{md5sum});
 
     #
     # 1) Get a copy of the existing file, if it's a regular file, then use the
@@ -5312,7 +5309,7 @@ sub rename_file {
     #    repo to copy to a new name. ;-)
     #
     if($filespec{md5sum}) {
-        my $url = qq($::o{base_url}/$name/$MD5SUM{$name});
+        my $url = qq($::o{base_url}/$name/$CONF{$etype}{$name}{md5sum});
         my $tmp_file = get_file($url, 'warn');
         my $filename_in_repo = "$newfile/$filespec{md5sum}";
         copy_file_to_upstream_repo($tmp_file, $filename_in_repo);
