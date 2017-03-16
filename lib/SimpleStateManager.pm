@@ -180,6 +180,50 @@ my $STATE_DIR = "/var/lib/simple-state-manager";
 my $PKG_REPO_UPDATE_TIMESTAMP_FILE = "$STATE_DIR/PKG_REPO_UPDATE_TIMESTAMP_FILE";
 #
 # Hashes for holding file and service information
+my %CONF;  
+    #
+    # Holds entire state definition data structure.  Here's the layout.  
+    # Not all element types (etype) will have all attributes.
+    #
+    # $CONF = {
+    #   $etype = {  # etype/element type can be: file, variable, service
+    #     'name' => $name,
+    #       # duh
+    #
+    #     'type' => $type,
+    #       # regular, block, character, fifo, softlink, hardlink,
+    #       # unwanted, directory+contents-unwanted, ignored, or generated.
+    #
+    #     'mode' => $mode,
+    #     'owner' => $owner,
+    #     'group' => $group,
+    #     'md5sum' => $md5sum,
+    #     'major' => $major,
+    #     'minor' => $minor,
+    #     'target' => $target,
+    #       # target file or directory for a link
+    #
+    #     'prescript' => $prescript,
+    #       # script or command to be run before installing a file
+    #
+    #     'postscript' => $postscript,
+    #       # script or command to be run after installing a file
+    #
+    #     'depends' => $depends,
+    #       # package and, or file dependencies
+    #
+    #     'details' => $details,
+    #       # runlevel information for services
+    #
+    #     'generator' => $generator,
+    #       # script or command to run to generate a generated file
+    #
+    #     'bundlefile' => $bundlefile,
+    #       # name of bundlefile where each file or package is defined
+    # }
+    #
+              
+
 my (
     %TYPE,    # regular, block, character, fifo, softlink, hardlink,
               # unwanted, directory+contents-unwanted, ignored, or generated.
@@ -197,9 +241,9 @@ my (
     %POSTSCRIPT,  # script or command to be run after installing a file
     %DEPENDS,     # package and, or file dependencies
     %DETAILS,     # runlevel information for services
-    %PRIORITY,    # priority level for files and/or packages
     %GENERATOR,   # script or command to run to generate a generated file
     %BUNDLEFILE,  # name of bundlefile where each file or package is defined
+
     %BUNDLEFILE_LIST,   # simple list of bundle files
     %TMPFILE,     # name of a temporary file associated with a file
     %GLOBAL_ENTRIES,    # simple list of global variables
@@ -258,6 +302,7 @@ sub _initialize_variables {
 
     (   %::PKGS_FROM_STATE_DEFINITION,
         %::VARS_FROM_STATE_DEFINITION,
+        %CONF,
         %TYPE,
         %MODE,
         %OWNER,
@@ -270,7 +315,6 @@ sub _initialize_variables {
         %POSTSCRIPT,
         %DEPENDS,
         %DETAILS,
-        %PRIORITY,
         %GENERATOR,
         %BUNDLEFILE,
         %BUNDLEFILE_LIST,
@@ -650,6 +694,8 @@ sub read_config_file {
         #
         elsif( m/^\[service\]/ ) {
 
+            my $etype = 'service';
+
             my( $name, 
                 $details,
                 $depends,
@@ -712,10 +758,10 @@ sub read_config_file {
             #
             if( defined $name ) {
                 $DETAILS{$name} = $details if(defined $details);
-                $DEPENDS{$name} = $depends if(defined $depends);
+                $CONF{$etype}{$name}{depends} = $depends if(defined $depends);
             }
 
-            my ($retval, @unsatisfied) = check_depends($name);
+            my ($retval, @unsatisfied) = check_depends($name, $etype);
             if($retval eq 0) {
 
                 ssm_print "Not OK:  Service $name -> Unmet Dependencies\n";
@@ -738,9 +784,11 @@ sub read_config_file {
         }
 
         # 
-        # [files] sections
+        # [file] sections
         #
         elsif( m/^\[file\]/ ) {
+
+            my $etype = 'file';
 
             my( $name, 
                 $type,
@@ -884,11 +932,11 @@ sub read_config_file {
             push @analyze, qq($priority $name $bundlefile);
 
             # If existing priority is higher than this file's priority
-            if( (defined $PRIORITY{$name}) and ($PRIORITY{$name} > $priority) ) {
+            if( (defined $CONF{$etype}{$name}{priority}) and ($CONF{$etype}{$name}{priority} > $priority) ) {
                 # do nothing;
 
             # If existing priority is equal to this file's priority
-            } elsif( (defined $PRIORITY{$name}) and ($PRIORITY{$name} == $priority) ) {
+            } elsif( (defined $CONF{$etype}{$name}{priority}) and ($CONF{$etype}{$name}{priority} == $priority) ) {
                 # error out;
                 ssm_print_always "\n";
                 ssm_print_always "ERROR: Multiple (conflicting) definitions for:\n";
@@ -920,7 +968,7 @@ sub read_config_file {
                 # Assign the values to hashes
                 #
                 if( defined $name ) {
-                    $TYPE{$name}       = $type       if(defined $type);
+                    $CONF{$etype}{$name}{type}       = $type       if(defined $type);
                     $MODE{$name}       = $mode       if(defined $mode);
                     $OWNER{$name}      = $owner      if(defined $owner);
                     $GROUP{$name}      = $group      if(defined $group);
@@ -928,11 +976,11 @@ sub read_config_file {
                     $MAJOR{$name}      = $major      if(defined $major);
                     $MINOR{$name}      = $minor      if(defined $minor);
                     $TARGET{$name}     = $target     if(defined $target);
-                    $PRESCRIPT{$name}  = $prescript  if(defined $prescript);
-                    $POSTSCRIPT{$name} = $postscript if(defined $postscript);
-                    $DEPENDS{$name}    = $depends    if(defined $depends);
-                    $PRIORITY{$name}   = $priority   if(defined $priority);
-                    $GENERATOR{$name}  = $generator  if(defined $generator);
+                    $CONF{$etype}{$name}{prescript}  = $prescript  if(defined $prescript);
+                    $CONF{$etype}{$name}{postscript} = $postscript if(defined $postscript);
+                    $CONF{$etype}{$name}{depends}    = $depends    if(defined $depends);
+                    $CONF{$etype}{$name}{priority}   = $priority   if(defined $priority);
+                    $CONF{$etype}{$name}{generator}  = $generator  if(defined $generator);
                     $BUNDLEFILE{$name} = $bundlefile if(defined $bundlefile);
 
                     # And we start with a status of unknown, later to be
@@ -941,8 +989,157 @@ sub read_config_file {
                 }
             }
 
-            unless(defined $TYPE{$name}) {
+            unless(defined $CONF{$etype}{$name}{type}) {
                 return report_improper_file_definition($name);
+            }
+        }
+
+        # 
+        # [variable] sections
+        #
+        elsif( m/^\[variable\]/ ) {
+
+            my $etype = 'variable'; # Entry type
+
+            my( $name, 
+                $type,
+                $mode,
+                $owner,
+                $group,
+                $md5sum,
+                $major,
+                $minor,
+                $target,
+                $prescript,
+                $postscript,
+                $depends,
+                $priority,
+                $generator,
+                );
+
+            $_ = shift @input;
+            until( m/$stanza_terminator/ ) {
+                
+                #
+                # Collect all the values
+                chomp;
+
+                #
+                # Allow "key = value" or "key=value" type definitions.
+                s/\s*=\s*/ /o;
+
+                my ($key, $value) = split('\s+', $_, 2);
+
+                # Remove any trailing space at the end of value.
+                # Trailing space messes up filenames, links, etc.
+                if( defined($value) ) {
+                    $value =~ s/\s+$//o;
+                } else {
+                    $ERROR_LEVEL++;
+                    ssm_print "Config Error.  Next 10 lines in the configuration:\n";
+                    #
+                    # Print 10 lines below
+                    # in the array @input to give reference to the point 
+                    # of incorrect config chunk. -BEF-
+                    #
+                    my $count = 0;
+                    until( $count == 10 ) {
+                        $_ = shift @input;
+                        chomp;
+                        ssm_print "  $_\n";
+                        $count++;
+                    }
+                    ssm_print "\n";
+                }
+
+                if($key eq 'name') { 
+                    $name = $value; 
+
+                } elsif(($key eq 'depends') or ($key eq 'deps')) { 
+                    $depends = $value;
+
+                } elsif($key eq 'priority') { 
+
+                    if( $value =~ /^[-\+]?\d+$/ ) {
+                        $priority = $value;
+
+                    } else {
+                        # Easter egg or bug -- you decide...  You can
+                        # use a value like "two" which is translated to
+                        # "3" (character count). ;-)  heh, heh, heh... -BEF-
+                        $priority = length $value;
+                    }
+
+                } elsif($key eq 'generator') { 
+
+                    # Match HERE documents, but ignore unquoted leading or trailing spaces. -BEF-
+                    if( $value =~ m/^\s*<<\s*(.*)\s*$/ ) {
+
+                        #
+                        # Ok, cool!  We got ourselves a multi-line generator on our hands...
+                        #
+                        my $here_target = $1;
+
+                        # read in the rest of the document.
+                        $generator = "";
+                        $_ = shift @input;
+                        until( m/^$here_target$/ ) {
+                            $generator .= $_;
+                            $_ = shift @input;
+                        }
+
+                    } else {
+                       $generator = $value;
+                    }
+                }
+
+                $_ = shift @input;
+            }
+
+            # If no priority is set, or the priority field is blank, use the default of zero.
+            if(! defined $priority) {
+                $priority = 0;
+            }
+
+            push @analyze, qq($priority \$$name $bundlefile);
+
+            # If existing priority is higher than this priority
+            if( (defined $CONF{$etype}{$name}{priority}) and ($CONF{$etype}{$name}{priority} > $priority) ) {
+                # If existing priority is higher, do nothing here.
+
+            } elsif( (defined $CONF{$etype}{$name}{priority}) and ($CONF{$etype}{$name}{priority} == $priority) ) {
+                #
+                # If existing priority is equal to this file's priority
+                #
+                report_conflicting_definitions($etype, $name, $priority, $bundlefile);
+
+            } else {
+                #
+                # Assign the values to hashes
+                #
+                if( defined $name ) {
+                    $CONF{$etype}{$name}{type}       = $type       if(defined $type);
+                    $MODE{$name}       = $mode       if(defined $mode);
+                    $OWNER{$name}      = $owner      if(defined $owner);
+                    $GROUP{$name}      = $group      if(defined $group);
+                    $MD5SUM{$name}     = $md5sum     if(defined $md5sum);
+                    $MAJOR{$name}      = $major      if(defined $major);
+                    $MINOR{$name}      = $minor      if(defined $minor);
+                    $TARGET{$name}     = $target     if(defined $target);
+                    $CONF{$etype}{$name}{prescript}  = $prescript  if(defined $prescript);
+                    $CONF{$etype}{$name}{postscript} = $postscript if(defined $postscript);
+                    $CONF{$etype}{$name}{depends}    = $depends    if(defined $depends);
+                    $CONF{$etype}{$name}{priority}   = $priority   if(defined $priority);
+                    $CONF{$etype}{$name}{generator}  = $generator  if(defined $generator);
+                    $BUNDLEFILE{$name} = $bundlefile if(defined $bundlefile);
+
+                    # And we start with a status of unknown, later to be
+                    # determined as broken or fixed as appropriate.
+                    assign_state_to_thingy($name, 'unknown') unless(defined $::outstanding{$name}); 
+                }
+                else {
+                    return report_improper_file_definition($name);
+                }
             }
         }
 
@@ -1028,64 +1225,28 @@ sub read_config_file {
     #
     # Do variable substitutions
     #
+    #foreach my $var (keys %::VARS_FROM_STATE_DEFINITION) {
     foreach my $var (keys %::VARS_FROM_STATE_DEFINITION) {
 
         #
         #   Process [variables] substitutions in file _names_
         #
-        foreach my $file (keys %TYPE) {
+        my $etype = 'file';
+        foreach my $file (keys %{$CONF{$etype}) {
 
             my $orig_file = $file;
             if( $file =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g ) {
-                #print "BEFORE: $orig_file\n";
-                #print "AFTER:  $file\n";
-                if( $TYPE{$orig_file}            ) { $TYPE{$file}            = delete $TYPE{$orig_file}               ;}
-                if( $MODE{$orig_file}            ) { $MODE{$file}            = delete $MODE{$orig_file}               ;}
-                if( $OWNER{$orig_file}           ) { $OWNER{$file}           = delete $OWNER{$orig_file}              ;}
-                if( $GROUP{$orig_file}           ) { $GROUP{$file}           = delete $GROUP{$orig_file}              ;}
-                if( $MD5SUM{$orig_file}          ) { $MD5SUM{$file}          = delete $MD5SUM{$orig_file}             ;}
-                if( $MAJOR{$orig_file}           ) { $MAJOR{$file}           = delete $MAJOR{$orig_file}              ;}
-                if( $MINOR{$orig_file}           ) { $MINOR{$file}           = delete $MINOR{$orig_file}              ;}
-                if( $TARGET{$orig_file}          ) { $TARGET{$file}          = delete $TARGET{$orig_file}             ;}
-                if( $PRESCRIPT{$orig_file}       ) { $PRESCRIPT{$file}       = delete $PRESCRIPT{$orig_file}          ;}
-                if( $POSTSCRIPT{$orig_file}      ) { $POSTSCRIPT{$file}      = delete $POSTSCRIPT{$orig_file}         ;}
-                if( $DEPENDS{$orig_file}         ) { $DEPENDS{$file}         = delete $DEPENDS{$orig_file}            ;}
-                if( $DETAILS{$orig_file}         ) { $DETAILS{$file}         = delete $DETAILS{$orig_file}            ;}
-                if( $PRIORITY{$orig_file}        ) { $PRIORITY{$file}        = delete $PRIORITY{$orig_file}           ;}
-                if( $GENERATOR{$orig_file}       ) { $GENERATOR{$file}       = delete $GENERATOR{$orig_file}          ;}
-
-                    #    XXX Really really need to turn these into a single
-                    #    canonical structure, where changing one file name changes
-                    #    it everwhere...
+                # Effectively renaming the hash entry from $orig_file to $file
+                $CONF{$etype}{$file} = delete $CONF{$etype}{$orig_file};
             }
         }
 
-        #
-        #   Process [variables] substitutions in generators
-        #
-        foreach my $file (keys %GENERATOR) {
-            $GENERATOR{$file} =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g;
-        }
 
-        #
-        #   Process [variables] substitutions in depends
-        #
-        foreach my $file (keys %DEPENDS) {
-            $DEPENDS{$file} =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g;
-        }
-
-        #
-        #   Process [variables] substitutions in postscripts
-        #
-        foreach my $file (keys %POSTSCRIPT) {
-            $POSTSCRIPT{$file} =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g;
-        }
-
-        #
-        #   Process [variables] substitutions in postscripts
-        #
-        foreach my $file (keys %PRESCRIPT) {
-            $PRESCRIPT{$file} =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g;
+        foreach my $file (keys %{$CONF{$etype}) {
+            $CONF{$etype}{$file}{generator} =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g;
+            $CONF{$etype}{$file}{depends} =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g;
+            $CONF{$etype}{$file}{postscript} =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g;
+            $CONF{$etype}{$file}{prescript} =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g;
         }
     }
 
@@ -1181,7 +1342,7 @@ sub print_pad {
 
 sub turn_usernames_into_uids {
 
-    #if( $::o{debug} ) { ssm_print "turn_usernames_into_uids()\n"; }
+    my $etype = 'file';
 
     foreach(keys %OWNER) {
         $OWNER{$_} = user_to_uid($OWNER{$_});
@@ -1192,7 +1353,7 @@ sub turn_usernames_into_uids {
 
 sub turn_groupnames_into_gids {
 
-    #if( $::o{debug} ) { ssm_print "turn_groupnames_into_gids()\n"; }
+    my $etype = 'file';
 
     foreach(keys %GROUP) {
         $GROUP{$_} = group_to_gid($GROUP{$_});
@@ -1204,8 +1365,6 @@ sub turn_groupnames_into_gids {
 sub user_to_uid {
 
     my $user = shift;
-
-    #if( $::o{debug} ) { ssm_print "user_to_uid($user)\n"; }
 
     if($user =~ m/^\d+$/) {
         # it's already all-numeric; as in, a uid was specified in the definition
@@ -1219,8 +1378,6 @@ sub user_to_uid {
 sub group_to_gid {
 
     my $group = shift;
-
-    #if( $::o{debug} ) { ssm_print "group_to_gid($group)\n"; }
 
     if($group =~ m/^\d+$/) {
         # it's already all-numeric; as in, a gid was specified in the definition
@@ -1291,7 +1448,7 @@ sub sync_state {
                 $file = $fq_file;
             }
 
-            if($TYPE{$file}) {  # if type is specified, then it exists in the definition
+            if($CONF{file}{$file}) {    # make sure it exists in the definition
                 $only_this_file_hash{$file} = 1;
             } else {
                 $specified_files_that_arent_defined{$file} = 1;
@@ -1313,43 +1470,44 @@ sub sync_state {
         }
     }
 
-    foreach my $file (sort keys %TYPE) {
+    my $etype = 'file';
+    foreach my $file (sort keys %{$CONF{$etype}}) {
 
         next if( $::o{only_this_file} and !defined($only_this_file_hash{$file}) );
 
         last if($::o{only_packages});
 
-        # elsif( ($TYPE{$file} eq 'ignore') or ($TYPE{$file} eq 'ignored') ) {
-        if( ($TYPE{$file} eq 'ignore') or ($TYPE{$file} eq 'ignored') ) {
+        # elsif( ($CONF{$etype}{$file}{type} eq 'ignore') or ($CONF{$etype}{$file}{type} eq 'ignored') ) {
+        if( ($CONF{$etype}{$file}{type} eq 'ignore') or ($CONF{$etype}{$file}{type} eq 'ignored') ) {
             ignore_file_interactive($file);
         }
-        elsif( $TYPE{$file} eq 'softlink' ) {
+        elsif( $CONF{$etype}{$file}{type} eq 'softlink' ) {
             softlink_interactive($file);
         }
-        elsif( $TYPE{$file} eq 'hardlink' ) {
+        elsif( $CONF{$etype}{$file}{type} eq 'hardlink' ) {
             hardlink_interactive($file);
         }
-        elsif(     $TYPE{$file} eq 'block' 
-                or $TYPE{$file} eq 'character'
-                or $TYPE{$file} eq 'fifo'      ) {
+        elsif(     $CONF{$etype}{$file}{type} eq 'block' 
+                or $CONF{$etype}{$file}{type} eq 'character'
+                or $CONF{$etype}{$file}{type} eq 'fifo'      ) {
             special_file_interactive($file);
         }
-        elsif( $TYPE{$file} eq 'chown+chmod' ) {
+        elsif( $CONF{$etype}{$file}{type} eq 'chown+chmod' ) {
             chown_and_chmod_interactive($file);
         }
-        elsif( $TYPE{$file} eq 'regular' ) {
+        elsif( $CONF{$etype}{$file}{type} eq 'regular' ) {
             regular_file_interactive($file);
         }
-        elsif( $TYPE{$file} eq 'directory' ) {
+        elsif( $CONF{$etype}{$file}{type} eq 'directory' ) {
             directory_interactive($file);
         }
-        elsif( $TYPE{$file} eq 'unwanted' ) {
+        elsif( $CONF{$etype}{$file}{type} eq 'unwanted' ) {
             unwanted_file_interactive($file);
         }
-        elsif( $TYPE{$file} eq 'directory+contents-unwanted' ) {
+        elsif( $CONF{$etype}{$file}{type} eq 'directory+contents-unwanted' ) {
             contents_unwanted_interactive($file);
         }
-        elsif( $TYPE{$file} eq 'generated' ) {
+        elsif( $CONF{$etype}{$file}{type} eq 'generated' ) {
             generated_file_interactive($file);
         }
         else {
@@ -1436,8 +1594,9 @@ sub sync_state {
 sub check_depends_interactive {
 
     my $file = shift;
+    my $etype = shift;
 
-    my ($retval, @unsatisfied) = check_depends($file);
+    my ($retval, @unsatisfied) = check_depends($file, $etype);
 
     return 1 unless($retval eq 2);
 
@@ -1751,11 +1910,12 @@ sub ignore_file_interactive {
     #
 
     my $file = shift;
+    my $etype = 'file';
 
     # validate input
     unless( 
             defined($file)        and ($file        =~ m#^/#)
-        and defined($TYPE{$file}) and ($TYPE{$file} =~ m#\S#)
+        and defined($CONF{$etype}{$file}{type}) and ($CONF{$etype}{$file}{type} =~ m#\S#)
     ) {
         return report_improper_file_definition($file);
     }
@@ -1774,6 +1934,7 @@ sub softlink_interactive {
     #
 
     my $file = shift;
+    my $etype = 'file';
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
@@ -1782,7 +1943,7 @@ sub softlink_interactive {
     unless( 
             defined($file)          and ($file          =~ m#^/#)
         and defined($TARGET{$file})
-        and defined($TYPE{$file})   and ($TYPE{$file}   =~ m#\S#)
+        and defined($CONF{$etype}{$file}{type})   and ($CONF{$etype}{$file}{type}   =~ m#\S#)
     ) {
         return report_improper_file_definition($file);
     }
@@ -1862,6 +2023,7 @@ sub install_hardlink {
     #
 
     my $file     = shift;
+    my $etype = 'file';
 
     if($::o{debug}) { ssm_print "install_hardlink($file)\n"; }
 
@@ -1888,6 +2050,7 @@ sub install_hardlink {
 sub install_softlink {
 
     my $file     = shift;
+    my $etype = 'file';
 
     if($::o{debug}) { ssm_print "install_softlink($file)\n"; }
 
@@ -1913,10 +2076,11 @@ sub install_softlink {
 sub install_special_file {
 
     my $file = shift;
+    my $etype = 'file';
 
     if($::o{debug}) { ssm_print "install_special_file($file)\n"; }
 
-    ssm_print qq(         FIXING:  Creating ) . ucfirst($TYPE{$file}) . qq( file $file\n);
+    ssm_print qq(         FIXING:  Creating ) . ucfirst($CONF{$etype}{$file}{type}) . qq( file $file\n);
 
     my $calling_function = (caller(1))[3];
     execute_prescript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
@@ -1929,11 +2093,11 @@ sub install_special_file {
 
     remove_file($file);
 
-    if($TYPE{$file} eq 'fifo') {
+    if($CONF{$etype}{$file}{type} eq 'fifo') {
         umask 0000;
         mkfifo($file, oct($MODE{$file})) or die "Couldn't mkfifo($file, $MODE{$file})$!";
     }
-    elsif($TYPE{$file} eq 'character') {
+    elsif($CONF{$etype}{$file}{type} eq 'character') {
         #
         # Thanks to Jim Pirzyk, author of Unix::Mknod, for getting back to
         # me with a documentation fix that allows me to use his code here.
@@ -1942,7 +2106,7 @@ sub install_special_file {
         my $mode = oct($MODE{$file});
         mknod( $file, S_IFCHR|$mode, makedev($MAJOR{$file}, $MINOR{$file}) );
     }
-    elsif($TYPE{$file} eq 'block') {
+    elsif($CONF{$etype}{$file}{type} eq 'block') {
         my $mode = oct($MODE{$file});
         mknod( $file, S_IFBLK|$mode, makedev($MAJOR{$file}, $MINOR{$file}) );
     }
@@ -1957,16 +2121,17 @@ sub install_special_file {
 sub special_file_interactive {
 
     my $file   = shift;
+    my $etype = 'file';
 
     # validate input
     if( 
            !defined($file)          or ($file !~ m/\S/)
-        or !defined($TYPE{$file})   or ($TYPE{$file} !~ m/\S/)
+        or !defined($CONF{$etype}{$file}{type})   or ($CONF{$etype}{$file}{type} !~ m/\S/)
         or !defined($MODE{$file})   or ($MODE{$file} !~ m/^\d+$/)
         or !defined($OWNER{$file})  or ($OWNER{$file} !~ m/\S/)
         or !defined($GROUP{$file})  or ($GROUP{$file} !~ m/\S/)
         or (
-                (($TYPE{$file} eq 'character') or ($TYPE{$file} eq 'block')) 
+                (($CONF{$etype}{$file}{type} eq 'character') or ($CONF{$etype}{$file}{type} eq 'block')) 
                 and 
                 (
                        !defined($MAJOR{$file}) or ($MAJOR{$file} !~ m/^\d+$/)
@@ -1989,16 +2154,16 @@ sub special_file_interactive {
         if( ! uid_gid_and_mode_match($file) ) {
             $needs_fixing = 1;
         } 
-        elsif( ($TYPE{$file} eq 'fifo') and (! S_ISFIFO($st_mode)) ) {
+        elsif( ($CONF{$etype}{$file}{type} eq 'fifo') and (! S_ISFIFO($st_mode)) ) {
             $needs_fixing = 1;
         }
-        elsif( ($TYPE{$file} eq 'block') and (! S_ISBLK($st_mode)) ) {
+        elsif( ($CONF{$etype}{$file}{type} eq 'block') and (! S_ISBLK($st_mode)) ) {
             $needs_fixing = 1;
         }
-        elsif( ($TYPE{$file} eq 'character') and (! S_ISCHR($st_mode)) ) {
+        elsif( ($CONF{$etype}{$file}{type} eq 'character') and (! S_ISCHR($st_mode)) ) {
             $needs_fixing = 1;
         }
-        elsif( ($TYPE{$file} eq 'character') or ($TYPE{$file} eq 'block') ) {
+        elsif( ($CONF{$etype}{$file}{type} eq 'character') or ($CONF{$etype}{$file}{type} eq 'block') ) {
             if( $MAJOR{$file} ne major($st->rdev) ) {
                 $needs_fixing = 1;
             }
@@ -2012,13 +2177,13 @@ sub special_file_interactive {
     my $fix_it = undef;
     if( defined($needs_fixing) ) {
 
-        if( ! check_depends_interactive($file) ) { return 1; }
+        if( ! check_depends_interactive($file, $etype) ) { return 1; }
 
         assign_state_to_thingy($file, 'b0rken');
         declare_OK_or_Not_OK($file, 0);
 
         unless( $::o{summary} ) {
-            declare_file_actions($file, "create $file as a $TYPE{$file} special file");
+            declare_file_actions($file, "create $file as a $CONF{$etype}{$file}{type} special file");
             take_file_action( $file, 'install_special_file', 'yni#' );
         }
 
@@ -2038,6 +2203,7 @@ sub diff_ownership_and_permissions {
 
     my $file = shift;
     my $spaces = shift;
+    my $etype = 'file';
 
     my $st = stat($file);
 
@@ -2144,6 +2310,7 @@ sub touch {
 sub set_ownership_and_permissions {
 
     my $file = shift;
+    my $etype = 'file';
 
     ssm_print "         FIXING:  Ownership and Perms: $file\n";
 
@@ -2161,6 +2328,7 @@ sub contents_unwanted_interactive {
     ssm_print ">> contents_unwanted_interactive()\n" if( $::o{debug} );
 
     my $dir   = shift;
+    my $etype = 'file';
 
     # validate input
     if(    !defined($dir)        or ($dir        !~ m#^/#)
@@ -2177,6 +2345,7 @@ sub contents_unwanted_interactive {
 
         my @files;
         my $file;
+
         opendir(DIR,"$dir") or die "Can't open $dir for reading";
             #
             # See if each file matches a defined file
@@ -2186,19 +2355,17 @@ sub contents_unwanted_interactive {
             #       defined.  It is implicitly defined.  Ie.: match on left hand
             #       side of string if necessary.
             #
-            #XXX while (defined ($file = readdir DIR) ) {
-            #
             while ($file = readdir DIR) {
 
                 next if $file =~ /^\.\.?$/;
                 $file = "$dir/$file";
-                push(@files, $file) unless (defined $TYPE{$file});
+                push(@files, $file) unless (defined $CONF{$etype}{$file}{type});
             }
         closedir(DIR);
 
         foreach $file (sort @files) {
             ssm_print ">>> in_directory: $file\n" if( $::o{debug} );
-            $TYPE{$file} = 'unwanted';
+            $CONF{$etype}{$file}{type} = 'unwanted';
             unwanted_file_interactive($file);
         }
     }
@@ -2210,10 +2377,11 @@ sub contents_unwanted_interactive {
 sub unwanted_file_interactive {
 
     my $file   = shift;
+    my $etype = 'file';
 
     # validate input
     if(    !defined($file)        or ($file        !~ m#^/#)
-        or !defined($TYPE{$file}) or ($TYPE{$file} !~ m/\S/)
+        or !defined($CONF{$etype}{$file}{type}) or ($CONF{$etype}{$file}{type} !~ m/\S/)
     ) {
         return report_improper_file_definition($file);
     }
@@ -2254,11 +2422,12 @@ sub unwanted_file_interactive {
 sub chown_and_chmod_interactive {
 
     my $file   = shift;
+    my $etype = 'file';
 
     #
     # validate input
     if(    !defined($file)         or ($file !~ m#^/#)
-        or !defined($TYPE{$file})  or ($TYPE{$file} !~ m/\S/)
+        or !defined($CONF{$etype}{$file}{type})  or ($CONF{$etype}{$file}{type} !~ m/\S/)
         or !defined($MODE{$file})  or ($MODE{$file} !~ m/^\d+$/)
         or !defined($OWNER{$file}) or ($OWNER{$file} !~ m/\S/)
         or !defined($GROUP{$file}) or ($GROUP{$file} !~ m/\S/)
@@ -2280,7 +2449,7 @@ sub chown_and_chmod_interactive {
     # Should we actually fix it?
     if( defined($needs_fixing) ) {
 
-        if( ! check_depends_interactive($file) ) { return 1; }
+        if( ! check_depends_interactive($file, $etype) ) { return 1; }
 
         assign_state_to_thingy($file, 'b0rken');
         declare_OK_or_Not_OK($file, 0);
@@ -2304,10 +2473,11 @@ sub chown_and_chmod_interactive {
 sub directory_interactive {
 
     my $file   = shift;
+    my $etype = 'file';
 
     # validate input
     if(    !defined($file)         or ($file !~ m#^/#)
-        or !defined($TYPE{$file})  or ($TYPE{$file} !~ m/\S/)
+        or !defined($CONF{$etype}{$file}{type})  or ($CONF{$etype}{$file}{type} !~ m/\S/)
         or !defined($MODE{$file})  or ($MODE{$file} !~ m/^\d+$/)
         or !defined($OWNER{$file}) or ($OWNER{$file} !~ m/\S/)
         or !defined($GROUP{$file}) or ($GROUP{$file} !~ m/\S/)
@@ -2334,7 +2504,7 @@ sub directory_interactive {
     # Should we actually fix it?
     if( defined($needs_fixing) ) {
 
-        if( ! check_depends_interactive($file) ) { return 1; }
+        if( ! check_depends_interactive($file, $etype) ) { return 1; }
 
         assign_state_to_thingy($file, 'b0rken');
         declare_OK_or_Not_OK($file, 0);
@@ -2367,17 +2537,18 @@ sub directory_interactive {
 sub generated_file_interactive {
 
     my $file   = shift;
+    my $etype = 'file';
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     #
     # validate input
     if(    !defined($file)             or ($file             !~ m#^/#   )
-        or !defined($TYPE{$file})      or ($TYPE{$file}      !~ m/\S/   )
+        or !defined($CONF{$etype}{$file}{type})      or ($CONF{$etype}{$file}{type}      !~ m/\S/   )
         or !defined($MODE{$file})      or ($MODE{$file}      !~ m/^\d+$/)
         or !defined($OWNER{$file})     or ($OWNER{$file}     !~ m/\S/   )
         or !defined($GROUP{$file})     or ($GROUP{$file}     !~ m/\S/   )
-        or !defined($GENERATOR{$file}) or ($GENERATOR{$file} !~ m/\S/   )
+        or !defined($CONF{$etype}{$file}{generator}) or ($CONF{$etype}{$file}{generator} !~ m/\S/   )
     ) {
         return report_improper_file_definition($file);
     }
@@ -2386,7 +2557,7 @@ sub generated_file_interactive {
     # Take the generator and write it into an executable file
     my $generator_script = choose_tmp_file();
     open(FILE,">$generator_script") or die("Couldn't open $generator_script for writing.");
-        print FILE $GENERATOR{$file};
+        print FILE $CONF{$etype}{$file}{generator};
     close(FILE);
     chmod oct(700), $generator_script;
 
@@ -2395,7 +2566,7 @@ sub generated_file_interactive {
     $TMPFILE{$file} = choose_tmp_file();
     open(TMP, "+>$TMPFILE{$file}") or die "Couldn't open tmp file $!";
 
-        if( $::o{debug} ) { print ">>>  The Generator(tm): $GENERATOR{$file}\n"; }
+        if( $::o{debug} ) { print ">>>  The Generator(tm): $CONF{$etype}{$file}{generator}\n"; }
 
         open(INPUT,"$generator_script|") or die("Couldn't run $generator_script $!");
             print TMP (<INPUT>);
@@ -2433,7 +2604,7 @@ sub generated_file_interactive {
     # Should we actually fix it?
     if( defined($needs_fixing) ) {
 
-        if( ! check_depends_interactive($file) ) { return 1; }
+        if( ! check_depends_interactive($file, $etype) ) { return 1; }
 
         assign_state_to_thingy($file, 'b0rken');
 
@@ -2477,13 +2648,14 @@ sub generated_file_interactive {
 sub regular_file_interactive {
 
     my $file   = shift;
+    my $etype = 'file';
 
     ssm_print ">> regular_file_interactive($file)\n" if( $::o{debug} );
 
     #
     # validate input
     if(    !defined($file)          or ($file          !~ m#^/#   )
-        or !defined($TYPE{$file})   or ($TYPE{$file}   !~ m/\S/   )
+        or !defined($CONF{$etype}{$file}{type})   or ($CONF{$etype}{$file}{type}   !~ m/\S/   )
         or !defined($MODE{$file})   or ($MODE{$file}   !~ m/^\d+$/)
         or !defined($OWNER{$file})  or ($OWNER{$file}  !~ m/\S/   )
         or !defined($GROUP{$file})  or ($GROUP{$file}  !~ m/\S/   )
@@ -2516,7 +2688,7 @@ sub regular_file_interactive {
     # Should we actually fix it?
     if( defined($needs_fixing) ) {
 
-        if( ! check_depends_interactive($file) ) { return 1; }
+        if( ! check_depends_interactive($file, $etype) ) { return 1; }
 
         assign_state_to_thingy($file, 'b0rken');
         ssm_print "Not OK:  Regular file $file\n";
@@ -2662,6 +2834,7 @@ sub take_file_action {
     my $action  = shift;
     my $prompts = shift;
     my $msg     = shift;
+    my $etype = 'file';
 
     my $return_code = 0;
 
@@ -2693,7 +2866,7 @@ sub take_file_action {
         } 
         else {
 
-            my ($retval, @unsatisfied) = check_depends($file);
+            my ($retval, @unsatisfied) = check_depends($file, $etype);
             if($retval eq 2) {
 
                 $prompts =~ s/[^n#]//g;
@@ -2782,6 +2955,7 @@ sub take_file_action {
 sub md5sum_match {
 
     my $file = shift;
+    my $etype = 'file';
 
     open(FILE, "<$file") or die "Can’t open ’$file’ for reading: $!";
         binmode(FILE);
@@ -2798,6 +2972,7 @@ sub diff_file {
 
     my $file     = shift;
     my $tmp_file = shift;
+    my $etype = 'file';
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
@@ -2912,11 +3087,12 @@ sub diff_file {
 sub execute_prescript {
 
     my $file = shift;
+    my $etype = 'file';
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
-    if($PRESCRIPT{$file}) {
-        my $cmd = $PRESCRIPT{$file};
+    if($CONF{$etype}{$file}{prescript}) {
+        my $cmd = $CONF{$etype}{$file}{prescript};
         ssm_print qq(         RUNNING: $cmd\n);
         run_cmd($cmd);
     }
@@ -2929,11 +3105,12 @@ sub execute_prescript {
 sub execute_postscript {
 
     my $file = shift;
+    my $etype = 'file';
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
-    if($POSTSCRIPT{$file}) {
-        my $cmd = $POSTSCRIPT{$file};
+    if($CONF{$etype}{$file}{postscript}) {
+        my $cmd = $CONF{$etype}{$file}{postscript};
         ssm_print qq(         RUNNING: $cmd\n);
         run_cmd($cmd);
     }
@@ -2947,6 +3124,7 @@ sub execute_postscript {
 sub install_directory {
 
     my $file = shift;
+    my $etype = 'file';
 
     ssm_print "         FIXING:  Creating: $file\n";
 
@@ -2974,6 +3152,7 @@ sub install_file {
 
     my $file     = shift;
     my $tmp_file = shift;
+    my $etype = 'file';
 
     if($::o{debug}) { ssm_print "install_file($file)\n"; }
 
@@ -3142,6 +3321,7 @@ sub choose_tmp_file {
 sub hardlink_interactive {
 
     my $file   = shift;
+    my $etype = 'file';
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
@@ -3150,7 +3330,7 @@ sub hardlink_interactive {
     unless( 
                 defined($file)          and ($file          =~ m#^/#)
             and defined($TARGET{$file}) and ($TARGET{$file} =~ m#^/#)
-            and defined($TYPE{$file})   and ($TYPE{$file}   =~ m/\S/)
+            and defined($CONF{$etype}{$file}{type})   and ($CONF{$etype}{$file}{type}   =~ m/\S/)
     ) {
         return report_improper_file_definition($file);
     }
@@ -3195,7 +3375,7 @@ sub hardlink_interactive {
     # Should we actually fix it?
     if( defined($needs_fixing) ) {
 
-        if( ! check_depends_interactive($file) ) { return 1; }
+        if( ! check_depends_interactive($file, $etype) ) { return 1; }
 
         assign_state_to_thingy($file, 'b0rken');
         declare_OK_or_Not_OK($file, 0);
@@ -3227,6 +3407,7 @@ sub user_is_root {
 sub report_improper_service_definition {
 
     my $name = shift;
+    my $etype = 'service';
     
     my ($package, $filename, $line) = caller;
     ssm_print "\n";
@@ -3239,7 +3420,7 @@ sub report_improper_service_definition {
     if(defined($DETAILS{$name})) { ssm_print "  mode   = $DETAILS{$name}\n";
                           } else { ssm_print "  mode   =\n"; }
 
-    if(defined($DEPENDS{$name})) { ssm_print "  depends   = $DEPENDS{$name}\n";
+    if(defined($CONF{$etype}{$name}{depends})) { ssm_print "  depends   = $CONF{$etype}{$name}{depends}\n";
                           } else { ssm_print "  depends   =\n"; }
 
     ssm_print "\n";
@@ -3258,6 +3439,7 @@ sub report_improper_service_definition {
 sub report_improper_file_definition {
 
     my $file = shift;
+    my $etype = 'file';
 
     my ($package, $filename, $line) = caller;
     ssm_print "\n";
@@ -3268,7 +3450,7 @@ sub report_improper_file_definition {
     if(defined($file)) { ssm_print "  name   = $file\n";
                 } else { ssm_print "  name   =\n"; }
 
-    if(defined($TYPE{$file})) { ssm_print "  type   = $TYPE{$file}\n";
+    if(defined($CONF{$etype}{$file}{type})) { ssm_print "  type   = $CONF{$etype}{$file}{type}\n";
                        } else { ssm_print "  type   =\n"; }
 
     if(defined($TARGET{$file})) { ssm_print "  target = $TARGET{$file}\n";
@@ -3292,19 +3474,19 @@ sub report_improper_file_definition {
     if(defined($MD5SUM{$file})) { ssm_print "  md5sum = $MD5SUM{$file}\n";
                          } else { ssm_print "  md5sum =\n"; }
 
-    if(defined($PRESCRIPT{$file})) { ssm_print "  prescript = $PRESCRIPT{$file}\n";
+    if(defined($CONF{$etype}{$file}{prescript})) { ssm_print "  prescript = $CONF{$etype}{$file}{prescript}\n";
                             } else { ssm_print "  prescript =\n"; }
 
-    if(defined($POSTSCRIPT{$file})) { ssm_print "  postscript = $POSTSCRIPT{$file}\n";
+    if(defined($CONF{$etype}{$file}{postscript})) { ssm_print "  postscript = $CONF{$etype}{$file}{postscript}\n";
                              } else { ssm_print "  postscript =\n"; }
 
-    if(defined($DEPENDS{$file})) { ssm_print "  depends = $DEPENDS{$file}\n";
+    if(defined($CONF{$etype}{$file}{depends})) { ssm_print "  depends = $CONF{$etype}{$file}{depends}\n";
                           } else { ssm_print "  depends =\n"; }
 
-    if(defined($GENERATOR{$file})) { ssm_print "  generator = $GENERATOR{$file}\n";
+    if(defined($CONF{$etype}{$file}{generator})) { ssm_print "  generator = $CONF{$etype}{$file}{generator}\n";
                             } else { ssm_print "  generator =\n"; }
 
-    if( defined($TYPE{$file}) and ($TYPE{$file} eq 'softlink') ) { 
+    if( defined($CONF{$etype}{$file}{type}) and ($CONF{$etype}{$file}{type} eq 'softlink') ) { 
         ssm_print "\n";
         ssm_print "  Make sure that file and target are absolute paths.  Relative\n";
         ssm_print "  links will still be created.\n";
@@ -3326,6 +3508,7 @@ sub report_improper_file_definition {
 sub uid_gid_and_mode_match {
     
     my $file = shift;
+    my $etype = 'file';
 
     my $st = stat($file);
 
@@ -3354,6 +3537,7 @@ sub get_hostname {
 sub update_bundle_file_comment_out_entry {
 
     my $file = shift;
+    my $etype = 'file'; # XXX at some point, switch this to be passed by the calling routine, as this subroutine could handle non-file related etries as well. -BEF-
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
@@ -3459,6 +3643,7 @@ sub update_or_add_file_stanza_to_bundlefile {
     # Name of system file in question, and attributes
     #
     my %filespec   = @_;
+    my $etype = 'file';
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
@@ -3806,6 +3991,7 @@ sub add_package_stanza_to_bundlefile {
 sub turn_service_into_file_entry {
 
     my $name = shift;
+    my $etype = 'service';
 
     my $dir = "/etc";
 
@@ -3829,7 +4015,7 @@ sub turn_service_into_file_entry {
         opendir(DIR,"$dir/$subdir");
         foreach( grep { /[SK]\d+$name$/ } readdir(DIR) ) {
             my $file = "$dir/$subdir/$_";
-            $TYPE{$file} = 'unwanted';
+            $CONF{file}{$file}{type} = 'unwanted';
         }
         closedir(DIR);
 
@@ -3839,7 +4025,7 @@ sub turn_service_into_file_entry {
         if(defined ($details{$level})) {
             my $prefix = $details{$level};
             my $file = "$dir/rc${level}.d/${prefix}${name}";
-            $TYPE{$file} = 'softlink';
+            $CONF{file}{$file}{type} = 'softlink';
             $TARGET{$file} = "$dir/init.d/$name";
         }
     }
@@ -3851,7 +4037,7 @@ sub turn_service_into_file_entry {
 #
 #   Usage:
 #
-#       my ($retval, @unsatisfied) = check_depends($file);
+#       my ($retval, @unsatisfied) = check_depends($name, $etype);
 #
 # Returns $retval eq '1' and @unsatisfied is empty, if dependencies are satisfied
 # Returns $retval eq '2' and @unsatisfied as a list of unsatisfied dependencies, if unsatisfied
@@ -3859,7 +4045,9 @@ sub turn_service_into_file_entry {
 sub check_depends {
 
     my $name = shift;
-    if(! defined $TYPE{$name}) {
+    my $etype = shift;
+
+    if(! defined $CONF{file}{$name}{type}) {
         ssm_print ">> name: $name\n" if( $::o{debug} );
         return 1;
     }
@@ -3869,15 +4057,15 @@ sub check_depends {
 
     #
     # No dependencies to check?  That's OK.  Return success.
-    if(! defined $DEPENDS{$name}) { return 1; }
+    if(! defined $CONF{$etype}{$name}{depends}) { return 1; }
 
-    if( $::o{debug} ) { print ">>> Dependencies for $name: $DEPENDS{$name}\n"; }
+    if( $::o{debug} ) { print ">>> Dependencies for $name: $CONF{$etype}{$name}{depends}\n"; }
     
     #
     # Only check for pkgs if there's a pkg in the dependency list.  pkg
     # checking is an expensive process. -BEF-
     #
-    if($DEPENDS{$name} =~ m/(^|\s)\w/ ) {    # Match package names in the list
+    if($CONF{$etype}{$name}{depends} =~ m/(^|\s)\w/ ) {    # Match package names in the list
 
         if( $::o{pkg_manager} eq 'none' ) {
             ssm_print "\n";
@@ -3895,7 +4083,7 @@ sub check_depends {
         %pkgs_currently_installed = get_pkgs_currently_installed();
     } 
 
-    foreach( split(/\s+/, $DEPENDS{$name}) ) {
+    foreach( split(/\s+/, $CONF{$etype}{$name}{depends}) ) {
         #
         # Check file dependencies
         #
@@ -4965,6 +5153,7 @@ sub declare_file_actions {
     
     my $file = shift;
     my $optional_notice = shift;
+    my $etype = 'file';
 
     my $dir  = dirname($file);
     my $dir_will_be_removed;
@@ -4972,15 +5161,15 @@ sub declare_file_actions {
     ssm_print "\n";
     ssm_print "         Need to:\n";
 
-    if($PRESCRIPT{$file}) {
-        ssm_print "         - $PRESCRIPT{$file}\n";
+    if($CONF{$etype}{$file}{prescript}) {
+        ssm_print "         - $CONF{$etype}{$file}{prescript}\n";
     }
 
     if(   -e $dir   and ! -d $dir  ) {
         ssm_print "         - remove file $dir\n";
     }
 
-    if( $TYPE{$file} ne 'directory'  and  $TYPE{$file} ne 'directory+contents-unwanted') {
+    if( $CONF{$etype}{$file}{type} ne 'directory'  and  $CONF{$etype}{$file}{type} ne 'directory+contents-unwanted') {
 
         if( -e $file  and  -d $file ) {
             ssm_print "         - remove directory $file\n";
@@ -4992,7 +5181,7 @@ sub declare_file_actions {
         }
     }
 
-    if( $TYPE{$file} eq 'chown+chmod'  and  ! -e $file ) {
+    if( $CONF{$etype}{$file}{type} eq 'chown+chmod'  and  ! -e $file ) {
         ssm_print "         - create empty file $file\n";
     }
 
@@ -5002,7 +5191,7 @@ sub declare_file_actions {
 
     if(
             ( ! defined $dir_will_be_removed    )
-        and ( $TYPE{$file} ne 'unwanted'        )
+        and ( $CONF{$etype}{$file}{type} ne 'unwanted'        )
         and ( -e $file                          )
         and ( ! uid_gid_and_mode_match($file)   )
       ) {
@@ -5011,8 +5200,8 @@ sub declare_file_actions {
         diff_ownership_and_permissions($file, 12);
     }
 
-    if($POSTSCRIPT{$file}) {
-        ssm_print "         - $POSTSCRIPT{$file}\n";
+    if($CONF{$etype}{$file}{postscript}) {
+        ssm_print "         - $CONF{$etype}{$file}{postscript}\n";
     }
 
     return 1;
@@ -5031,6 +5220,7 @@ sub declare_OK_or_Not_OK {
     my $file            = shift;
     my $is_OK           = shift;
     my $append_message  = shift;
+    my $etype = 'file';
 
     my $state;
     if("$is_OK" eq "1") {
@@ -5047,32 +5237,32 @@ sub declare_OK_or_Not_OK {
     #    $file_or_dir = 'directory';
     #}
 
-    my $type = ucfirst($TYPE{$file});
-    if($TYPE{$file} eq 'hardlink') {
+    my $type = ucfirst($CONF{$etype}{$file}{type});
+    if($CONF{$etype}{$file}{type} eq 'hardlink') {
         $type = 'Hard Link';
     }
-    elsif($TYPE{$file} eq 'softlink') {
+    elsif($CONF{$etype}{$file}{type} eq 'softlink') {
         $type = 'Soft Link';
     }
-    elsif($TYPE{$file} eq 'block') {
+    elsif($CONF{$etype}{$file}{type} eq 'block') {
         $type = 'Block (special file)';
     }
-    elsif($TYPE{$file} eq 'character') {
+    elsif($CONF{$etype}{$file}{type} eq 'character') {
         $type = 'Character (special file)';
     }
-    elsif($TYPE{$file} eq 'chown+chmod') {
+    elsif($CONF{$etype}{$file}{type} eq 'chown+chmod') {
         $type = 'Chown+Chmod';
     }
-    elsif($TYPE{$file} eq 'directory+contents-unwanted') {
+    elsif($CONF{$etype}{$file}{type} eq 'directory+contents-unwanted') {
         $type = 'Directory (w/contents unwanted)';
     }
-    elsif($TYPE{$file} eq 'fifo') {
+    elsif($CONF{$etype}{$file}{type} eq 'fifo') {
         $type = 'FIFO (special file)';
     }
 
     my $message = $state . $type . ": " . $file;
 
-    if($TYPE{$file} eq 'hardlink'  or  $TYPE{$file} eq 'softlink') {
+    if($CONF{$etype}{$file}{type} eq 'hardlink'  or  $CONF{$etype}{$file}{type} eq 'softlink') {
         $message .= " -> $TARGET{$file}";
     }
 
@@ -5090,6 +5280,7 @@ sub rename_file {
 
     my $file = shift @{$::o{rename_file}};
     my $newfile = shift @ARGV;
+    my $etype = 'file';
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
@@ -5115,7 +5306,7 @@ sub rename_file {
     #   config file
     #
     my %filespec;
-    $filespec{type}     = $TYPE{$file};
+    $filespec{type}     = $CONF{$etype}{$file}{type};
     $filespec{name}     = $file;
     $filespec{owner}    = $OWNER{$file}     if($OWNER{$file});
     $filespec{group}    = $GROUP{$file}     if($GROUP{$file});
@@ -5251,6 +5442,42 @@ sub export_config {
     if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
 
     return ($ERROR_LEVEL, $CHANGES_MADE);
+}
+
+
+#
+# Usage: report_conflicting_definitions($etype, $name, $priority, $bundlefile);
+#
+sub report_conflicting_definitions() {
+
+                my $etype = shift;
+                my $name = shift;
+                my $priority = shift;
+                my $bundlefile = shift;
+
+                # error out;
+                ssm_print_always "\n";
+                ssm_print_always "ERROR: Multiple (conflicting) definitions for:\n";
+                ssm_print_always "\n";
+                ssm_print_always "  [$etype]\n";
+                ssm_print_always "  name     = $name\n";
+                ssm_print_always "  priority = $priority\n";
+                ssm_print_always "  ...\n";
+                ssm_print_always "\n";
+                ssm_print_always "  This instance was found in $bundlefile\n";
+                ssm_print_always "  The conflicting instance was found in $BUNDLEFILE{$name}\n";
+                ssm_print_always "\n";
+                ssm_print_always "  Exiting now with no changes made.  Please examine your\n";
+                ssm_print_always "  configuration and eliminate all but one of the definitions for\n";
+                ssm_print_always "  this file, or change the priority of one of the definitions.\n";
+                ssm_print_always "\n";
+
+                $ERROR_LEVEL++;
+                if($::o{debug}) { ssm_print_always "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+
+                # We go ahead and exit here to be super conservative.
+                ssm_print_always "\n";
+                exit $ERROR_LEVEL;
 }
 
 
