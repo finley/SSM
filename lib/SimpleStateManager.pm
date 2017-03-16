@@ -225,11 +225,6 @@ my %CONF;
               
 
 my (
-    %MAJOR,
-    %MINOR,
-    %PRESCRIPT,   # script or command to be run before installing a file
-    %POSTSCRIPT,  # script or command to be run after installing a file
-    %DEPENDS,     # package and, or file dependencies
     %DETAILS,     # runlevel information for services
     %GENERATOR,   # script or command to run to generate a generated file
     %BUNDLEFILE,  # name of bundlefile where each file or package is defined
@@ -293,11 +288,6 @@ sub _initialize_variables {
     (   %::PKGS_FROM_STATE_DEFINITION,
         %::VARS_FROM_STATE_DEFINITION,
         %CONF,
-        %MAJOR,
-        %MINOR,
-        %PRESCRIPT,
-        %POSTSCRIPT,
-        %DEPENDS,
         %DETAILS,
         %GENERATOR,
         %BUNDLEFILE,
@@ -957,8 +947,8 @@ sub read_config_file {
                     $CONF{$etype}{$name}{owner}      = $owner      if(defined $owner);
                     $CONF{$etype}{$name}{group}      = $group      if(defined $group);
                     $CONF{$etype}{$name}{md5sum}     = $md5sum     if(defined $md5sum);
-                    $MAJOR{$name}      = $major      if(defined $major);
-                    $MINOR{$name}      = $minor      if(defined $minor);
+                    $CONF{$etype}{$name}{major}      = $major      if(defined $major);
+                    $CONF{$etype}{$name}{minor}      = $minor      if(defined $minor);
                     $CONF{$etype}{$name}{target}     = $target     if(defined $target);
                     $CONF{$etype}{$name}{prescript}  = $prescript  if(defined $prescript);
                     $CONF{$etype}{$name}{postscript} = $postscript if(defined $postscript);
@@ -1107,8 +1097,8 @@ sub read_config_file {
                     $CONF{$etype}{$name}{owner}      = $owner      if(defined $owner);
                     $CONF{$etype}{$name}{group}      = $group      if(defined $group);
                     $CONF{$etype}{$name}{md5sum}     = $md5sum     if(defined $md5sum);
-                    $MAJOR{$name}      = $major      if(defined $major);
-                    $MINOR{$name}      = $minor      if(defined $minor);
+                    $CONF{$etype}{$name}{major}      = $major      if(defined $major);
+                    $CONF{$etype}{$name}{minor}      = $minor      if(defined $minor);
                     $CONF{$etype}{$name}{target}     = $target     if(defined $target);
                     $CONF{$etype}{$name}{prescript}  = $prescript  if(defined $prescript);
                     $CONF{$etype}{$name}{postscript} = $postscript if(defined $postscript);
@@ -2089,11 +2079,11 @@ sub install_special_file {
         # -BEF- 2006.05.08
         #
         my $mode = oct($CONF{$etype}{$name}{mode});
-        mknod( $name, S_IFCHR|$mode, makedev($MAJOR{$name}, $MINOR{$name}) );
+        mknod( $name, S_IFCHR|$mode, makedev($CONF{$etype}{$name}{major}, $CONF{$etype}{$name}{minor}) );
     }
     elsif($CONF{$etype}{$name}{type} eq 'block') {
         my $mode = oct($CONF{$etype}{$name}{mode});
-        mknod( $name, S_IFBLK|$mode, makedev($MAJOR{$name}, $MINOR{$name}) );
+        mknod( $name, S_IFBLK|$mode, makedev($CONF{$etype}{$name}{major}, $CONF{$etype}{$name}{minor}) );
     }
 
     set_ownership_and_permissions($name);
@@ -2119,8 +2109,8 @@ sub special_file_interactive {
                 (($CONF{$etype}{$name}{type} eq 'character') or ($CONF{$etype}{$name}{type} eq 'block')) 
                 and 
                 (
-                       !defined($MAJOR{$name}) or ($MAJOR{$name} !~ m/^\d+$/)
-                    or !defined($MINOR{$name}) or ($MINOR{$name} !~ m/^\d+$/)
+                       !defined($CONF{$etype}{$name}{major}) or ($CONF{$etype}{$name}{major} !~ m/^\d+$/)
+                    or !defined($CONF{$etype}{$name}{minor}) or ($CONF{$etype}{$name}{minor} !~ m/^\d+$/)
                 )
            )
     ) {
@@ -2149,10 +2139,10 @@ sub special_file_interactive {
             $needs_fixing = 1;
         }
         elsif( ($CONF{$etype}{$name}{type} eq 'character') or ($CONF{$etype}{$name}{type} eq 'block') ) {
-            if( $MAJOR{$name} ne major($st->rdev) ) {
+            if( $CONF{$etype}{$name}{major} ne major($st->rdev) ) {
                 $needs_fixing = 1;
             }
-            elsif ($MINOR{$name} ne minor($st->rdev) ) {
+            elsif ($CONF{$etype}{$name}{minor} ne minor($st->rdev) ) {
                 $needs_fixing = 1;
             }
         }
@@ -3450,10 +3440,10 @@ sub report_improper_file_definition {
     if(defined($CONF{$etype}{$name}{group})) { ssm_print "  group  = $CONF{$etype}{$name}{group}\n";
                         } else { ssm_print "  group  =\n"; }
 
-    if(defined($MAJOR{$name})) { ssm_print "  major  = $MAJOR{$name}\n";
+    if(defined($CONF{$etype}{$name}{major})) { ssm_print "  major  = $CONF{$etype}{$name}{major}\n";
                         } else { ssm_print "  major  =\n"; }
 
-    if(defined($MINOR{$name})) { ssm_print "  minor  = $MINOR{$name}\n";
+    if(defined($CONF{$etype}{$name}{minor})) { ssm_print "  minor  = $CONF{$etype}{$name}{minor}\n";
                         } else { ssm_print "  minor  =\n"; }
 
     if(defined($CONF{$etype}{$name}{md5sum})) { ssm_print "  md5sum = $CONF{$etype}{$name}{md5sum}\n";
@@ -5298,8 +5288,8 @@ sub rename_file {
     $filespec{group}    = $CONF{$etype}{$name}{group}     if($CONF{$etype}{$name}{group});
     $filespec{mode}     = $CONF{$etype}{$name}{mode}      if($CONF{$etype}{$name}{mode});
     $filespec{target}   = $CONF{$etype}{$name}{target}    if($CONF{$etype}{$name}{target});
-    $filespec{major}    = $MAJOR{$name}     if($MAJOR{$name});
-    $filespec{minor}    = $MINOR{$name}     if($MINOR{$name});
+    $filespec{major}    = $CONF{$etype}{$name}{major}     if($CONF{$etype}{$name}{major});
+    $filespec{minor}    = $CONF{$etype}{$name}{minor}     if($CONF{$etype}{$name}{minor});
     $filespec{md5sum}   = $CONF{$etype}{$name}{md5sum}    if($CONF{$etype}{$name}{md5sum});
 
     #
