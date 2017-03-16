@@ -225,7 +225,6 @@ my %CONF;
               
 
 my (
-    %MODE,
     %OWNER,
     %GROUP,
     %MD5SUM,
@@ -297,7 +296,6 @@ sub _initialize_variables {
     (   %::PKGS_FROM_STATE_DEFINITION,
         %::VARS_FROM_STATE_DEFINITION,
         %CONF,
-        %MODE,
         %OWNER,
         %GROUP,
         %MD5SUM,
@@ -349,11 +347,11 @@ sub _initialize_log_file {
 
         if( -f $log_dir ) {
 
-            my $file = $log_dir;
+            my $name = $log_dir;
             $tmp_file = choose_tmp_file();
 
-            copy("$file","$tmp_file") or die "Couldn't copy $file to $tmp_file\n";
-            unlink $file;
+            copy("$name","$tmp_file") or die "Couldn't copy $name to $tmp_file\n";
+            unlink $name;
         }
 
         my $dir = $log_dir;
@@ -961,7 +959,7 @@ sub read_config_file {
                 #
                 if( defined $name ) {
                     $CONF{$etype}{$name}{type}       = $type       if(defined $type);
-                    $MODE{$name}       = $mode       if(defined $mode);
+                    $CONF{$etype}{$name}{mode}       = $mode       if(defined $mode);
                     $OWNER{$name}      = $owner      if(defined $owner);
                     $GROUP{$name}      = $group      if(defined $group);
                     $MD5SUM{$name}     = $md5sum     if(defined $md5sum);
@@ -1111,7 +1109,7 @@ sub read_config_file {
                 #
                 if( defined $name ) {
                     $CONF{$etype}{$name}{type}       = $type       if(defined $type);
-                    $MODE{$name}       = $mode       if(defined $mode);
+                    $CONF{$etype}{$name}{mode}       = $mode       if(defined $mode);
                     $OWNER{$name}      = $owner      if(defined $owner);
                     $GROUP{$name}      = $group      if(defined $group);
                     $MD5SUM{$name}     = $md5sum     if(defined $md5sum);
@@ -1223,20 +1221,20 @@ sub read_config_file {
         #   Process [variables] substitutions in file _names_
         #
         my $etype = 'file';
-        foreach my $file (keys %{$CONF{$etype}}) {
+        foreach my $name (keys %{$CONF{$etype}}) {
 
-            my $orig_file = $file;
-            if( $file =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g ) {
-                # Effectively renaming the hash entry from $orig_file to $file
-                $CONF{$etype}{$file} = delete $CONF{$etype}{$orig_file};
+            my $orig_file = $name;
+            if( $name =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g ) {
+                # Effectively renaming the hash entry from $orig_file to $name
+                $CONF{$etype}{$name} = delete $CONF{$etype}{$orig_file};
             }
         }
 
-        foreach my $file (keys %{$CONF{$etype}}) {
-            $CONF{$etype}{$file}{generator} =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g;
-            $CONF{$etype}{$file}{depends} =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g;
-            $CONF{$etype}{$file}{postscript} =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g;
-            $CONF{$etype}{$file}{prescript} =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g;
+        foreach my $name (keys %{$CONF{$etype}}) {
+            $CONF{$etype}{$name}{generator} =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g;
+            $CONF{$etype}{$name}{depends} =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g;
+            $CONF{$etype}{$name}{postscript} =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g;
+            $CONF{$etype}{$name}{prescript} =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g;
         }
     }
 
@@ -1431,17 +1429,17 @@ sub sync_state {
 
         my %specified_files_that_arent_defined;
 
-        foreach my $file ( @{$::o{only_this_file}} ) {
+        foreach my $name ( @{$::o{only_this_file}} ) {
 
-            my $fq_file = fully_qualified_file_name($file);
+            my $fq_file = fully_qualified_file_name($name);
             if(defined $fq_file) {
-                $file = $fq_file;
+                $name = $fq_file;
             }
 
-            if($CONF{file}{$file}) {    # make sure it exists in the definition
-                $only_this_file_hash{$file} = 1;
+            if($CONF{file}{$name}) {    # make sure it exists in the definition
+                $only_this_file_hash{$name} = 1;
             } else {
-                $specified_files_that_arent_defined{$file} = 1;
+                $specified_files_that_arent_defined{$name} = 1;
             }
         }
 
@@ -1451,8 +1449,8 @@ sub sync_state {
             ssm_print_always "ERROR:  The following files were specified with --only-this-file, but do\n";
             ssm_print_always "        not exist in the definition:\n";
             ssm_print_always "\n";
-            foreach my $file (sort keys %specified_files_that_arent_defined) {
-                ssm_print_always "          $file\n";
+            foreach my $name (sort keys %specified_files_that_arent_defined) {
+                ssm_print_always "          $name\n";
             }
             ssm_print_always "\n";
 
@@ -1461,47 +1459,46 @@ sub sync_state {
     }
 
     my $etype = 'file';
-    foreach my $file (sort keys %{$CONF{$etype}}) {
+    foreach my $name (sort keys %{$CONF{$etype}}) {
 
-        next if( $::o{only_this_file} and !defined($only_this_file_hash{$file}) );
+        next if( $::o{only_this_file} and !defined($only_this_file_hash{$name}) );
 
         last if($::o{only_packages});
 
-        # elsif( ($CONF{$etype}{$file}{type} eq 'ignore') or ($CONF{$etype}{$file}{type} eq 'ignored') ) {
-        if( ($CONF{$etype}{$file}{type} eq 'ignore') or ($CONF{$etype}{$file}{type} eq 'ignored') ) {
-            ignore_file_interactive($file);
+        if( ($CONF{$etype}{$name}{type} eq 'ignore') or ($CONF{$etype}{$name}{type} eq 'ignored') ) {
+            ignore_file_interactive($name);
         }
-        elsif( $CONF{$etype}{$file}{type} eq 'softlink' ) {
-            softlink_interactive($file);
+        elsif( $CONF{$etype}{$name}{type} eq 'softlink' ) {
+            softlink_interactive($name);
         }
-        elsif( $CONF{$etype}{$file}{type} eq 'hardlink' ) {
-            hardlink_interactive($file);
+        elsif( $CONF{$etype}{$name}{type} eq 'hardlink' ) {
+            hardlink_interactive($name);
         }
-        elsif(     $CONF{$etype}{$file}{type} eq 'block' 
-                or $CONF{$etype}{$file}{type} eq 'character'
-                or $CONF{$etype}{$file}{type} eq 'fifo'      ) {
-            special_file_interactive($file);
+        elsif(     $CONF{$etype}{$name}{type} eq 'block' 
+                or $CONF{$etype}{$name}{type} eq 'character'
+                or $CONF{$etype}{$name}{type} eq 'fifo'      ) {
+            special_file_interactive($name);
         }
-        elsif( $CONF{$etype}{$file}{type} eq 'chown+chmod' ) {
-            chown_and_chmod_interactive($file);
+        elsif( $CONF{$etype}{$name}{type} eq 'chown+chmod' ) {
+            chown_and_chmod_interactive($name);
         }
-        elsif( $CONF{$etype}{$file}{type} eq 'regular' ) {
-            regular_file_interactive($file);
+        elsif( $CONF{$etype}{$name}{type} eq 'regular' ) {
+            regular_file_interactive($name);
         }
-        elsif( $CONF{$etype}{$file}{type} eq 'directory' ) {
-            directory_interactive($file);
+        elsif( $CONF{$etype}{$name}{type} eq 'directory' ) {
+            directory_interactive($name);
         }
-        elsif( $CONF{$etype}{$file}{type} eq 'unwanted' ) {
-            unwanted_file_interactive($file);
+        elsif( $CONF{$etype}{$name}{type} eq 'unwanted' ) {
+            unwanted_file_interactive($name);
         }
-        elsif( $CONF{$etype}{$file}{type} eq 'directory+contents-unwanted' ) {
-            contents_unwanted_interactive($file);
+        elsif( $CONF{$etype}{$name}{type} eq 'directory+contents-unwanted' ) {
+            contents_unwanted_interactive($name);
         }
-        elsif( $CONF{$etype}{$file}{type} eq 'generated' ) {
-            generated_file_interactive($file);
+        elsif( $CONF{$etype}{$name}{type} eq 'generated' ) {
+            generated_file_interactive($name);
         }
         else {
-            return report_improper_file_definition($file);
+            return report_improper_file_definition($name);
         }
     }
 
@@ -1583,14 +1580,14 @@ sub sync_state {
 
 sub check_depends_interactive {
 
-    my $file = shift;
+    my $name = shift;
     my $etype = shift;
 
-    my ($retval, @unsatisfied) = check_depends($file, $etype);
+    my ($retval, @unsatisfied) = check_depends($name, $etype);
 
     return 1 unless($retval eq 2);
 
-    declare_OK_or_Not_OK($file, 0);
+    declare_OK_or_Not_OK($name, 0);
     
     unless( $::o{summary} ) {
         ssm_print "\n";
@@ -1600,13 +1597,13 @@ sub check_depends_interactive {
         }
     }
     
-    assign_state_to_thingy($file, 'unmet_deps');
+    assign_state_to_thingy($name, 'unmet_deps');
     
     $ERROR_LEVEL++;
     if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
     
     my $action = 'null';
-    take_file_action( $file, $action, 'ni#' ) unless($::o{yes});
+    take_file_action( $name, $action, 'ni#' ) unless($::o{yes});
         # There is no "yes" action to take, so just skip if --yes.
     
     return undef;
@@ -1640,13 +1637,13 @@ sub email_log_file {
     my $msg;
     my $fh;
     my $log_file = "/var/log/" . basename($0);
-    my $file = $log_file;
+    my $name = $log_file;
     my $subject = "SSM: " . get_hostname();
 
     $msg = Mail::Send->new;
     $msg = Mail::Send->new(Subject => $subject, To => $::o{email_log_to} );
     $fh = $msg->open;
-    open(FILE,"<$file") or die("Couldn't open $file for reading!");
+    open(FILE,"<$name") or die("Couldn't open $name for reading!");
         while(<FILE>) {
             print $fh $_;
         }
@@ -1899,19 +1896,19 @@ sub ignore_file_interactive {
     # same file's removal....
     #
 
-    my $file = shift;
+    my $name = shift;
     my $etype = 'file';
 
     # validate input
     unless( 
-            defined($file)        and ($file        =~ m#^/#)
-        and defined($CONF{$etype}{$file}{type}) and ($CONF{$etype}{$file}{type} =~ m#\S#)
+            defined($name)        and ($name        =~ m#^/#)
+        and defined($CONF{$etype}{$name}{type}) and ($CONF{$etype}{$name}{type} =~ m#\S#)
     ) {
-        return report_improper_file_definition($file);
+        return report_improper_file_definition($name);
     }
 
-    assign_state_to_thingy($file, 'fixed');
-    declare_OK_or_Not_OK($file, 1);
+    assign_state_to_thingy($name, 'fixed');
+    declare_OK_or_Not_OK($name, 1);
 
     return 1;
 }
@@ -1923,7 +1920,7 @@ sub softlink_interactive {
     # specifies.
     #
 
-    my $file = shift;
+    my $name = shift;
     my $etype = 'file';
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
@@ -1931,70 +1928,70 @@ sub softlink_interactive {
     #
     # validate input
     unless( 
-            defined($file)          and ($file          =~ m#^/#)
-        and defined($CONF{$etype}{$file}{target})
-        and defined($CONF{$etype}{$file}{type})   and ($CONF{$etype}{$file}{type}   =~ m#\S#)
+            defined($name)          and ($name          =~ m#^/#)
+        and defined($CONF{$etype}{$name}{target})
+        and defined($CONF{$etype}{$name}{type})   and ($CONF{$etype}{$name}{type}   =~ m#\S#)
     ) {
-        return report_improper_file_definition($file);
+        return report_improper_file_definition($name);
     }
 
     #
     # Singularize double slashes in target names for beautification purposes
-    $CONF{$etype}{$file}{target} =~ s#/+#/#g;
+    $CONF{$etype}{$name}{target} =~ s#/+#/#g;
 
     #
     # In case it's a relative path name, move to the directory where the link
     # will live before testing for target existence. -BEF-
     #
     my    $cwd     = getcwd();
-    my    $dirname = dirname( $file );
+    my    $dirname = dirname( $name );
     chdir $dirname;
-    if( ! -e $CONF{$etype}{$file}{target} ) {
-        ssm_print "WARNING: Soft link $file -> $CONF{$etype}{$file}{target} (target doesn't exist).\n";
+    if( ! -e $CONF{$etype}{$name}{target} ) {
+        ssm_print "WARNING: Soft link $name -> $CONF{$etype}{$name}{target} (target doesn't exist).\n";
         $ERROR_LEVEL++;  if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
     }
     chdir $cwd;
 
-    my $current_target = readlink($file);
+    my $current_target = readlink($name);
 
     #
     # Possibilities are:
-    #   - $file exists and $current_target is right
+    #   - $name exists and $current_target is right
     #       - leave it alone
     #
-    #   - $file doesn't exist
+    #   - $name doesn't exist
     #       - create link
     #
-    #   - $file exists, $current_target is wrong
-    #       - rm $file 
+    #   - $name exists, $current_target is wrong
+    #       - rm $name 
     #       - create link
     #
-    #   - $file exists, $current_target is undef (Ie: $file is not a softlink)
-    #       - rm $file 
+    #   - $name exists, $current_target is undef (Ie: $name is not a softlink)
+    #       - rm $name 
     #       - create link
     #
-    unless( (defined $current_target) and ($current_target eq $CONF{$etype}{$file}{target}) ) {
+    unless( (defined $current_target) and ($current_target eq $CONF{$etype}{$name}{target}) ) {
 
-        assign_state_to_thingy($file, 'b0rken');
+        assign_state_to_thingy($name, 'b0rken');
 
-        ssm_print "Not OK:  Soft link $file -> $CONF{$etype}{$file}{target}\n";
+        ssm_print "Not OK:  Soft link $name -> $CONF{$etype}{$name}{target}\n";
 
         unless( $::o{summary} ) {
 
             my $action = 'install_softlink';
 
-            declare_file_actions($file, "create soft link $file");
+            declare_file_actions($name, "create soft link $name");
 
             #
             # Decide what to do about it -- if anything
             #
-            take_file_action( $file, $action, 'yni#' );
+            take_file_action( $name, $action, 'yni#' );
         }
 
     } else {
 
-        assign_state_to_thingy($file, 'fixed');
-        ssm_print "OK:      Soft link $file -> $CONF{$etype}{$file}{target}\n";
+        assign_state_to_thingy($name, 'fixed');
+        ssm_print "OK:      Soft link $name -> $CONF{$etype}{$name}{target}\n";
     }
 
     return 1;
@@ -2012,25 +2009,25 @@ sub install_hardlink {
     #   file.
     #
 
-    my $file     = shift;
+    my $name     = shift;
     my $etype = 'file';
 
-    if($::o{debug}) { ssm_print "install_hardlink($file)\n"; }
+    if($::o{debug}) { ssm_print "install_hardlink($name)\n"; }
 
-    ssm_print "         FIXING:  Hard link $file -> $CONF{$etype}{$file}{target}\n";
+    ssm_print "         FIXING:  Hard link $name -> $CONF{$etype}{$name}{target}\n";
 
     my $calling_function = (caller(1))[3];
-    execute_prescript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
+    execute_prescript($name) if( $calling_function eq 'SimpleStateManager::take_file_action' );
 
     # If path doesn't exist, create it here
-    my $dir  = dirname($file);
+    my $dir  = dirname($name);
     if(-e $dir and ! -d $dir) { remove_file($dir); }
     eval { make_path($dir) };
     if($@) { ssm_print "Couldn’t create $dir: $@"; }
 
-    remove_file($file);
-    link($CONF{$etype}{$file}{target}, $file) or die "Couldn't link($CONF{$etype}{$file}{target}, $file) $!";
-    execute_postscript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
+    remove_file($name);
+    link($CONF{$etype}{$name}{target}, $name) or die "Couldn't link($CONF{$etype}{$name}{target}, $name) $!";
+    execute_postscript($name) if( $calling_function eq 'SimpleStateManager::take_file_action' );
     
     return 1;
 
@@ -2039,25 +2036,25 @@ sub install_hardlink {
 
 sub install_softlink {
 
-    my $file     = shift;
+    my $name     = shift;
     my $etype = 'file';
 
-    if($::o{debug}) { ssm_print "install_softlink($file)\n"; }
+    if($::o{debug}) { ssm_print "install_softlink($name)\n"; }
 
-    ssm_print "         FIXING:  Soft link $file -> $CONF{$etype}{$file}{target}\n";
+    ssm_print "         FIXING:  Soft link $name -> $CONF{$etype}{$name}{target}\n";
 
     my $calling_function = (caller(1))[3];
-    execute_prescript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
+    execute_prescript($name) if( $calling_function eq 'SimpleStateManager::take_file_action' );
 
     # If path doesn't exist, create it here
-    my $dir  = dirname($file);
+    my $dir  = dirname($name);
     if(-e $dir and ! -d $dir) { remove_file($dir); }
     eval { make_path($dir) };
     if($@) { ssm_print "Couldn’t create $dir: $@"; }
 
-    remove_file($file);
-    symlink($CONF{$etype}{$file}{target}, $file) or die "Couldn't symlink($CONF{$etype}{$file}{target}, $file) $!";
-    execute_postscript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
+    remove_file($name);
+    symlink($CONF{$etype}{$name}{target}, $name) or die "Couldn't symlink($CONF{$etype}{$name}{target}, $name) $!";
+    execute_postscript($name) if( $calling_function eq 'SimpleStateManager::take_file_action' );
     
     return 1;
 }
@@ -2065,44 +2062,44 @@ sub install_softlink {
 
 sub install_special_file {
 
-    my $file = shift;
+    my $name = shift;
     my $etype = 'file';
 
-    if($::o{debug}) { ssm_print "install_special_file($file)\n"; }
+    if($::o{debug}) { ssm_print "install_special_file($name)\n"; }
 
-    ssm_print qq(         FIXING:  Creating ) . ucfirst($CONF{$etype}{$file}{type}) . qq( file $file\n);
+    ssm_print qq(         FIXING:  Creating ) . ucfirst($CONF{$etype}{$name}{type}) . qq( file $name\n);
 
     my $calling_function = (caller(1))[3];
-    execute_prescript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
+    execute_prescript($name) if( $calling_function eq 'SimpleStateManager::take_file_action' );
 
     # If path doesn't exist, create it here
-    my $dir  = dirname($file);
+    my $dir  = dirname($name);
     if(-e $dir and ! -d $dir) { remove_file($dir); }
     eval { make_path($dir) };
     if($@) { ssm_print "Couldn’t create $dir: $@"; }
 
-    remove_file($file);
+    remove_file($name);
 
-    if($CONF{$etype}{$file}{type} eq 'fifo') {
+    if($CONF{$etype}{$name}{type} eq 'fifo') {
         umask 0000;
-        mkfifo($file, oct($MODE{$file})) or die "Couldn't mkfifo($file, $MODE{$file})$!";
+        mkfifo($name, oct($CONF{$etype}{$name}{mode})) or die "Couldn't mkfifo($name, $CONF{$etype}{$name}{mode})$!";
     }
-    elsif($CONF{$etype}{$file}{type} eq 'character') {
+    elsif($CONF{$etype}{$name}{type} eq 'character') {
         #
         # Thanks to Jim Pirzyk, author of Unix::Mknod, for getting back to
         # me with a documentation fix that allows me to use his code here.
         # -BEF- 2006.05.08
         #
-        my $mode = oct($MODE{$file});
-        mknod( $file, S_IFCHR|$mode, makedev($MAJOR{$file}, $MINOR{$file}) );
+        my $mode = oct($CONF{$etype}{$name}{mode});
+        mknod( $name, S_IFCHR|$mode, makedev($MAJOR{$name}, $MINOR{$name}) );
     }
-    elsif($CONF{$etype}{$file}{type} eq 'block') {
-        my $mode = oct($MODE{$file});
-        mknod( $file, S_IFBLK|$mode, makedev($MAJOR{$file}, $MINOR{$file}) );
+    elsif($CONF{$etype}{$name}{type} eq 'block') {
+        my $mode = oct($CONF{$etype}{$name}{mode});
+        mknod( $name, S_IFBLK|$mode, makedev($MAJOR{$name}, $MINOR{$name}) );
     }
 
-    set_ownership_and_permissions($file);
-    execute_postscript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
+    set_ownership_and_permissions($name);
+    execute_postscript($name) if( $calling_function eq 'SimpleStateManager::take_file_action' );
 
     return 1;
 }
@@ -2110,54 +2107,54 @@ sub install_special_file {
 
 sub special_file_interactive {
 
-    my $file   = shift;
+    my $name   = shift;
     my $etype = 'file';
 
     # validate input
     if( 
-           !defined($file)          or ($file !~ m/\S/)
-        or !defined($CONF{$etype}{$file}{type})   or ($CONF{$etype}{$file}{type} !~ m/\S/)
-        or !defined($MODE{$file})   or ($MODE{$file} !~ m/^\d+$/)
-        or !defined($OWNER{$file})  or ($OWNER{$file} !~ m/\S/)
-        or !defined($GROUP{$file})  or ($GROUP{$file} !~ m/\S/)
+           !defined($name)          or ($name !~ m/\S/)
+        or !defined($CONF{$etype}{$name}{type})   or ($CONF{$etype}{$name}{type} !~ m/\S/)
+        or !defined($CONF{$etype}{$name}{mode})   or ($CONF{$etype}{$name}{mode} !~ m/^\d+$/)
+        or !defined($OWNER{$name})  or ($OWNER{$name} !~ m/\S/)
+        or !defined($GROUP{$name})  or ($GROUP{$name} !~ m/\S/)
         or (
-                (($CONF{$etype}{$file}{type} eq 'character') or ($CONF{$etype}{$file}{type} eq 'block')) 
+                (($CONF{$etype}{$name}{type} eq 'character') or ($CONF{$etype}{$name}{type} eq 'block')) 
                 and 
                 (
-                       !defined($MAJOR{$file}) or ($MAJOR{$file} !~ m/^\d+$/)
-                    or !defined($MINOR{$file}) or ($MINOR{$file} !~ m/^\d+$/)
+                       !defined($MAJOR{$name}) or ($MAJOR{$name} !~ m/^\d+$/)
+                    or !defined($MINOR{$name}) or ($MINOR{$name} !~ m/^\d+$/)
                 )
            )
     ) {
-        return report_improper_file_definition($file);
+        return report_improper_file_definition($name);
     }
 
     # Does it need fixing?
     my $needs_fixing = undef;
-    if( ! -e $file ) {
+    if( ! -e $name ) {
         $needs_fixing = 1;
     } 
     else {
 
-        my $st = lstat($file);
+        my $st = lstat($name);
 
-        if( ! uid_gid_and_mode_match($file) ) {
+        if( ! uid_gid_and_mode_match($name) ) {
             $needs_fixing = 1;
         } 
-        elsif( ($CONF{$etype}{$file}{type} eq 'fifo') and (! S_ISFIFO($st_mode)) ) {
+        elsif( ($CONF{$etype}{$name}{type} eq 'fifo') and (! S_ISFIFO($st_mode)) ) {
             $needs_fixing = 1;
         }
-        elsif( ($CONF{$etype}{$file}{type} eq 'block') and (! S_ISBLK($st_mode)) ) {
+        elsif( ($CONF{$etype}{$name}{type} eq 'block') and (! S_ISBLK($st_mode)) ) {
             $needs_fixing = 1;
         }
-        elsif( ($CONF{$etype}{$file}{type} eq 'character') and (! S_ISCHR($st_mode)) ) {
+        elsif( ($CONF{$etype}{$name}{type} eq 'character') and (! S_ISCHR($st_mode)) ) {
             $needs_fixing = 1;
         }
-        elsif( ($CONF{$etype}{$file}{type} eq 'character') or ($CONF{$etype}{$file}{type} eq 'block') ) {
-            if( $MAJOR{$file} ne major($st->rdev) ) {
+        elsif( ($CONF{$etype}{$name}{type} eq 'character') or ($CONF{$etype}{$name}{type} eq 'block') ) {
+            if( $MAJOR{$name} ne major($st->rdev) ) {
                 $needs_fixing = 1;
             }
-            elsif ($MINOR{$file} ne minor($st->rdev) ) {
+            elsif ($MINOR{$name} ne minor($st->rdev) ) {
                 $needs_fixing = 1;
             }
         }
@@ -2167,20 +2164,20 @@ sub special_file_interactive {
     my $fix_it = undef;
     if( defined($needs_fixing) ) {
 
-        if( ! check_depends_interactive($file, $etype) ) { return 1; }
+        if( ! check_depends_interactive($name, $etype) ) { return 1; }
 
-        assign_state_to_thingy($file, 'b0rken');
-        declare_OK_or_Not_OK($file, 0);
+        assign_state_to_thingy($name, 'b0rken');
+        declare_OK_or_Not_OK($name, 0);
 
         unless( $::o{summary} ) {
-            declare_file_actions($file, "create $file as a $CONF{$etype}{$file}{type} special file");
-            take_file_action( $file, 'install_special_file', 'yni#' );
+            declare_file_actions($name, "create $name as a $CONF{$etype}{$name}{type} special file");
+            take_file_action( $name, 'install_special_file', 'yni#' );
         }
 
     } else {
 
-        assign_state_to_thingy($file, 'fixed');
-        declare_OK_or_Not_OK($file, 1);
+        assign_state_to_thingy($name, 'fixed');
+        declare_OK_or_Not_OK($name, 1);
     }
 
     return 1;
@@ -2188,14 +2185,14 @@ sub special_file_interactive {
 
 
 # Usage:
-#   diff_ownership_and_permissions($file, $number_of_desired_leading_spaces);
+#   diff_ownership_and_permissions($name, $number_of_desired_leading_spaces);
 sub diff_ownership_and_permissions {
 
-    my $file = shift;
+    my $name = shift;
     my $spaces = shift;
     my $etype = 'file';
 
-    my $st = stat($file);
+    my $st = stat($name);
 
     my $mode  = sprintf "%04o", $st_mode & 07777;
 
@@ -2205,7 +2202,7 @@ sub diff_ownership_and_permissions {
     $i = 0; until ($i eq $spaces) { $i++ ; ssm_print " "; }
     ssm_print "from:  $m - $u:$g\n";
 
-    ($m, $u, $g) = ($MODE{$file}, (getpwuid $OWNER{$file})[0], (getgrgid $GROUP{$file})[0]);
+    ($m, $u, $g) = ($CONF{$etype}{$name}{mode}, (getpwuid $OWNER{$name})[0], (getgrgid $GROUP{$name})[0]);
     $i = 0; until ($i eq $spaces) { $i++ ; ssm_print " "; }
     ssm_print "to:    $m - $u:$g\n";
 
@@ -2214,10 +2211,10 @@ sub diff_ownership_and_permissions {
 
 sub get_md5sum {
 
-    my $file = shift;
+    my $name = shift;
 
     my $md5sum;
-    open(FILE, "<$file") or die "Can’t open ’$file’ for reading: $!";
+    open(FILE, "<$name") or die "Can’t open ’$name’ for reading: $!";
         binmode(FILE);
         $md5sum = Digest::MD5->new->addfile(*FILE)->hexdigest;
     close(FILE);
@@ -2227,9 +2224,9 @@ sub get_md5sum {
 
 sub get_gid {
     
-    my $file = shift;
+    my $name = shift;
 
-    my $st = stat($file);
+    my $st = stat($name);
     my $gid = (getgrgid $st_gid)[0];
     
     return $gid;
@@ -2237,9 +2234,9 @@ sub get_gid {
 
 sub get_major {
     
-    my $file = shift;
+    my $name = shift;
 
-    my $st = lstat($file);
+    my $st = lstat($name);
     my $major = major($st->rdev);
     
     return $major;
@@ -2247,9 +2244,9 @@ sub get_major {
 
 sub get_minor {
     
-    my $file = shift;
+    my $name = shift;
 
-    my $st = lstat($file);
+    my $st = lstat($name);
     my $minor = minor($st->rdev);
     
     return $minor;
@@ -2257,9 +2254,9 @@ sub get_minor {
 
 sub get_uid {
     
-    my $file = shift;
+    my $name = shift;
 
-    my $st = lstat($file);
+    my $st = lstat($name);
     my $uid = (getpwuid $st_uid)[0];
     
     return $uid;
@@ -2267,9 +2264,9 @@ sub get_uid {
 
 sub get_mode {
     
-    my $file = shift;
+    my $name = shift;
 
-    my $st = lstat($file);
+    my $st = lstat($name);
     my $mode  = sprintf "%04o", $st_mode & 07777;
 
     return $mode;
@@ -2277,21 +2274,21 @@ sub get_mode {
 
 
 #
-# Usage:  touch($file);
+# Usage:  touch($name);
 #
 sub touch {
 
-    my $file = shift;
+    my $name = shift;
 
-    if( ! -e $file ) {
+    if( ! -e $name ) {
         # Ain't there -- create an empty file.  Use append just in case...
-        open(FILE,">>$file") or die("Couldn't open $file for writing");
+        open(FILE,">>$name") or die("Couldn't open $name for writing");
         close(FILE);
     } 
 
     my $mtime = time;
     my $atime = $mtime;
-    utime $atime, $mtime, $file;
+    utime $atime, $mtime, $name;
 
     return 1;
 }
@@ -2299,15 +2296,15 @@ sub touch {
 
 sub set_ownership_and_permissions {
 
-    my $file = shift;
+    my $name = shift;
     my $etype = 'file';
 
-    ssm_print "         FIXING:  Ownership and Perms: $file\n";
+    ssm_print "         FIXING:  Ownership and Perms: $name\n";
 
-    touch($file);
+    touch($name);
 
-    chown $OWNER{$file}, $GROUP{$file}, $file;
-    chmod oct($MODE{$file}), $file;
+    chown $OWNER{$name}, $GROUP{$name}, $name;
+    chmod oct($CONF{$etype}{$name}{mode}), $name;
 
     return 1;
 }
@@ -2317,26 +2314,26 @@ sub contents_unwanted_interactive {
 
     ssm_print ">> contents_unwanted_interactive()\n" if( $::o{debug} );
 
-    my $name   = shift;
+    my $dir   = shift;
     my $etype = 'file';
 
     # validate input
-    if(    !defined($name)                      or ($name                       !~ m#^/#)
-        or !defined($CONF{$etype}{$name}{type}) or ($CONF{$etype}{$name}{type}  !~ m/\S/)
+    if(    !defined($dir)                      or ($dir                       !~ m#^/#)
+        or !defined($CONF{$etype}{$dir}{type}) or ($CONF{$etype}{$dir}{type}  !~ m/\S/)
       ) {
-        return report_improper_file_definition($name);
+        return report_improper_file_definition($dir);
     }
 
-    directory_interactive($name);
+    directory_interactive($dir);
 
     # state what we're doing
     # get list of files in directory
-    if(-d $name) {
+    if(-d $dir) {
 
         my @files;
         my $file;
 
-        opendir(DIR,"$name") or die "Can't open $name for reading";
+        opendir(DIR,"$dir") or die "Can't open $dir for reading";
             #
             # See if each file matches a defined file
             #   * test this to be sure that:
@@ -2348,15 +2345,15 @@ sub contents_unwanted_interactive {
             while ($file = readdir DIR) {
 
                 next if $file =~ /^\.\.?$/;
-                $file = "$name/$file";
-                push(@files, $file) unless (defined $CONF{$etype}{$file}{type});
+                my $name = "$dir/$file";
+                push(@files, $name) unless (defined $CONF{$etype}{$name});
             }
         closedir(DIR);
 
-        foreach $file (sort @files) {
-            ssm_print ">>> in_directory: $file\n" if( $::o{debug} );
-            $CONF{$etype}{$file}{type} = 'unwanted';
-            unwanted_file_interactive($file);
+        foreach my $name (sort @files) {
+            ssm_print ">>> in_directory: $dir\n" if( $::o{debug} );
+            $CONF{$etype}{$name}{type} = 'unwanted';
+            unwanted_file_interactive($name);
         }
     }
 
@@ -2366,19 +2363,19 @@ sub contents_unwanted_interactive {
 
 sub unwanted_file_interactive {
 
-    my $file   = shift;
+    my $name   = shift;
     my $etype = 'file';
 
     # validate input
-    if(    !defined($file)        or ($file        !~ m#^/#)
-        or !defined($CONF{$etype}{$file}{type}) or ($CONF{$etype}{$file}{type} !~ m/\S/)
+    if(    !defined($name)        or ($name        !~ m#^/#)
+        or !defined($CONF{$etype}{$name}{type}) or ($CONF{$etype}{$name}{type} !~ m/\S/)
     ) {
-        return report_improper_file_definition($file);
+        return report_improper_file_definition($name);
     }
 
     # Does it need fixing?
     my $needs_fixing = undef;
-    if( -e $file or -l $file ) {
+    if( -e $name or -l $name ) {
         # It exists, and must be destroyed!!!
         $needs_fixing = 1;
     } 
@@ -2389,19 +2386,19 @@ sub unwanted_file_interactive {
 
         # don't do "check_depends_interactive" for an unwanted file...
 
-        assign_state_to_thingy($file, 'b0rken');
-        declare_OK_or_Not_OK($file, 0);
+        assign_state_to_thingy($name, 'b0rken');
+        declare_OK_or_Not_OK($name, 0);
 
         unless( $::o{summary} ) {
 
-            declare_file_actions($file, "remove $file");
-            take_file_action( $file, 'remove_file', 'ynai#' );
+            declare_file_actions($name, "remove $name");
+            take_file_action( $name, 'remove_file', 'ynai#' );
         }
 
     } else {
 
-        assign_state_to_thingy($file, 'fixed');
-        declare_OK_or_Not_OK($file, 1);
+        assign_state_to_thingy($name, 'fixed');
+        declare_OK_or_Not_OK($name, 1);
     }
 
     return 1;
@@ -2411,27 +2408,27 @@ sub unwanted_file_interactive {
 
 sub chown_and_chmod_interactive {
 
-    my $file   = shift;
+    my $name   = shift;
     my $etype = 'file';
 
     #
     # validate input
-    if(    !defined($file)         or ($file !~ m#^/#)
-        or !defined($CONF{$etype}{$file}{type})  or ($CONF{$etype}{$file}{type} !~ m/\S/)
-        or !defined($MODE{$file})  or ($MODE{$file} !~ m/^\d+$/)
-        or !defined($OWNER{$file}) or ($OWNER{$file} !~ m/\S/)
-        or !defined($GROUP{$file}) or ($GROUP{$file} !~ m/\S/)
+    if(    !defined($name)         or ($name !~ m#^/#)
+        or !defined($CONF{$etype}{$name}{type})  or ($CONF{$etype}{$name}{type} !~ m/\S/)
+        or !defined($CONF{$etype}{$name}{mode})  or ($CONF{$etype}{$name}{mode} !~ m/^\d+$/)
+        or !defined($OWNER{$name}) or ($OWNER{$name} !~ m/\S/)
+        or !defined($GROUP{$name}) or ($GROUP{$name} !~ m/\S/)
     ) {
-        return report_improper_file_definition($file);
+        return report_improper_file_definition($name);
     }
 
     #
     # Does it need fixing?
     my $needs_fixing = undef;
-    if( ! -e $file ) {
+    if( ! -e $name ) {
         $needs_fixing = 1;
     }
-    elsif( ! uid_gid_and_mode_match($file) ) {
+    elsif( ! uid_gid_and_mode_match($name) ) {
         $needs_fixing = 1;
     } 
 
@@ -2439,21 +2436,21 @@ sub chown_and_chmod_interactive {
     # Should we actually fix it?
     if( defined($needs_fixing) ) {
 
-        if( ! check_depends_interactive($file, $etype) ) { return 1; }
+        if( ! check_depends_interactive($name, $etype) ) { return 1; }
 
-        assign_state_to_thingy($file, 'b0rken');
-        declare_OK_or_Not_OK($file, 0);
+        assign_state_to_thingy($name, 'b0rken');
+        declare_OK_or_Not_OK($name, 0);
 
         unless( $::o{summary} ) {
 
-            declare_file_actions($file);
-            take_file_action( $file, 'set_ownership_and_permissions', 'yni#' );
+            declare_file_actions($name);
+            take_file_action( $name, 'set_ownership_and_permissions', 'yni#' );
         }
 
     } else {
 
-        assign_state_to_thingy($file, 'fixed');
-        declare_OK_or_Not_OK($file, 1);
+        assign_state_to_thingy($name, 'fixed');
+        declare_OK_or_Not_OK($name, 1);
     }
 
     return 1;
@@ -2462,31 +2459,31 @@ sub chown_and_chmod_interactive {
 
 sub directory_interactive {
 
-    my $file   = shift;
+    my $name   = shift;
     my $etype = 'file';
 
     # validate input
-    if(    !defined($file)         or ($file !~ m#^/#)
-        or !defined($CONF{$etype}{$file}{type})  or ($CONF{$etype}{$file}{type} !~ m/\S/)
-        or !defined($MODE{$file})  or ($MODE{$file} !~ m/^\d+$/)
-        or !defined($OWNER{$file}) or ($OWNER{$file} !~ m/\S/)
-        or !defined($GROUP{$file}) or ($GROUP{$file} !~ m/\S/)
+    if(    !defined($name)         or ($name !~ m#^/#)
+        or !defined($CONF{$etype}{$name}{type})  or ($CONF{$etype}{$name}{type} !~ m/\S/)
+        or !defined($CONF{$etype}{$name}{mode})  or ($CONF{$etype}{$name}{mode} !~ m/^\d+$/)
+        or !defined($OWNER{$name}) or ($OWNER{$name} !~ m/\S/)
+        or !defined($GROUP{$name}) or ($GROUP{$name} !~ m/\S/)
     ) {
-        return report_improper_file_definition($file);
+        return report_improper_file_definition($name);
     }
 
     # Does it need fixing?
     my $needs_fixing = undef;
     my $set_ownership_and_permissions = undef;
-    if( ! -e $file ) {
+    if( ! -e $name ) {
         # Ain't there
         $needs_fixing = 1;
     } 
-    elsif( ! -d $file ) {
+    elsif( ! -d $name ) {
         # It's not a directory
         $needs_fixing = 1;
     } 
-    elsif( ! uid_gid_and_mode_match($file) ) {
+    elsif( ! uid_gid_and_mode_match($name) ) {
         $needs_fixing = 1;
         $set_ownership_and_permissions = 1;
     } 
@@ -2494,10 +2491,10 @@ sub directory_interactive {
     # Should we actually fix it?
     if( defined($needs_fixing) ) {
 
-        if( ! check_depends_interactive($file, $etype) ) { return 1; }
+        if( ! check_depends_interactive($name, $etype) ) { return 1; }
 
-        assign_state_to_thingy($file, 'b0rken');
-        declare_OK_or_Not_OK($file, 0);
+        assign_state_to_thingy($name, 'b0rken');
+        declare_OK_or_Not_OK($name, 0);
 
         unless( $::o{summary} ) {
             
@@ -2505,19 +2502,19 @@ sub directory_interactive {
 
             if( defined($set_ownership_and_permissions) ) {
 
-                declare_file_actions($file);
-                take_file_action( $file, 'set_ownership_and_permissions', 'yni#' );
+                declare_file_actions($name);
+                take_file_action( $name, 'set_ownership_and_permissions', 'yni#' );
 
             } else {
 
-                declare_file_actions($file, "create directory $file");
-                take_file_action( $file, 'install_directory', 'yni#' );
+                declare_file_actions($name, "create directory $name");
+                take_file_action( $name, 'install_directory', 'yni#' );
             }
         }
 
     } else {
-        assign_state_to_thingy($file, 'fixed');
-        declare_OK_or_Not_OK($file, 1);
+        assign_state_to_thingy($name, 'fixed');
+        declare_OK_or_Not_OK($name, 1);
     }
 
     return 1;
@@ -2526,37 +2523,37 @@ sub directory_interactive {
 
 sub generated_file_interactive {
 
-    my $file   = shift;
+    my $name   = shift;
     my $etype = 'file';
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     #
     # validate input
-    if(    !defined($file)             or ($file             !~ m#^/#   )
-        or !defined($CONF{$etype}{$file}{type})      or ($CONF{$etype}{$file}{type}      !~ m/\S/   )
-        or !defined($MODE{$file})      or ($MODE{$file}      !~ m/^\d+$/)
-        or !defined($OWNER{$file})     or ($OWNER{$file}     !~ m/\S/   )
-        or !defined($GROUP{$file})     or ($GROUP{$file}     !~ m/\S/   )
-        or !defined($CONF{$etype}{$file}{generator}) or ($CONF{$etype}{$file}{generator} !~ m/\S/   )
+    if(    !defined($name)             or ($name             !~ m#^/#   )
+        or !defined($CONF{$etype}{$name}{type})      or ($CONF{$etype}{$name}{type}      !~ m/\S/   )
+        or !defined($CONF{$etype}{$name}{mode})      or ($CONF{$etype}{$name}{mode}      !~ m/^\d+$/)
+        or !defined($OWNER{$name})     or ($OWNER{$name}     !~ m/\S/   )
+        or !defined($GROUP{$name})     or ($GROUP{$name}     !~ m/\S/   )
+        or !defined($CONF{$etype}{$name}{generator}) or ($CONF{$etype}{$name}{generator} !~ m/\S/   )
     ) {
-        return report_improper_file_definition($file);
+        return report_improper_file_definition($name);
     }
 
     #
     # Take the generator and write it into an executable file
     my $generator_script = choose_tmp_file();
     open(FILE,">$generator_script") or die("Couldn't open $generator_script for writing.");
-        print FILE $CONF{$etype}{$file}{generator};
+        print FILE $CONF{$etype}{$name}{generator};
     close(FILE);
     chmod oct(700), $generator_script;
 
     # Generate file and get it's md5sum -- now considered to be the 
-    # appropriate md5sum for $file.
-    $TMPFILE{$file} = choose_tmp_file();
-    open(TMP, "+>$TMPFILE{$file}") or die "Couldn't open tmp file $!";
+    # appropriate md5sum for $name.
+    $TMPFILE{$name} = choose_tmp_file();
+    open(TMP, "+>$TMPFILE{$name}") or die "Couldn't open tmp file $!";
 
-        if( $::o{debug} ) { print ">>>  The Generator(tm): $CONF{$etype}{$file}{generator}\n"; }
+        if( $::o{debug} ) { print ">>>  The Generator(tm): $CONF{$etype}{$name}{generator}\n"; }
 
         open(INPUT,"$generator_script|") or die("Couldn't run $generator_script $!");
             print TMP (<INPUT>);
@@ -2564,7 +2561,7 @@ sub generated_file_interactive {
         unlink $generator_script;
 
         seek(TMP, 0, 0);
-        $MD5SUM{$file} = Digest::MD5->new->addfile(*TMP)->hexdigest;
+        $MD5SUM{$name} = Digest::MD5->new->addfile(*TMP)->hexdigest;
 
     close(TMP);
 
@@ -2572,20 +2569,20 @@ sub generated_file_interactive {
     # Does it need fixing?
     my $needs_fixing = undef;
     my $set_ownership_and_permissions = undef;
-    if( ! -e $file ) {
+    if( ! -e $name ) {
         # Ain't there
         $needs_fixing = 1;
     } 
-    elsif( ! -f $file ) {
+    elsif( ! -f $name ) {
         # It's not a generated file
         # for now I'm thinking a generated file _must_ be a regular
         # file -- as in, no special files. -BEF-
         $needs_fixing = 1;
     } 
-    elsif( ! md5sum_match($file) ) {
+    elsif( ! md5sum_match($name) ) {
         $needs_fixing = 1;
     }
-    elsif( ! uid_gid_and_mode_match($file) ) {
+    elsif( ! uid_gid_and_mode_match($name) ) {
         $needs_fixing = 1;
         $set_ownership_and_permissions = 1;
     } 
@@ -2594,11 +2591,11 @@ sub generated_file_interactive {
     # Should we actually fix it?
     if( defined($needs_fixing) ) {
 
-        if( ! check_depends_interactive($file, $etype) ) { return 1; }
+        if( ! check_depends_interactive($name, $etype) ) { return 1; }
 
-        assign_state_to_thingy($file, 'b0rken');
+        assign_state_to_thingy($name, 'b0rken');
 
-        ssm_print "Not OK:  Generated file $file\n";
+        ssm_print "Not OK:  Generated file $name\n";
 
         unless( $::o{summary} ) {
 
@@ -2610,24 +2607,24 @@ sub generated_file_interactive {
                 ssm_print "\n";
                 ssm_print "         Need to:\n";
                 ssm_print "         - fix ownership and permissions\n";
-                diff_ownership_and_permissions($file, 12);
+                diff_ownership_and_permissions($name, 12);
 
             } else {
 
                 $action = 'install_file';
-                declare_file_actions($file, "generate file $file");
+                declare_file_actions($name, "generate file $name");
             }
 
-            take_file_action( $file, $action, 'yndi#' );
+            take_file_action( $name, $action, 'yndi#' );
         }
 
     } else {
-        assign_state_to_thingy($file, 'fixed');
-        if( $::o{debug} ) { print ">>> Assigning $file as 'fixed'\n"; }
-        ssm_print "OK:      Generated file $file\n";
+        assign_state_to_thingy($name, 'fixed');
+        if( $::o{debug} ) { print ">>> Assigning $name as 'fixed'\n"; }
+        ssm_print "OK:      Generated file $name\n";
     }
 
-    unlink $TMPFILE{$file};
+    unlink $TMPFILE{$name};
 
     if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
 
@@ -2637,39 +2634,39 @@ sub generated_file_interactive {
 
 sub regular_file_interactive {
 
-    my $file   = shift;
+    my $name   = shift;
     my $etype = 'file';
 
-    ssm_print ">> regular_file_interactive($file)\n" if( $::o{debug} );
+    ssm_print ">> regular_file_interactive($name)\n" if( $::o{debug} );
 
     #
     # validate input
-    if(    !defined($file)          or ($file          !~ m#^/#   )
-        or !defined($CONF{$etype}{$file}{type})   or ($CONF{$etype}{$file}{type}   !~ m/\S/   )
-        or !defined($MODE{$file})   or ($MODE{$file}   !~ m/^\d+$/)
-        or !defined($OWNER{$file})  or ($OWNER{$file}  !~ m/\S/   )
-        or !defined($GROUP{$file})  or ($GROUP{$file}  !~ m/\S/   )
-        or !defined($MD5SUM{$file}) or ($MD5SUM{$file} !~ m/\S/   )
+    if(    !defined($name)          or ($name          !~ m#^/#   )
+        or !defined($CONF{$etype}{$name}{type})   or ($CONF{$etype}{$name}{type}   !~ m/\S/   )
+        or !defined($CONF{$etype}{$name}{mode})   or ($CONF{$etype}{$name}{mode}   !~ m/^\d+$/)
+        or !defined($OWNER{$name})  or ($OWNER{$name}  !~ m/\S/   )
+        or !defined($GROUP{$name})  or ($GROUP{$name}  !~ m/\S/   )
+        or !defined($MD5SUM{$name}) or ($MD5SUM{$name} !~ m/\S/   )
     ) {
-        return report_improper_file_definition($file);
+        return report_improper_file_definition($name);
     }
 
     #
     # Does it need fixing?
     my $needs_fixing = undef;
     my $set_ownership_and_permissions = undef;
-    if( ! -e $file ) {
+    if( ! -e $name ) {
         # Ain't there
         $needs_fixing = 1;
     } 
-    elsif( ! -f $file ) {
+    elsif( ! -f $name ) {
         # It's not a regular file
         $needs_fixing = 1;
     } 
-    elsif( ! md5sum_match($file) ) {
+    elsif( ! md5sum_match($name) ) {
         $needs_fixing = 1;
     }
-    elsif( ! uid_gid_and_mode_match($file) ) {
+    elsif( ! uid_gid_and_mode_match($name) ) {
         $needs_fixing = 1;
         $set_ownership_and_permissions = 1;
     } 
@@ -2678,10 +2675,10 @@ sub regular_file_interactive {
     # Should we actually fix it?
     if( defined($needs_fixing) ) {
 
-        if( ! check_depends_interactive($file, $etype) ) { return 1; }
+        if( ! check_depends_interactive($name, $etype) ) { return 1; }
 
-        assign_state_to_thingy($file, 'b0rken');
-        ssm_print "Not OK:  Regular file $file\n";
+        assign_state_to_thingy($name, 'b0rken');
+        ssm_print "Not OK:  Regular file $name\n";
 
         unless( $::o{summary} ) {
 
@@ -2693,23 +2690,23 @@ sub regular_file_interactive {
                 ssm_print "\n";
                 ssm_print "         Need to:\n";
                 ssm_print "         - fix ownership and permissions:\n";
-                diff_ownership_and_permissions($file, 12);
+                diff_ownership_and_permissions($name, 12);
 
             } else {
 
                 $action = 'install_file';
-                declare_file_actions($file, "install file from repo $file");
+                declare_file_actions($name, "install file from repo $name");
             }
 
             #
             # Decide what to do about it -- if anything
             #
-            take_file_action( $file, $action, 'yndai#' );
+            take_file_action( $name, $action, 'yndai#' );
         }
             
     } else {
-        assign_state_to_thingy($file, 'fixed');
-        ssm_print "OK:      Regular file $file\n";
+        assign_state_to_thingy($name, 'fixed');
+        ssm_print "OK:      Regular file $name\n";
     }
 
     return 1;
@@ -2802,8 +2799,8 @@ sub take_pkg_action {
 
 
 #
-#   Usage:  $return_code = take_file_action( $file, $action );
-#   Usage:  $return_code = take_file_action( $file, $action, [$prompts,] [$msg] );
+#   Usage:  $return_code = take_file_action( $name, $action );
+#   Usage:  $return_code = take_file_action( $name, $action, [$prompts,] [$msg] );
 #
 #       Where $prompts is one or more of 'ynda'.  Order doesn't matter:
 #       - y - yes
@@ -2820,7 +2817,7 @@ sub take_file_action {
     #
     # test for --yes and --no and --summary right here. Hmm...
     #
-    my $file    = shift;
+    my $name    = shift;
     my $action  = shift;
     my $prompts = shift;
     my $msg     = shift;
@@ -2838,7 +2835,7 @@ sub take_file_action {
     }
 
     if($main::o{debug}) { 
-        ssm_print "$debug_prefix ( $file, $action"; 
+        ssm_print "$debug_prefix ( $name, $action"; 
         ssm_print ", $prompts"  if(defined $prompts);
         ssm_print ", $msg"      if(defined $msg);
         ssm_print " )\n"; 
@@ -2856,7 +2853,7 @@ sub take_file_action {
         } 
         else {
 
-            my ($retval, @unsatisfied) = check_depends($file, $etype);
+            my ($retval, @unsatisfied) = check_depends($name, $etype);
             if($retval eq 2) {
 
                 $prompts =~ s/[^n#]//g;
@@ -2876,22 +2873,22 @@ sub take_file_action {
             $return_code = 1;
 
         } elsif( $answer eq 'd' ) {
-            diff_file($file);
+            diff_file($name);
             $return_code = 2;  # we did our diff, but don't want to exit the higher level loop yet
 
         } elsif( $answer eq 'a' ) {
-            $return_code = add_file_to_repo($file);
-            assign_state_to_thingy($file, 'fixed');
+            $return_code = add_file_to_repo($name);
+            assign_state_to_thingy($name, 'fixed');
             $CHANGES_MADE++;
 
         } elsif( $answer eq '#' ) {
-            $return_code = update_bundle_file_comment_out_entry($file);
-            assign_state_to_thingy($file, 'fixed');
+            $return_code = update_bundle_file_comment_out_entry($name);
+            assign_state_to_thingy($name, 'fixed');
             $CHANGES_MADE++;
 
         } elsif( $answer eq 'i' ) {
-            $return_code = add_file_to_repo($file, "ignore");
-            assign_state_to_thingy($file, 'fixed');
+            $return_code = add_file_to_repo($name, "ignore");
+            assign_state_to_thingy($name, 'fixed');
             $CHANGES_MADE++;
 
         } elsif( $answer eq 'y' ) {
@@ -2912,14 +2909,14 @@ sub take_file_action {
             # action as the subroutine to execute from the list of allowable
             # subroutine actions listed above. -BEF-
             if(defined $actions{$action}) {
-                if($::o{debug}) { ssm_print "return_code = $actions{$action}($file);\n"; }
-                $return_code = $actions{$action}($file);
+                if($::o{debug}) { ssm_print "return_code = $actions{$action}($name);\n"; }
+                $return_code = $actions{$action}($name);
 
                 if(defined $return_code and $return_code == 1) {
-                    assign_state_to_thingy($file, 'fixed');
+                    assign_state_to_thingy($name, 'fixed');
                     $CHANGES_MADE++;
                 } else {
-                    print "Failed: $action($file)\n";
+                    print "Failed: $action($name)\n";
                 }
 
             } else {
@@ -2944,12 +2941,12 @@ sub take_file_action {
 
 sub md5sum_match {
 
-    my $file = shift;
+    my $name = shift;
     my $etype = 'file';
 
-    open(FILE, "<$file") or die "Can’t open ’$file’ for reading: $!";
+    open(FILE, "<$name") or die "Can’t open ’$name’ for reading: $!";
         binmode(FILE);
-        if( Digest::MD5->new->addfile(*FILE)->hexdigest eq $MD5SUM{$file} ) {
+        if( Digest::MD5->new->addfile(*FILE)->hexdigest eq $MD5SUM{$name} ) {
             return 1;
         }
     close(FILE);
@@ -2960,7 +2957,7 @@ sub md5sum_match {
 
 sub diff_file {
 
-    my $file     = shift;
+    my $name     = shift;
     my $tmp_file = shift;
     my $etype = 'file';
 
@@ -2971,20 +2968,20 @@ sub diff_file {
         return 1;
     }
 
-    ssm_print "         DIFFING:  $file\n";
+    ssm_print "         DIFFING:  $name\n";
 
-    if($::o{debug}) { ssm_print "diff_file($file)\n"; }
+    if($::o{debug}) { ssm_print "diff_file($name)\n"; }
 
     my $unlink = 'no';
 
     my $url;
     if( ! defined $tmp_file ) {
-        if( defined $TMPFILE{$file} ) {
+        if( defined $TMPFILE{$name} ) {
             # generated files will have one of these
-            $tmp_file = $TMPFILE{$file};
+            $tmp_file = $TMPFILE{$name};
 
         } else {
-            $url = qq($::o{base_url}/$file/$MD5SUM{$file});
+            $url = qq($::o{base_url}/$name/$MD5SUM{$name});
             $tmp_file = get_file($url, 'warn');
             $unlink = 'yes';
         }
@@ -3027,13 +3024,13 @@ sub diff_file {
     ssm_print "           <<<------------------------------------------------------>>>\n";
     ssm_print "           Here's a diff between the file on your system (on top ---)\n";
     ssm_print "           and the file from the repository (on bottom +++).\n";
-    if( ! -e "$file" ) {
+    if( ! -e "$name" ) {
         print "\n";
-        print "           $file does not yet exist, so diffing against /dev/null.\n";
-        $file = '/dev/null';
+        print "           $name does not yet exist, so diffing against /dev/null.\n";
+        $name = '/dev/null';
     }
 
-    my $cmd = qq($diff_cmd "$file" "$tmp_file");
+    my $cmd = qq($diff_cmd "$name" "$tmp_file");
 
     run_cmd($cmd, undef, 1);
 
@@ -3076,13 +3073,13 @@ sub diff_file {
 
 sub execute_prescript {
 
-    my $file = shift;
+    my $name = shift;
     my $etype = 'file';
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
-    if($CONF{$etype}{$file}{prescript}) {
-        my $cmd = $CONF{$etype}{$file}{prescript};
+    if($CONF{$etype}{$name}{prescript}) {
+        my $cmd = $CONF{$etype}{$name}{prescript};
         ssm_print qq(         RUNNING: $cmd\n);
         run_cmd($cmd);
     }
@@ -3094,13 +3091,13 @@ sub execute_prescript {
 
 sub execute_postscript {
 
-    my $file = shift;
+    my $name = shift;
     my $etype = 'file';
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
-    if($CONF{$etype}{$file}{postscript}) {
-        my $cmd = $CONF{$etype}{$file}{postscript};
+    if($CONF{$etype}{$name}{postscript}) {
+        my $cmd = $CONF{$etype}{$name}{postscript};
         ssm_print qq(         RUNNING: $cmd\n);
         run_cmd($cmd);
     }
@@ -3113,26 +3110,26 @@ sub execute_postscript {
 
 sub install_directory {
 
-    my $file = shift;
+    my $name = shift;
     my $etype = 'file';
 
-    ssm_print "         FIXING:  Creating: $file\n";
+    ssm_print "         FIXING:  Creating: $name\n";
 
-    if($::o{debug}) { ssm_print "install_directory($file)\n"; }
+    if($::o{debug}) { ssm_print "install_directory($name)\n"; }
 
     my $calling_function = (caller(1))[3];
-    execute_prescript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
+    execute_prescript($name) if( $calling_function eq 'SimpleStateManager::take_file_action' );
 
-    if(-e $file and ! -d $file) { remove_file($file); }
+    if(-e $name and ! -d $name) { remove_file($name); }
 
-    my $dir = $file;
+    my $dir = $name;
     if(-e $dir and ! -d $dir) { remove_file($dir); }
     eval { make_path($dir) };
     if($@) { ssm_print "Couldn’t create $dir: $@"; }
 
-    set_ownership_and_permissions($file);
+    set_ownership_and_permissions($name);
 
-    execute_postscript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
+    execute_postscript($name) if( $calling_function eq 'SimpleStateManager::take_file_action' );
 
     return 1;
 }
@@ -3140,13 +3137,13 @@ sub install_directory {
 
 sub install_file {
 
-    my $file     = shift;
+    my $name     = shift;
     my $tmp_file = shift;
     my $etype = 'file';
 
-    if($::o{debug}) { ssm_print "install_file($file)\n"; }
+    if($::o{debug}) { ssm_print "install_file($name)\n"; }
 
-    ssm_print "         FIXING:  Installing: $file\n";
+    ssm_print "         FIXING:  Installing: $name\n";
 
     my $url;
     if( ! defined $tmp_file ) {
@@ -3156,13 +3153,13 @@ sub install_file {
         #
 
         # If we have a pre-defined tmp file associated with this file, then use it.
-        if( defined $TMPFILE{$file} ) {
+        if( defined $TMPFILE{$name} ) {
 
-            $tmp_file = $TMPFILE{$file};
+            $tmp_file = $TMPFILE{$name};
 
         } else {
 
-            $url = qq($::o{base_url}/$file/$MD5SUM{$file});
+            $url = qq($::o{base_url}/$name/$MD5SUM{$name});
             $tmp_file = get_file($url, 'warn');
         }
     }
@@ -3174,39 +3171,39 @@ sub install_file {
     }
 
     my $calling_function = (caller(1))[3];
-    execute_prescript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
-    backup($file);
+    execute_prescript($name) if( $calling_function eq 'SimpleStateManager::take_file_action' );
+    backup($name);
 
     # If path doesn't exist, create it here
-    my $dir  = dirname($file);
+    my $dir  = dirname($name);
     if(-e $dir and ! -d $dir) { remove_file($dir); }
     eval { make_path($dir) };
     if($@) { ssm_print "Couldn’t create $dir: $@"; }
 
-    remove_file($file);
-    copy($tmp_file, $file) or die "Failed to copy($tmp_file, $file): $!";
+    remove_file($name);
+    copy($tmp_file, $name) or die "Failed to copy($tmp_file, $name): $!";
     unlink $tmp_file;
 
-    set_ownership_and_permissions($file);
+    set_ownership_and_permissions($name);
 
-    execute_postscript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
+    execute_postscript($name) if( $calling_function eq 'SimpleStateManager::take_file_action' );
 
     return 1;
 }
 
 
 #
-# my $tmp_file = get_file($file, 'nowarn');
-# my $tmp_file = get_file($file, 'warn');
-# my $tmp_file = get_file($file, 'error');              # the default
-# my $tmp_file = get_file($file, 'error', 'silent'); 
+# my $tmp_file = get_file($name, 'nowarn');
+# my $tmp_file = get_file($name, 'warn');
+# my $tmp_file = get_file($name, 'error');              # the default
+# my $tmp_file = get_file($name, 'error', 'silent'); 
 #
 sub get_file {
 
-    # copies $file, from wherever, to a temporary file name
+    # copies $name, from wherever, to a temporary file name
     # returns that temporary file name
 
-    my $file = shift;
+    my $name = shift;
     my $failure_behavior = shift;
     my $silent = shift;
 
@@ -3218,30 +3215,30 @@ sub get_file {
     my $tmp_file = choose_tmp_file($base_file_name);
 
     # remove multiple slashes anywhere but after a protocol specifier
-    $file =~ s#([^:/])/+#$1/#g;
+    $name =~ s#([^:/])/+#$1/#g;
 
-    if( ($file =~ m#^file://#) or ($file =~ m#^/#) ) {
+    if( ($name =~ m#^file://#) or ($name =~ m#^/#) ) {
 
-        $file =~ s#file://#/#;
+        $name =~ s#file://#/#;
 
-        if( ! -e "$file" ) {
+        if( ! -e "$name" ) {
             if( $failure_behavior eq 'error' ) {
-                ssm_print_always "ERROR: $file doesn't exist...\n\n" unless($silent);
+                ssm_print_always "ERROR: $name doesn't exist...\n\n" unless($silent);
                 exit 1;
             } else {
-                ssm_print "WARNING: $file doesn't exist...\n" unless($silent);
+                ssm_print "WARNING: $name doesn't exist...\n" unless($silent);
                 return undef;
             }
         } else {
-            copy($file, $tmp_file) or die "Failed to copy($file, $tmp_file): $!";
+            copy($name, $tmp_file) or die "Failed to copy($name, $tmp_file): $!";
         }
 
-    } elsif(    ($file =~ m#^http://# ) 
-             or ($file =~ m#^https://#) 
-             or ($file =~ m#^ftp://#  ) 
+    } elsif(    ($name =~ m#^http://# ) 
+             or ($name =~ m#^https://#) 
+             or ($name =~ m#^ftp://#  ) 
            ) {
 
-        my $cmd = "wget -q $file -O $tmp_file";
+        my $cmd = "wget -q $name -O $tmp_file";
         if($::o{debug}) { ssm_print "$cmd\n"; }
         unless( !system($cmd) ) {
             #
@@ -3249,10 +3246,10 @@ sub get_file {
             # here, we know it failed.
             #
             if( $failure_behavior eq 'error' ) {
-                ssm_print_always "ERROR: $file doesn't exist...\n\n";
+                ssm_print_always "ERROR: $name doesn't exist...\n\n";
                 exit 1;
             } else {
-                ssm_print "WARNING: $file doesn't exist...\n";
+                ssm_print "WARNING: $name doesn't exist...\n";
                 $ERROR_LEVEL++;  if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
                 return undef;
             }
@@ -3262,7 +3259,7 @@ sub get_file {
 
         ssm_print_always "\n";
         ssm_print_always "  I don't know how to acquire a file using the specified protocol:\n";
-        ssm_print_always "  $file\n";
+        ssm_print_always "  $name\n";
         ssm_print_always "\n";
         ssm_print_always "  You may want to verify that you have a valid 'base_url' specified\n";
         ssm_print_always "  in your configuration.\n";
@@ -3283,34 +3280,34 @@ sub get_file {
 #
 sub choose_tmp_file {
 
-    my $file = shift;
+    my $name = shift;
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(1))[3] . ":" . (caller(1))[2] . "() " . (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
-    unless($file) {
-        $file = "/tmp/system-state-manager_tmp_file";
+    unless($name) {
+        $name = "/tmp/system-state-manager_tmp_file";
     }
 
     my $count = 0;
-    while( -e "$file.$count" ) {
+    while( -e "$name.$count" ) {
         $count++;
     }
-    $file = "$file.$count";
+    $name = "$name.$count";
 
     umask 0077;
-    open(FILE,">$file") or die "Couldn't open $file for writing";
+    open(FILE,">$name") or die "Couldn't open $name for writing";
         print FILE "I am a little tmp file created by System State Manager.\n";
     close(FILE);
 
-    ssm_print "$debug_prefix FILE $file\n" if( $::o{debug} );
+    ssm_print "$debug_prefix FILE $name\n" if( $::o{debug} );
     
-    return $file;
+    return $name;
 }
 
 
 sub hardlink_interactive {
 
-    my $file   = shift;
+    my $name   = shift;
     my $etype = 'file';
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
@@ -3318,30 +3315,30 @@ sub hardlink_interactive {
     #
     # validate input
     unless( 
-                defined($file)          and ($file          =~ m#^/#)
-            and defined($CONF{$etype}{$file}{target}) and ($CONF{$etype}{$file}{target} =~ m#^/#)
-            and defined($CONF{$etype}{$file}{type})   and ($CONF{$etype}{$file}{type}   =~ m/\S/)
+                defined($name)          and ($name          =~ m#^/#)
+            and defined($CONF{$etype}{$name}{target}) and ($CONF{$etype}{$name}{target} =~ m#^/#)
+            and defined($CONF{$etype}{$name}{type})   and ($CONF{$etype}{$name}{type}   =~ m/\S/)
     ) {
-        return report_improper_file_definition($file);
+        return report_improper_file_definition($name);
     }
 
     #
     # Does it need fixing?
     my $needs_fixing = undef;
-    if( ! -e $CONF{$etype}{$file}{target} ) {
+    if( ! -e $CONF{$etype}{$name}{target} ) {
 
         # Target ain't there
-        ssm_print "WARNING: Hard link $file -> $CONF{$etype}{$file}{target} (target doesn't exist).\n";
-        ssm_print "WARNING: Hard link $file -> Skipping this step.\n";
+        ssm_print "WARNING: Hard link $name -> $CONF{$etype}{$name}{target} (target doesn't exist).\n";
+        ssm_print "WARNING: Hard link $name -> Skipping this step.\n";
         $ERROR_LEVEL++;  if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
 
         return 1;
     } 
-    elsif( ! -e $file ) {
+    elsif( ! -e $name ) {
         # Ain't there
         $needs_fixing = 1;
     } 
-    elsif( -l $file ) {
+    elsif( -l $name ) {
         # It's a softlink
         $needs_fixing = 1;
     } 
@@ -3350,10 +3347,10 @@ sub hardlink_interactive {
         # See if link's inode is the same as target's inode
         my $st;
 
-        $st = stat($file);
+        $st = stat($name);
         my $file_inode = $st_ino;
 
-        $st = stat($CONF{$etype}{$file}{target});
+        $st = stat($CONF{$etype}{$name}{target});
         my $target_inode = $st_ino;
 
         if($file_inode != $target_inode) {
@@ -3365,21 +3362,21 @@ sub hardlink_interactive {
     # Should we actually fix it?
     if( defined($needs_fixing) ) {
 
-        if( ! check_depends_interactive($file, $etype) ) { return 1; }
+        if( ! check_depends_interactive($name, $etype) ) { return 1; }
 
-        assign_state_to_thingy($file, 'b0rken');
-        declare_OK_or_Not_OK($file, 0);
+        assign_state_to_thingy($name, 'b0rken');
+        declare_OK_or_Not_OK($name, 0);
 
         unless( $::o{summary} ) {
 
-            declare_file_actions($file, "create hard link $file");
-            take_file_action($file, 'install_hardlink', 'yni#');
+            declare_file_actions($name, "create hard link $name");
+            take_file_action($name, 'install_hardlink', 'yni#');
         }
 
     } else {
 
-        assign_state_to_thingy($file, 'fixed');
-        declare_OK_or_Not_OK($file, 1);
+        assign_state_to_thingy($name, 'fixed');
+        declare_OK_or_Not_OK($name, 1);
     }
 
     if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
@@ -3428,7 +3425,7 @@ sub report_improper_service_definition {
 
 sub report_improper_file_definition {
 
-    my $file = shift;
+    my $name = shift;
     my $etype = 'file';
 
     my ($package, $filename, $line) = caller;
@@ -3437,46 +3434,46 @@ sub report_improper_file_definition {
     ssm_print "\n";
     ssm_print "Here's what I know about it:\n";
 
-    if(defined($file)) { ssm_print "  name   = $file\n";
+    if(defined($name)) { ssm_print "  name   = $name\n";
                 } else { ssm_print "  name   =\n"; }
 
-    if(defined($CONF{$etype}{$file}{type})) { ssm_print "  type   = $CONF{$etype}{$file}{type}\n";
+    if(defined($CONF{$etype}{$name}{type})) { ssm_print "  type   = $CONF{$etype}{$name}{type}\n";
                        } else { ssm_print "  type   =\n"; }
 
-    if(defined($CONF{$etype}{$file}{target})) { ssm_print "  target = $CONF{$etype}{$file}{target}\n";
+    if(defined($CONF{$etype}{$name}{target})) { ssm_print "  target = $CONF{$etype}{$name}{target}\n";
                          } else { ssm_print "  target =\n"; }
 
-    if(defined($MODE{$file})) { ssm_print "  mode   = $MODE{$file}\n";
+    if(defined($CONF{$etype}{$name}{mode})) { ssm_print "  mode   = $CONF{$etype}{$name}{mode}\n";
                        } else { ssm_print "  mode   =\n"; }
 
-    if(defined($OWNER{$file})) { ssm_print "  owner  = $OWNER{$file}\n";
+    if(defined($OWNER{$name})) { ssm_print "  owner  = $OWNER{$name}\n";
                         } else { ssm_print "  owner  =\n"; }
 
-    if(defined($GROUP{$file})) { ssm_print "  group  = $GROUP{$file}\n";
+    if(defined($GROUP{$name})) { ssm_print "  group  = $GROUP{$name}\n";
                         } else { ssm_print "  group  =\n"; }
 
-    if(defined($MAJOR{$file})) { ssm_print "  major  = $MAJOR{$file}\n";
+    if(defined($MAJOR{$name})) { ssm_print "  major  = $MAJOR{$name}\n";
                         } else { ssm_print "  major  =\n"; }
 
-    if(defined($MINOR{$file})) { ssm_print "  minor  = $MINOR{$file}\n";
+    if(defined($MINOR{$name})) { ssm_print "  minor  = $MINOR{$name}\n";
                         } else { ssm_print "  minor  =\n"; }
 
-    if(defined($MD5SUM{$file})) { ssm_print "  md5sum = $MD5SUM{$file}\n";
+    if(defined($MD5SUM{$name})) { ssm_print "  md5sum = $MD5SUM{$name}\n";
                          } else { ssm_print "  md5sum =\n"; }
 
-    if(defined($CONF{$etype}{$file}{prescript})) { ssm_print "  prescript = $CONF{$etype}{$file}{prescript}\n";
+    if(defined($CONF{$etype}{$name}{prescript})) { ssm_print "  prescript = $CONF{$etype}{$name}{prescript}\n";
                             } else { ssm_print "  prescript =\n"; }
 
-    if(defined($CONF{$etype}{$file}{postscript})) { ssm_print "  postscript = $CONF{$etype}{$file}{postscript}\n";
+    if(defined($CONF{$etype}{$name}{postscript})) { ssm_print "  postscript = $CONF{$etype}{$name}{postscript}\n";
                              } else { ssm_print "  postscript =\n"; }
 
-    if(defined($CONF{$etype}{$file}{depends})) { ssm_print "  depends = $CONF{$etype}{$file}{depends}\n";
+    if(defined($CONF{$etype}{$name}{depends})) { ssm_print "  depends = $CONF{$etype}{$name}{depends}\n";
                           } else { ssm_print "  depends =\n"; }
 
-    if(defined($CONF{$etype}{$file}{generator})) { ssm_print "  generator = $CONF{$etype}{$file}{generator}\n";
+    if(defined($CONF{$etype}{$name}{generator})) { ssm_print "  generator = $CONF{$etype}{$name}{generator}\n";
                             } else { ssm_print "  generator =\n"; }
 
-    if( defined($CONF{$etype}{$file}{type}) and ($CONF{$etype}{$file}{type} eq 'softlink') ) { 
+    if( defined($CONF{$etype}{$name}{type}) and ($CONF{$etype}{$name}{type} eq 'softlink') ) { 
         ssm_print "\n";
         ssm_print "  Make sure that file and target are absolute paths.  Relative\n";
         ssm_print "  links will still be created.\n";
@@ -3497,16 +3494,16 @@ sub report_improper_file_definition {
 
 sub uid_gid_and_mode_match {
     
-    my $file = shift;
+    my $name = shift;
     my $etype = 'file';
 
-    my $st = stat($file);
+    my $st = stat($name);
 
     my $mode  = sprintf "%04o", $st_mode & 07777;
 
-    if(    (   $mode == $MODE{$file}  )
-        and( $st_uid == $OWNER{$file} )
-        and( $st_gid == $GROUP{$file} ) ) {
+    if(    (   $mode == $CONF{$etype}{$name}{mode}  )
+        and( $st_uid == $OWNER{$name} )
+        and( $st_gid == $GROUP{$name} ) ) {
 
         return 1;
     }
@@ -3526,7 +3523,7 @@ sub get_hostname {
 
 sub update_bundle_file_comment_out_entry {
 
-    my $file = shift;
+    my $name = shift;
     my $etype = 'file'; # XXX at some point, switch this to be passed by the calling routine, as this subroutine could handle non-file related etries as well. -BEF-
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
@@ -3544,7 +3541,7 @@ sub update_bundle_file_comment_out_entry {
 
     my @newfile;
 
-    my $url  = "$::o{base_url}/$BUNDLEFILE{$file}";
+    my $url  = "$::o{base_url}/$BUNDLEFILE{$name}";
     my $bundle_file = get_file($url, 'error');
 
     open(FILE, "<$bundle_file") or die("Couldn't open $bundle_file for reading");
@@ -3562,7 +3559,7 @@ sub update_bundle_file_comment_out_entry {
         # Match filename portion, then compare against filename we're looking for
         #                   |                |
         #                 vvvvvv            vvvvvvvvvvv
-        if( m|^name\s*=\s*(\S.*)\s+$|  and  $1 eq $file ) {
+        if( m|^name\s*=\s*(\S.*)\s+$|  and  $1 eq $name ) {
 
             #
             # We've got a hit!  Rewind until we get to the beginning of the
@@ -3573,7 +3570,7 @@ sub update_bundle_file_comment_out_entry {
                 $_ = pop @newfile;
             }
 
-            ssm_print qq(Updating:  Commenting out entry for "$file" in config file "$BUNDLEFILE{$file}".\n);
+            ssm_print qq(Updating:  Commenting out entry for "$name" in config file "$BUNDLEFILE{$name}".\n);
 
             my $hostname = get_hostname();
             push @newfile, "#\n";
@@ -3602,7 +3599,7 @@ sub update_bundle_file_comment_out_entry {
     print FILE @newfile;
     close(FILE);
 
-    copy_file_to_upstream_repo($tmp_bundle_file, $BUNDLEFILE{$file});
+    copy_file_to_upstream_repo($tmp_bundle_file, $BUNDLEFILE{$name});
     unlink $tmp_bundle_file;
 
     if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
@@ -3613,7 +3610,7 @@ sub update_bundle_file_comment_out_entry {
 
 #
 # Usage:
-#   my $file = update_or_add_file_stanza_to_bundlefile( %filespec );
+#   my $name = update_or_add_file_stanza_to_bundlefile( %filespec );
 #
 #       Where %filespec keys may include the following:
 #           name
@@ -3811,14 +3808,14 @@ sub update_or_add_file_stanza_to_bundlefile {
 
     }
 
-    my $file = choose_tmp_file();
-    open(FILE, ">$file") or die("Couldn't open $file for writing");
+    my $name = choose_tmp_file();
+    open(FILE, ">$name") or die("Couldn't open $name for writing");
     print FILE @newfile;
     close(FILE);
 
     if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
 
-    return $file;
+    return $name;
 }
 
 #
@@ -3839,7 +3836,7 @@ sub show_debug_output_for_filespec {
 
 #
 # Usage:
-#   my $file = add_bundlefile_stanza_to_bundlefile( $new_bundlefile );
+#   my $name = add_bundlefile_stanza_to_bundlefile( $new_bundlefile );
 #
 sub add_bundlefile_stanza_to_bundlefile {
 
@@ -3880,23 +3877,23 @@ sub add_bundlefile_stanza_to_bundlefile {
     push @newfile, "\n";
     push @newfile, @newstanza;
     
-    my $file;
+    my $name;
 
     # Add comment to top of new bundlefile and drop it in repo
-    $file = choose_tmp_file();
-    open(FILE, ">$file") or die("Couldn't open $file for writing");
+    $name = choose_tmp_file();
+    open(FILE, ">$name") or die("Couldn't open $name for writing");
     print FILE qq(#\n);
     print FILE qq(# $comment\n);
     print FILE qq(#\n);
     close(FILE);
-    copy_file_to_upstream_repo($file, $new_bundlefile);
+    copy_file_to_upstream_repo($name, $new_bundlefile);
 
     # Add entry to parent bundle file and copy up to repo
-    $file = choose_tmp_file();
-    open(FILE, ">$file") or die("Couldn't open $file for writing");
+    $name = choose_tmp_file();
+    open(FILE, ">$name") or die("Couldn't open $name for writing");
     print FILE @newfile;
     close(FILE);
-    copy_file_to_upstream_repo($file, $parent_bundlefile);
+    copy_file_to_upstream_repo($name, $parent_bundlefile);
 
     # Now that the files have been updated and put in place, add the new
     # bundlefile to the "it exists list"
@@ -3908,7 +3905,7 @@ sub add_bundlefile_stanza_to_bundlefile {
 
 #
 # Usage:
-#   my $file = add_package_stanza_to_bundlefile( @pkg_entries );
+#   my $name = add_package_stanza_to_bundlefile( @pkg_entries );
 #
 #       Where @pkg_entries may include the following:
 #
@@ -3969,12 +3966,12 @@ sub add_package_stanza_to_bundlefile {
     push @newfile, "\n";
     push @newfile, @newstanza;
 
-    my $file = choose_tmp_file();
-    open(FILE, ">$file") or die("Couldn't open $file for writing");
+    my $name = choose_tmp_file();
+    open(FILE, ">$name") or die("Couldn't open $name for writing");
     print FILE @newfile;
     close(FILE);
 
-    return $file;
+    return $name;
 }
 
 
@@ -4004,8 +4001,8 @@ sub turn_service_into_file_entry {
         #
         opendir(DIR,"$dir/$subdir");
         foreach( grep { /[SK]\d+$name$/ } readdir(DIR) ) {
-            my $file = "$dir/$subdir/$_";
-            $CONF{file}{$file}{type} = 'unwanted';
+            my $name = "$dir/$subdir/$_";
+            $CONF{file}{$name}{type} = 'unwanted';
         }
         closedir(DIR);
 
@@ -4014,9 +4011,9 @@ sub turn_service_into_file_entry {
 
         if(defined ($details{$level})) {
             my $prefix = $details{$level};
-            my $file = "$dir/rc${level}.d/${prefix}${name}";
-            $CONF{file}{$file}{type} = 'softlink';
-            $CONF{$etype}{$file}{target} = "$dir/init.d/$name";
+            my $name = "$dir/rc${level}.d/${prefix}${name}";
+            $CONF{file}{$name}{type} = 'softlink';
+            $CONF{$etype}{$name}{target} = "$dir/init.d/$name";
         }
     }
 
@@ -4139,30 +4136,30 @@ sub check_depends {
 #
 sub _include_bundle {
 
-    my $file = shift;
+    my $name = shift;
 
-    chomp($file);
-    ssm_print "Bundle:  $file\n" unless($::o{only_this_file});
+    chomp($name);
+    ssm_print "Bundle:  $name\n" unless($::o{only_this_file});
 
-    $BUNDLEFILE_LIST{$file} = 1;
+    $BUNDLEFILE_LIST{$name} = 1;
 
     # For --analyze-config purposes, prefix the input data from this
     # bundle file with it's own name as a BundleFile. -BEF-
     my @array;
     push @array, "\n";
-    push @array, "BundleFile: $file\n";
+    push @array, "BundleFile: $name\n";
     push @array, "\n";
 
-    unless(($file =~ m#^file://#) 
-        or ($file =~ m#^/#)
-        or ($file =~ m#^http://#) 
-        or ($file =~ m#^https://#) 
-        or ($file =~ m#^ftp://#)) {
+    unless(($name =~ m#^file://#) 
+        or ($name =~ m#^/#)
+        or ($name =~ m#^http://#) 
+        or ($name =~ m#^https://#) 
+        or ($name =~ m#^ftp://#)) {
 
-        $file = $::o{base_url} . '/' . $file;
+        $name = $::o{base_url} . '/' . $name;
     }
 
-    my $tmp_file = get_file($file, 'error');
+    my $tmp_file = get_file($name, 'error');
 
     open(FILE,"<$tmp_file") or die "Couldn't open $tmp_file for reading: $!";
         push @array, (<FILE>);
@@ -4178,12 +4175,12 @@ sub _include_bundle {
 
 sub backup {
 
-    my $file = shift;
+    my $name = shift;
 
     if( ! -e "/usr/bin/bu" ) { return 1; }
-    if( ! -e $file ) { return 1; }
+    if( ! -e $name ) { return 1; }
 
-    my $cmd = "/usr/bin/bu $file";
+    my $cmd = "/usr/bin/bu $name";
     !system($cmd) or die("FAILED: $cmd\n $!");
 
     return 1;
@@ -4220,8 +4217,8 @@ sub add_new_files {
 
     push @{$::o{add_file}}, @ARGV;
 
-    foreach my $file ( @{$::o{add_file}} ) {
-        add_file_to_repo($file);
+    foreach my $name ( @{$::o{add_file}} ) {
+        add_file_to_repo($name);
         $CHANGES_MADE++;
     }
 
@@ -4230,7 +4227,7 @@ sub add_new_files {
 
 
 #
-#   Usage:  my $type = get_file_type($file);
+#   Usage:  my $type = get_file_type($nam$name
 #
 #   Detects the following file types:
 #   - block
@@ -4243,13 +4240,13 @@ sub add_new_files {
 #
 sub get_file_type {
     
-    my $file = shift;
+    my $name = shift;
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     my $type;
 
-    if( lstat($file) ) {
+    if( lstat($name) ) {
 
         if( S_ISLNK($st_mode) ) {
             $type = 'softlink';
@@ -4270,7 +4267,7 @@ sub get_file_type {
             $type = 'character';
         }
 
-    } elsif( -l $file ) {
+    } elsif( -l $name ) {
 
         # For some reason (a bug in perl maybe?), some symlinks may not be
         # successfully detected with stat, but are with this method.  -BEF-
@@ -4326,39 +4323,39 @@ sub add_packages_to_repo {
 
 sub add_file_to_repo {
 
-    my $file = shift;
+    my $name = shift;
     my $type = shift;   # allow explicit declaration of type (e.g.: ignored, directory+contents-unwanted, etc.)
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
-    if( $file !~ m|^/| ) {
-        ssm_print "$debug_prefix Finding fully qualified file name $file" if($::o{debug});
-        $file = fully_qualified_file_name($file);
-        ssm_print " => $file\n" if($::o{debug});
+    if( $name !~ m|^/| ) {
+        ssm_print "$debug_prefix Finding fully qualified file name $name" if($::o{debug});
+        $name = fully_qualified_file_name($name);
+        ssm_print " => $name\n" if($::o{debug});
     }
 
-    $file = normalized_file_name( $file ); 
+    $name = normalized_file_name( $name ); 
 
-    if(! defined $BUNDLEFILE{$file}) {
-        $BUNDLEFILE{$file} = choose_valid_bundlefile();
+    if(! defined $BUNDLEFILE{$name}) {
+        $BUNDLEFILE{$name} = choose_valid_bundlefile();
     }
 
     if( ! defined $type ) {
-        $type = get_file_type($file);
+        $type = get_file_type($name);
     }
 
     if($type eq 'non-existent') {
-        ssm_print "ERROR:   File $file does not appear to exist!\n";
+        ssm_print "ERROR:   File $name does not appear to exist!\n";
         $ERROR_LEVEL++;
         return 3;
     }
-    ssm_print "$debug_prefix FILE $file is of TYPE $type\n" if($::o{debug});
+    ssm_print "$debug_prefix FILE $name is of TYPE $type\n" if($::o{debug});
 
     if($type eq 'regular') {
-        add_file_to_repo_type_regular($file);
+        add_file_to_repo_type_regular($name);
     }
     else {
-        add_file_to_repo_type_nonRegular($file, $type);
+        add_file_to_repo_type_nonRegular($name, $type);
     }
 
     if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
@@ -4369,30 +4366,30 @@ sub add_file_to_repo {
 
 sub add_file_to_repo_type_nonRegular {
 
-    my $file   = shift;
+    my $name   = shift;
     my $type   = shift;
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     my %filespec;
     $filespec{type}     = $type;
-    $filespec{name}     = $file;
-    $filespec{owner}    = get_uid($file)        unless( ($filespec{type} eq 'ignore') );
-    $filespec{group}    = get_gid($file)        unless( ($filespec{type} eq 'ignore') );
-    $filespec{mode}     = get_mode($file)       unless( ($filespec{type} eq 'ignore') or ($filespec{type} eq 'softlink') );
-    $filespec{target}   = readlink($file)           if( ($filespec{type} eq 'softlink') );
-    $filespec{major}    = get_major($file)          if( ($filespec{type} eq 'character') or ($filespec{type} eq 'block') );
-    $filespec{minor}    = get_minor($file)          if( ($filespec{type} eq 'character') or ($filespec{type} eq 'block') );;
+    $filespec{name}     = $name;
+    $filespec{owner}    = get_uid($name)        unless( ($filespec{type} eq 'ignore') );
+    $filespec{group}    = get_gid($name)        unless( ($filespec{type} eq 'ignore') );
+    $filespec{mode}     = get_mode($name)       unless( ($filespec{type} eq 'ignore') or ($filespec{type} eq 'softlink') );
+    $filespec{target}   = readlink($name)           if( ($filespec{type} eq 'softlink') );
+    $filespec{major}    = get_major($name)          if( ($filespec{type} eq 'character') or ($filespec{type} eq 'block') );
+    $filespec{minor}    = get_minor($name)          if( ($filespec{type} eq 'character') or ($filespec{type} eq 'block') );;
 
     #show_debug_output_for_filespec($debug_prefix, %filespec) if( $::o{debug} );
 
     my $tmp_file = update_or_add_file_stanza_to_bundlefile( %filespec );
 
-    my $bundlefile = "$BUNDLEFILE{$file}";
+    my $bundlefile = "$BUNDLEFILE{$name}";
     copy_file_to_upstream_repo($tmp_file, $bundlefile);
     unlink $tmp_file;
 
-    assign_state_to_thingy($file, 'fixed');
+    assign_state_to_thingy($name, 'fixed');
 
     if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
 
@@ -4402,33 +4399,33 @@ sub add_file_to_repo_type_nonRegular {
 
 sub add_file_to_repo_type_regular {
 
-    my $file   = shift;
+    my $name   = shift;
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     my %filespec;
     $filespec{type}     = 'regular';
-    $filespec{name}     = $file;
-    $filespec{owner}    = get_uid($file);
-    $filespec{group}    = get_gid($file);
-    $filespec{mode}     = get_mode($file);
-    $filespec{md5sum}   = get_md5sum($file);
+    $filespec{name}     = $name;
+    $filespec{owner}    = get_uid($name);
+    $filespec{group}    = get_gid($name);
+    $filespec{mode}     = get_mode($name);
+    $filespec{md5sum}   = get_md5sum($name);
 
     #show_debug_output_for_filespec($debug_prefix, %filespec) if( $::o{debug} );
 
     # Copy the file itself into the repo, unless a version with the same md5sum is already there...
-    unless($MD5SUM{$file} and ($MD5SUM{$file} eq $filespec{md5sum}) ) {
-        my $filename_in_repo = "$file/$filespec{md5sum}";
-        copy_file_to_upstream_repo($file, $filename_in_repo);
+    unless($MD5SUM{$name} and ($MD5SUM{$name} eq $filespec{md5sum}) ) {
+        my $filename_in_repo = "$name/$filespec{md5sum}";
+        copy_file_to_upstream_repo($name, $filename_in_repo);
     }
 
     my $tmp_file = update_or_add_file_stanza_to_bundlefile( %filespec );
 
-    my $bundlefile = "$BUNDLEFILE{$file}";
+    my $bundlefile = "$BUNDLEFILE{$name}";
     copy_file_to_upstream_repo($tmp_file, $bundlefile);
     unlink $tmp_file;
 
-    assign_state_to_thingy($file, 'fixed');
+    assign_state_to_thingy($name, 'fixed');
 
     if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
 
@@ -4523,14 +4520,14 @@ sub choose_valid_bundlefile {
 
 #   Example:
 #
-#   my $file = "/tmp/$PROGNAME.log";
+#   my $name = "/tmp/$PROGNAME.log";
 #   my $ending_lognumber    = 7;
 #   my $starting_lognumber  = 1;
-#   rotate_log_file($file, $starting_lognumber, $ending_lognumber);
+#   rotate_log_file($name, $starting_lognumber, $ending_lognumber);
 #
 sub rotate_log_file {
 
-    my $file                = shift;
+    my $name                = shift;
     my $starting_lognumber  = shift;
     my $ending_lognumber    = shift;
 
@@ -4538,8 +4535,8 @@ sub rotate_log_file {
 
     until( $i == $starting_lognumber ) {
 
-        my $file_old = "$file." . ($i - 1);
-        my $file_new = "$file." . $i;
+        my $file_old = "$name." . ($i - 1);
+        my $file_new = "$name." . $i;
 
         if( -e $file_old ) {
             #if( $::o{debug} ) { print " rename($file_old, $file_new)\n"; }
@@ -4549,8 +4546,8 @@ sub rotate_log_file {
         $i--;
     }
 
-    my $file_old = $file;
-    my $file_new = "$file.$starting_lognumber";
+    my $file_old = $name;
+    my $file_new = "$name.$starting_lognumber";
 
     if( -e $file_old ) {
         if( $::o{debug} ) { print " rename($file_old, $file_new)\n"; }
@@ -4568,7 +4565,7 @@ sub rotate_log_file {
 #
 sub _which {
 
-    my $file    = shift;
+    my $name    = shift;
     my $path    = shift;
 
     if(! defined($path)) {
@@ -4576,7 +4573,7 @@ sub _which {
     }
 
     foreach my $dir (split(/:/,$path)) {
-        my $binary = "$dir/$file";
+        my $binary = "$dir/$name";
         if(-x $binary) {
             return $binary;
         }
@@ -4585,18 +4582,18 @@ sub _which {
 }
 
 #
-# Usage: remove_file($file);
-#        remove_file($file,'verbose');
+# Usage: remove_file($name);
+#        remove_file($name,'verbose');
 #
 sub remove_file {
 
-    my $file         = shift;
+    my $name         = shift;
     my $verbose      = shift;
     my $run_scripts  = shift;
 
-    ssm_print "         FIXING:  Removing: $file\n" if( defined $verbose );
+    ssm_print "         FIXING:  Removing: $name\n" if( defined $verbose );
 
-    if($::o{debug}) { ssm_print "remove_file($file)\n"; }
+    if($::o{debug}) { ssm_print "remove_file($name)\n"; }
 
     #
     # remove_file is called by a number of subroutines as a supporting file
@@ -4609,13 +4606,13 @@ sub remove_file {
     # file action, in which case we should run the pre and post scripts. 
     #
     my $calling_function = (caller(1))[3];
-    execute_prescript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
+    execute_prescript($name) if( $calling_function eq 'SimpleStateManager::take_file_action' );
 
     my $rm = _which("rm");
-    my $cmd = "$rm -fr $file";
+    my $cmd = "$rm -fr $name";
     !system($cmd) or die("FAILED: $cmd\n $!");
 
-    execute_postscript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
+    execute_postscript($name) if( $calling_function eq 'SimpleStateManager::take_file_action' );
 
     return 1;
 }
@@ -5101,21 +5098,21 @@ sub copy_file_to_upstream_repo {
 #
 sub fully_qualified_file_name {
 
-    my $file = shift;
+    my $name = shift;
 
-    if( ! -e $file ) {
+    if( ! -e $name ) {
         return undef;
     }
 
     # Remember our initial working directory so we can return later
     my $working_dir = getcwd();
 
-    my $file_name_relative_dir = dirname( $file );
+    my $file_name_relative_dir = dirname( $name );
 
     # cd into target dir, no matter how it was specified (ie., ../my/dir)
     chdir $file_name_relative_dir;
     my $fully_qualified_dir = getcwd();
-    my $basename = basename($file);
+    my $basename = basename($name);
     my $fully_qualified_file_name = "$fully_qualified_dir/$basename";
 
     # Change back to our initial working directory
@@ -5141,28 +5138,28 @@ sub assign_state_to_thingy {
 
 sub declare_file_actions {
     
-    my $file = shift;
+    my $name = shift;
     my $optional_notice = shift;
     my $etype = 'file';
 
-    my $dir  = dirname($file);
+    my $dir  = dirname($name);
     my $dir_will_be_removed;
 
     ssm_print "\n";
     ssm_print "         Need to:\n";
 
-    if($CONF{$etype}{$file}{prescript}) {
-        ssm_print "         - $CONF{$etype}{$file}{prescript}\n";
+    if($CONF{$etype}{$name}{prescript}) {
+        ssm_print "         - $CONF{$etype}{$name}{prescript}\n";
     }
 
     if(   -e $dir   and ! -d $dir  ) {
         ssm_print "         - remove file $dir\n";
     }
 
-    if( $CONF{$etype}{$file}{type} ne 'directory'  and  $CONF{$etype}{$file}{type} ne 'directory+contents-unwanted') {
+    if( $CONF{$etype}{$name}{type} ne 'directory'  and  $CONF{$etype}{$name}{type} ne 'directory+contents-unwanted') {
 
-        if( -e $file  and  -d $file ) {
-            ssm_print "         - remove directory $file\n";
+        if( -e $name  and  -d $name ) {
+            ssm_print "         - remove directory $name\n";
             $dir_will_be_removed = 1;
         }
 
@@ -5171,8 +5168,8 @@ sub declare_file_actions {
         }
     }
 
-    if( $CONF{$etype}{$file}{type} eq 'chown+chmod'  and  ! -e $file ) {
-        ssm_print "         - create empty file $file\n";
+    if( $CONF{$etype}{$name}{type} eq 'chown+chmod'  and  ! -e $name ) {
+        ssm_print "         - create empty file $name\n";
     }
 
     if( $optional_notice ) {
@@ -5181,17 +5178,17 @@ sub declare_file_actions {
 
     if(
             ( ! defined $dir_will_be_removed    )
-        and ( $CONF{$etype}{$file}{type} ne 'unwanted'        )
-        and ( -e $file                          )
-        and ( ! uid_gid_and_mode_match($file)   )
+        and ( $CONF{$etype}{$name}{type} ne 'unwanted'        )
+        and ( -e $name                          )
+        and ( ! uid_gid_and_mode_match($name)   )
       ) {
 
         ssm_print "         - set ownership and permissions\n";
-        diff_ownership_and_permissions($file, 12);
+        diff_ownership_and_permissions($name, 12);
     }
 
-    if($CONF{$etype}{$file}{postscript}) {
-        ssm_print "         - $CONF{$etype}{$file}{postscript}\n";
+    if($CONF{$etype}{$name}{postscript}) {
+        ssm_print "         - $CONF{$etype}{$name}{postscript}\n";
     }
 
     return 1;
@@ -5200,14 +5197,14 @@ sub declare_file_actions {
 
 #
 #   Usage:
-#       declare_OK_or_Not_OK($file, $is_OK);
-#       or declare_OK_or_Not_OK($file, $is_OK, "custom append message");
+#       declare_OK_or_Not_OK($name, $is_OK);
+#       or declare_OK_or_Not_OK($name, $is_OK, "custom append message");
 #
 #           - Where $is_OK can be 1 (for OK).  Anything else is treated as Not OK.
 #
 sub declare_OK_or_Not_OK {
 
-    my $file            = shift;
+    my $name            = shift;
     my $is_OK           = shift;
     my $append_message  = shift;
     my $etype = 'file';
@@ -5221,39 +5218,39 @@ sub declare_OK_or_Not_OK {
 
     #XXX
     #my $file_or_dir;
-    #if( -d $file ) {
+    #if( -d $name ) {
     #    $file_or_dir = 'file';
     #} else {
     #    $file_or_dir = 'directory';
     #}
 
-    my $type = ucfirst($CONF{$etype}{$file}{type});
-    if($CONF{$etype}{$file}{type} eq 'hardlink') {
+    my $type = ucfirst($CONF{$etype}{$name}{type});
+    if($CONF{$etype}{$name}{type} eq 'hardlink') {
         $type = 'Hard Link';
     }
-    elsif($CONF{$etype}{$file}{type} eq 'softlink') {
+    elsif($CONF{$etype}{$name}{type} eq 'softlink') {
         $type = 'Soft Link';
     }
-    elsif($CONF{$etype}{$file}{type} eq 'block') {
+    elsif($CONF{$etype}{$name}{type} eq 'block') {
         $type = 'Block (special file)';
     }
-    elsif($CONF{$etype}{$file}{type} eq 'character') {
+    elsif($CONF{$etype}{$name}{type} eq 'character') {
         $type = 'Character (special file)';
     }
-    elsif($CONF{$etype}{$file}{type} eq 'chown+chmod') {
+    elsif($CONF{$etype}{$name}{type} eq 'chown+chmod') {
         $type = 'Chown+Chmod';
     }
-    elsif($CONF{$etype}{$file}{type} eq 'directory+contents-unwanted') {
+    elsif($CONF{$etype}{$name}{type} eq 'directory+contents-unwanted') {
         $type = 'Directory (w/contents unwanted)';
     }
-    elsif($CONF{$etype}{$file}{type} eq 'fifo') {
+    elsif($CONF{$etype}{$name}{type} eq 'fifo') {
         $type = 'FIFO (special file)';
     }
 
-    my $message = $state . $type . ": " . $file;
+    my $message = $state . $type . ": " . $name;
 
-    if($CONF{$etype}{$file}{type} eq 'hardlink'  or  $CONF{$etype}{$file}{type} eq 'softlink') {
-        $message .= " -> $CONF{$etype}{$file}{target}";
+    if($CONF{$etype}{$name}{type} eq 'hardlink'  or  $CONF{$etype}{$name}{type} eq 'softlink') {
+        $message .= " -> $CONF{$etype}{$name}{target}";
     }
 
     if($append_message) {
@@ -5268,7 +5265,7 @@ sub declare_OK_or_Not_OK {
 
 sub rename_file {
 
-    my $file = shift @{$::o{rename_file}};
+    my $name = shift @{$::o{rename_file}};
     my $newfile = shift @ARGV;
     my $etype = 'file';
 
@@ -5288,7 +5285,7 @@ sub rename_file {
         return ($ERROR_LEVEL, $CHANGES_MADE);
     }
 
-    my $bundlefile = $BUNDLEFILE{$file};
+    my $bundlefile = $BUNDLEFILE{$name};
     my $tmp_bundlefile;
 
     #
@@ -5296,15 +5293,15 @@ sub rename_file {
     #   config file
     #
     my %filespec;
-    $filespec{type}     = $CONF{$etype}{$file}{type};
-    $filespec{name}     = $file;
-    $filespec{owner}    = $OWNER{$file}     if($OWNER{$file});
-    $filespec{group}    = $GROUP{$file}     if($GROUP{$file});
-    $filespec{mode}     = $MODE{$file}      if($MODE{$file});
-    $filespec{target}   = $CONF{$etype}{$file}{target}    if($CONF{$etype}{$file}{target});
-    $filespec{major}    = $MAJOR{$file}     if($MAJOR{$file});
-    $filespec{minor}    = $MINOR{$file}     if($MINOR{$file});
-    $filespec{md5sum}   = $MD5SUM{$file}    if($MD5SUM{$file});
+    $filespec{type}     = $CONF{$etype}{$name}{type};
+    $filespec{name}     = $name;
+    $filespec{owner}    = $OWNER{$name}     if($OWNER{$name});
+    $filespec{group}    = $GROUP{$name}     if($GROUP{$name});
+    $filespec{mode}     = $CONF{$etype}{$name}{mode}      if($CONF{$etype}{$name}{mode});
+    $filespec{target}   = $CONF{$etype}{$name}{target}    if($CONF{$etype}{$name}{target});
+    $filespec{major}    = $MAJOR{$name}     if($MAJOR{$name});
+    $filespec{minor}    = $MINOR{$name}     if($MINOR{$name});
+    $filespec{md5sum}   = $MD5SUM{$name}    if($MD5SUM{$name});
 
     #
     # 1) Get a copy of the existing file, if it's a regular file, then use the
@@ -5313,7 +5310,7 @@ sub rename_file {
     #    repo to copy to a new name. ;-)
     #
     if($filespec{md5sum}) {
-        my $url = qq($::o{base_url}/$file/$MD5SUM{$file});
+        my $url = qq($::o{base_url}/$name/$MD5SUM{$name});
         my $tmp_file = get_file($url, 'warn');
         my $filename_in_repo = "$newfile/$filespec{md5sum}";
         copy_file_to_upstream_repo($tmp_file, $filename_in_repo);
@@ -5334,7 +5331,7 @@ sub rename_file {
     # 3) Update filespec info stanza for old file name, but change to be
     #    'unwanted'
     #
-    $filespec{name}     = $file;
+    $filespec{name}     = $name;
     $filespec{type}     = 'unwanted';
     delete $filespec{owner};
     delete $filespec{group};
@@ -5392,8 +5389,8 @@ sub export_config {
         #
         #   1) open target bundlefile for writing, and add each element
         #
-        my $file = "$dir/$bundlefile";
-        my $path = dirname($file);
+        my $name = "$dir/$bundlefile";
+        my $path = dirname($name);
 
         # If path doesn't exist, create it here
         #
@@ -5410,14 +5407,14 @@ sub export_config {
         eval { make_path($path) };
         if($@) { ssm_print "Couldn’t create $path: $@"; }
 
-        open(FILE,">$file") or die("Couldn't open $file for writing");
+        open(FILE,">$name") or die("Couldn't open $name for writing");
             #   foreach $global_entry
             #       write entry to target bundlefile
             for my $global_entry (sort keys %{$::o}) {
                 print "Global Entry $global_entry\n";
             }
 
-            #   foreach $file in sorted list
+            #   foreach $name in sorted list
             #       if type 'regular', copy file into EXPORT_DIR repo
             #       write file entry to target bundlefile
 
