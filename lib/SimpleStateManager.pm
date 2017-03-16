@@ -225,7 +225,6 @@ my %CONF;
               
 
 my (
-    %GENERATOR,   # script or command to run to generate a generated file
     %BUNDLEFILE,  # name of bundlefile where each file or package is defined
 
     %BUNDLEFILE_LIST,   # simple list of bundle files
@@ -287,7 +286,6 @@ sub _initialize_variables {
     (   %::PKGS_FROM_STATE_DEFINITION,
         %::VARS_FROM_STATE_DEFINITION,
         %CONF,
-        %GENERATOR,
         %BUNDLEFILE,
         %BUNDLEFILE_LIST,
         #XXX Really really need to turn these into a single canonical structure, where changing one file name changes it everwhere...
