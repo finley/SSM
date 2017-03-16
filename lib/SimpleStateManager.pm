@@ -225,11 +225,6 @@ my %CONF;
               
 
 my (
-    %TYPE,    # regular, block, character, fifo, softlink, hardlink,
-              # unwanted, directory+contents-unwanted, ignored, or generated.
-              #
-              # This is the only hash where _every_ file will have an 
-              # entry.  Use it to get a list of filenames.
     %MODE,
     %OWNER,
     %GROUP,
@@ -303,7 +298,6 @@ sub _initialize_variables {
     (   %::PKGS_FROM_STATE_DEFINITION,
         %::VARS_FROM_STATE_DEFINITION,
         %CONF,
-        %TYPE,
         %MODE,
         %OWNER,
         %GROUP,
@@ -975,7 +969,7 @@ sub read_config_file {
                     $MD5SUM{$name}     = $md5sum     if(defined $md5sum);
                     $MAJOR{$name}      = $major      if(defined $major);
                     $MINOR{$name}      = $minor      if(defined $minor);
-                    $TARGET{$name}     = $target     if(defined $target);
+                    $CONF{$etype}{$name}{target}     = $target     if(defined $target);
                     $CONF{$etype}{$name}{prescript}  = $prescript  if(defined $prescript);
                     $CONF{$etype}{$name}{postscript} = $postscript if(defined $postscript);
                     $CONF{$etype}{$name}{depends}    = $depends    if(defined $depends);
@@ -1125,7 +1119,7 @@ sub read_config_file {
                     $MD5SUM{$name}     = $md5sum     if(defined $md5sum);
                     $MAJOR{$name}      = $major      if(defined $major);
                     $MINOR{$name}      = $minor      if(defined $minor);
-                    $TARGET{$name}     = $target     if(defined $target);
+                    $CONF{$etype}{$name}{target}     = $target     if(defined $target);
                     $CONF{$etype}{$name}{prescript}  = $prescript  if(defined $prescript);
                     $CONF{$etype}{$name}{postscript} = $postscript if(defined $postscript);
                     $CONF{$etype}{$name}{depends}    = $depends    if(defined $depends);
@@ -1225,14 +1219,13 @@ sub read_config_file {
     #
     # Do variable substitutions
     #
-    #foreach my $var (keys %::VARS_FROM_STATE_DEFINITION) {
     foreach my $var (keys %::VARS_FROM_STATE_DEFINITION) {
 
         #
         #   Process [variables] substitutions in file _names_
         #
         my $etype = 'file';
-        foreach my $file (keys %{$CONF{$etype}) {
+        foreach my $file (keys %{$CONF{$etype}}) {
 
             my $orig_file = $file;
             if( $file =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g ) {
@@ -1241,8 +1234,7 @@ sub read_config_file {
             }
         }
 
-
-        foreach my $file (keys %{$CONF{$etype}) {
+        foreach my $file (keys %{$CONF{$etype}}) {
             $CONF{$etype}{$file}{generator} =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g;
             $CONF{$etype}{$file}{depends} =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g;
             $CONF{$etype}{$file}{postscript} =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g;
@@ -1942,7 +1934,7 @@ sub softlink_interactive {
     # validate input
     unless( 
             defined($file)          and ($file          =~ m#^/#)
-        and defined($TARGET{$file})
+        and defined($CONF{$etype}{$file}{target})
         and defined($CONF{$etype}{$file}{type})   and ($CONF{$etype}{$file}{type}   =~ m#\S#)
     ) {
         return report_improper_file_definition($file);
@@ -1950,7 +1942,7 @@ sub softlink_interactive {
 
     #
     # Singularize double slashes in target names for beautification purposes
-    $TARGET{$file} =~ s#/+#/#g;
+    $CONF{$etype}{$file}{target} =~ s#/+#/#g;
 
     #
     # In case it's a relative path name, move to the directory where the link
@@ -1959,8 +1951,8 @@ sub softlink_interactive {
     my    $cwd     = getcwd();
     my    $dirname = dirname( $file );
     chdir $dirname;
-    if( ! -e $TARGET{$file} ) {
-        ssm_print "WARNING: Soft link $file -> $TARGET{$file} (target doesn't exist).\n";
+    if( ! -e $CONF{$etype}{$file}{target} ) {
+        ssm_print "WARNING: Soft link $file -> $CONF{$etype}{$file}{target} (target doesn't exist).\n";
         $ERROR_LEVEL++;  if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
     }
     chdir $cwd;
@@ -1983,11 +1975,11 @@ sub softlink_interactive {
     #       - rm $file 
     #       - create link
     #
-    unless( (defined $current_target) and ($current_target eq $TARGET{$file}) ) {
+    unless( (defined $current_target) and ($current_target eq $CONF{$etype}{$file}{target}) ) {
 
         assign_state_to_thingy($file, 'b0rken');
 
-        ssm_print "Not OK:  Soft link $file -> $TARGET{$file}\n";
+        ssm_print "Not OK:  Soft link $file -> $CONF{$etype}{$file}{target}\n";
 
         unless( $::o{summary} ) {
 
@@ -2004,7 +1996,7 @@ sub softlink_interactive {
     } else {
 
         assign_state_to_thingy($file, 'fixed');
-        ssm_print "OK:      Soft link $file -> $TARGET{$file}\n";
+        ssm_print "OK:      Soft link $file -> $CONF{$etype}{$file}{target}\n";
     }
 
     return 1;
@@ -2027,7 +2019,7 @@ sub install_hardlink {
 
     if($::o{debug}) { ssm_print "install_hardlink($file)\n"; }
 
-    ssm_print "         FIXING:  Hard link $file -> $TARGET{$file}\n";
+    ssm_print "         FIXING:  Hard link $file -> $CONF{$etype}{$file}{target}\n";
 
     my $calling_function = (caller(1))[3];
     execute_prescript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
@@ -2039,7 +2031,7 @@ sub install_hardlink {
     if($@) { ssm_print "Couldn’t create $dir: $@"; }
 
     remove_file($file);
-    link($TARGET{$file}, $file) or die "Couldn't link($TARGET{$file}, $file) $!";
+    link($CONF{$etype}{$file}{target}, $file) or die "Couldn't link($TARGET{$file}, $file) $!";
     execute_postscript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
     
     return 1;
@@ -2054,7 +2046,7 @@ sub install_softlink {
 
     if($::o{debug}) { ssm_print "install_softlink($file)\n"; }
 
-    ssm_print "         FIXING:  Soft link $file -> $TARGET{$file}\n";
+    ssm_print "         FIXING:  Soft link $file -> $CONF{$etype}{$file}{target}\n";
 
     my $calling_function = (caller(1))[3];
     execute_prescript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
@@ -2066,7 +2058,7 @@ sub install_softlink {
     if($@) { ssm_print "Couldn’t create $dir: $@"; }
 
     remove_file($file);
-    symlink($TARGET{$file}, $file) or die "Couldn't symlink($TARGET{$file}, $file) $!";
+    symlink($CONF{$etype}{$file}{target}, $file) or die "Couldn't symlink($TARGET{$file}, $file) $!";
     execute_postscript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
     
     return 1;
@@ -2327,26 +2319,26 @@ sub contents_unwanted_interactive {
 
     ssm_print ">> contents_unwanted_interactive()\n" if( $::o{debug} );
 
-    my $dir   = shift;
+    my $name   = shift;
     my $etype = 'file';
 
     # validate input
-    if(    !defined($dir)        or ($dir        !~ m#^/#)
-        or !defined($TYPE{$dir}) or ($TYPE{$dir} !~ m/\S/)
+    if(    !defined($name)                      or ($name                       !~ m#^/#)
+        or !defined($CONF{$etype}{$name}{type}) or ($CONF{$etype}{$name}{type}  !~ m/\S/)
       ) {
-        return report_improper_file_definition($dir);
+        return report_improper_file_definition($name);
     }
 
-    directory_interactive($dir);
+    directory_interactive($name);
 
     # state what we're doing
     # get list of files in directory
-    if(-d $dir) {
+    if(-d $name) {
 
         my @files;
         my $file;
 
-        opendir(DIR,"$dir") or die "Can't open $dir for reading";
+        opendir(DIR,"$name") or die "Can't open $name for reading";
             #
             # See if each file matches a defined file
             #   * test this to be sure that:
@@ -2358,7 +2350,7 @@ sub contents_unwanted_interactive {
             while ($file = readdir DIR) {
 
                 next if $file =~ /^\.\.?$/;
-                $file = "$dir/$file";
+                $file = "$name/$file";
                 push(@files, $file) unless (defined $CONF{$etype}{$file}{type});
             }
         closedir(DIR);
@@ -3329,7 +3321,7 @@ sub hardlink_interactive {
     # validate input
     unless( 
                 defined($file)          and ($file          =~ m#^/#)
-            and defined($TARGET{$file}) and ($TARGET{$file} =~ m#^/#)
+            and defined($CONF{$etype}{$file}{target}) and ($TARGET{$file} =~ m#^/#)
             and defined($CONF{$etype}{$file}{type})   and ($CONF{$etype}{$file}{type}   =~ m/\S/)
     ) {
         return report_improper_file_definition($file);
@@ -3338,10 +3330,10 @@ sub hardlink_interactive {
     #
     # Does it need fixing?
     my $needs_fixing = undef;
-    if( ! -e $TARGET{$file} ) {
+    if( ! -e $CONF{$etype}{$file}{target} ) {
 
         # Target ain't there
-        ssm_print "WARNING: Hard link $file -> $TARGET{$file} (target doesn't exist).\n";
+        ssm_print "WARNING: Hard link $file -> $CONF{$etype}{$file}{target} (target doesn't exist).\n";
         ssm_print "WARNING: Hard link $file -> Skipping this step.\n";
         $ERROR_LEVEL++;  if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
 
@@ -3363,7 +3355,7 @@ sub hardlink_interactive {
         $st = stat($file);
         my $file_inode = $st_ino;
 
-        $st = stat($TARGET{$file});
+        $st = stat($CONF{$etype}{$file}{target});
         my $target_inode = $st_ino;
 
         if($file_inode != $target_inode) {
@@ -3453,7 +3445,7 @@ sub report_improper_file_definition {
     if(defined($CONF{$etype}{$file}{type})) { ssm_print "  type   = $CONF{$etype}{$file}{type}\n";
                        } else { ssm_print "  type   =\n"; }
 
-    if(defined($TARGET{$file})) { ssm_print "  target = $TARGET{$file}\n";
+    if(defined($CONF{$etype}{$file}{target})) { ssm_print "  target = $TARGET{$file}\n";
                          } else { ssm_print "  target =\n"; }
 
     if(defined($MODE{$file})) { ssm_print "  mode   = $MODE{$file}\n";
@@ -4026,7 +4018,7 @@ sub turn_service_into_file_entry {
             my $prefix = $details{$level};
             my $file = "$dir/rc${level}.d/${prefix}${name}";
             $CONF{file}{$file}{type} = 'softlink';
-            $TARGET{$file} = "$dir/init.d/$name";
+            $CONF{$etype}{$file}{target} = "$dir/init.d/$name";
         }
     }
 
@@ -5263,7 +5255,7 @@ sub declare_OK_or_Not_OK {
     my $message = $state . $type . ": " . $file;
 
     if($CONF{$etype}{$file}{type} eq 'hardlink'  or  $CONF{$etype}{$file}{type} eq 'softlink') {
-        $message .= " -> $TARGET{$file}";
+        $message .= " -> $CONF{$etype}{$file}{target}";
     }
 
     if($append_message) {
@@ -5311,7 +5303,7 @@ sub rename_file {
     $filespec{owner}    = $OWNER{$file}     if($OWNER{$file});
     $filespec{group}    = $GROUP{$file}     if($GROUP{$file});
     $filespec{mode}     = $MODE{$file}      if($MODE{$file});
-    $filespec{target}   = $TARGET{$file}    if($TARGET{$file});
+    $filespec{target}   = $CONF{$etype}{$file}{target}    if($TARGET{$file});
     $filespec{major}    = $MAJOR{$file}     if($MAJOR{$file});
     $filespec{minor}    = $MINOR{$file}     if($MINOR{$file});
     $filespec{md5sum}   = $MD5SUM{$file}    if($MD5SUM{$file});
