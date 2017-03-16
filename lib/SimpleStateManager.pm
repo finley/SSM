@@ -231,7 +231,6 @@ my (
     %MD5SUM,
     %MAJOR,
     %MINOR,
-    %TARGET,      # target file or directory for a link
     %PRESCRIPT,   # script or command to be run before installing a file
     %POSTSCRIPT,  # script or command to be run after installing a file
     %DEPENDS,     # package and, or file dependencies
@@ -304,7 +303,6 @@ sub _initialize_variables {
         %MD5SUM,
         %MAJOR,
         %MINOR,
-        %TARGET,
         %PRESCRIPT,
         %POSTSCRIPT,
         %DEPENDS,
@@ -2031,7 +2029,7 @@ sub install_hardlink {
     if($@) { ssm_print "Couldn’t create $dir: $@"; }
 
     remove_file($file);
-    link($CONF{$etype}{$file}{target}, $file) or die "Couldn't link($TARGET{$file}, $file) $!";
+    link($CONF{$etype}{$file}{target}, $file) or die "Couldn't link($CONF{$etype}{$file}{target}, $file) $!";
     execute_postscript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
     
     return 1;
@@ -2058,7 +2056,7 @@ sub install_softlink {
     if($@) { ssm_print "Couldn’t create $dir: $@"; }
 
     remove_file($file);
-    symlink($CONF{$etype}{$file}{target}, $file) or die "Couldn't symlink($TARGET{$file}, $file) $!";
+    symlink($CONF{$etype}{$file}{target}, $file) or die "Couldn't symlink($CONF{$etype}{$file}{target}, $file) $!";
     execute_postscript($file) if( $calling_function eq 'SimpleStateManager::take_file_action' );
     
     return 1;
@@ -3321,7 +3319,7 @@ sub hardlink_interactive {
     # validate input
     unless( 
                 defined($file)          and ($file          =~ m#^/#)
-            and defined($CONF{$etype}{$file}{target}) and ($TARGET{$file} =~ m#^/#)
+            and defined($CONF{$etype}{$file}{target}) and ($CONF{$etype}{$file}{target} =~ m#^/#)
             and defined($CONF{$etype}{$file}{type})   and ($CONF{$etype}{$file}{type}   =~ m/\S/)
     ) {
         return report_improper_file_definition($file);
@@ -3445,7 +3443,7 @@ sub report_improper_file_definition {
     if(defined($CONF{$etype}{$file}{type})) { ssm_print "  type   = $CONF{$etype}{$file}{type}\n";
                        } else { ssm_print "  type   =\n"; }
 
-    if(defined($CONF{$etype}{$file}{target})) { ssm_print "  target = $TARGET{$file}\n";
+    if(defined($CONF{$etype}{$file}{target})) { ssm_print "  target = $CONF{$etype}{$file}{target}\n";
                          } else { ssm_print "  target =\n"; }
 
     if(defined($MODE{$file})) { ssm_print "  mode   = $MODE{$file}\n";
@@ -5303,7 +5301,7 @@ sub rename_file {
     $filespec{owner}    = $OWNER{$file}     if($OWNER{$file});
     $filespec{group}    = $GROUP{$file}     if($GROUP{$file});
     $filespec{mode}     = $MODE{$file}      if($MODE{$file});
-    $filespec{target}   = $CONF{$etype}{$file}{target}    if($TARGET{$file});
+    $filespec{target}   = $CONF{$etype}{$file}{target}    if($CONF{$etype}{$file}{target});
     $filespec{major}    = $MAJOR{$file}     if($MAJOR{$file});
     $filespec{minor}    = $MINOR{$file}     if($MINOR{$file});
     $filespec{md5sum}   = $MD5SUM{$file}    if($MD5SUM{$file});
