@@ -228,7 +228,7 @@ my (
     %BUNDLEFILE,  # name of bundlefile where each file or package is defined
 
     %BUNDLEFILE_LIST,   # simple list of bundle files
-    %TMPFILE,     # name of a temporary file associated with a file
+    %TMPFILE,           # name of a temporary file associated with a file
     %GLOBAL_ENTRIES,    # simple list of global variables
 );
 
@@ -288,7 +288,6 @@ sub _initialize_variables {
         %CONF,
         %BUNDLEFILE,
         %BUNDLEFILE_LIST,
-        #XXX Really really need to turn these into a single canonical structure, where changing one file name changes it everwhere...
     ) = ();
     
     $ERROR_LEVEL = 0;
@@ -1116,6 +1115,7 @@ sub read_config_file {
         # 
         # [variables] section
         #
+# XXX Deprecate this, now that we have independent stanzas via [variable]
         elsif( m/^\[variables\]/ ) {
 
             $_ = shift @input;
@@ -1131,7 +1131,6 @@ sub read_config_file {
 
                     if(defined $::VARS_FROM_STATE_DEFINITION{$var}) {
                         ssm_print_always "[variables]: \$$var is defined more than once.\n";
-                        # XXX Later fix this to handle priorities? -BEF-
                         exit 1;
 
                     }
@@ -1221,7 +1220,7 @@ sub read_config_file {
 
     if( $::o{analyze_config} ) {
 
-        @analyze = sort multisort @analyze; #XXX why sort and multisort ?
+        @analyze = sort multisort @analyze;
 
         # Prepend Titles after sorting
         unshift @analyze, "-------- ------- ------";
@@ -5200,14 +5199,6 @@ sub declare_OK_or_Not_OK {
     } else {
         $state = "Not OK:  ";
     }
-
-    #XXX
-    #my $file_or_dir;
-    #if( -d $name ) {
-    #    $file_or_dir = 'file';
-    #} else {
-    #    $file_or_dir = 'directory';
-    #}
 
     my $type = ucfirst($CONF{$etype}{$name}{type});
     if($CONF{$etype}{$name}{type} eq 'hardlink') {
