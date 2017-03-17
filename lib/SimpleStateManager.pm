@@ -228,7 +228,6 @@ my (
     %BUNDLEFILE,  # name of bundlefile where each file or package is defined
 
     %BUNDLEFILE_LIST,   # simple list of bundle files
-    %TMPFILE,           # name of a temporary file associated with a file
     %GLOBAL_ENTRIES,    # simple list of global variables
 );
 
@@ -2533,8 +2532,8 @@ sub generated_file_interactive {
 
     # Generate file and get it's md5sum -- now considered to be the 
     # appropriate md5sum for $name.
-    $TMPFILE{$name} = choose_tmp_file();
-    open(TMP, "+>$TMPFILE{$name}") or die "Couldn't open tmp file $!";
+    $CONF{$etype}{$name}{tmpfile} = choose_tmp_file();
+    open(TMP, "+>$CONF{$etype}{$name}{tmpfile}") or die "Couldn't open tmp file $!";
 
         if( $::o{debug} ) { print ">>>  The Generator(tm): $CONF{$etype}{$name}{generator}\n"; }
 
@@ -2607,7 +2606,7 @@ sub generated_file_interactive {
         ssm_print "OK:      Generated file $name\n";
     }
 
-    unlink $TMPFILE{$name};
+    unlink $CONF{$etype}{$name}{tmpfile};
 
     if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
 
@@ -2959,9 +2958,9 @@ sub diff_file {
 
     my $url;
     if( ! defined $tmp_file ) {
-        if( defined $TMPFILE{$name} ) {
+        if( defined $CONF{$etype}{$name}{tmpfile} ) {
             # generated files will have one of these
-            $tmp_file = $TMPFILE{$name};
+            $tmp_file = $CONF{$etype}{$name}{tmpfile};
 
         } else {
             $url = qq($::o{base_url}/$name/$CONF{$etype}{$name}{md5sum});
@@ -3136,9 +3135,9 @@ sub install_file {
         #
 
         # If we have a pre-defined tmp file associated with this file, then use it.
-        if( defined $TMPFILE{$name} ) {
+        if( defined $CONF{$etype}{$name}{tmpfile} ) {
 
-            $tmp_file = $TMPFILE{$name};
+            $tmp_file = $CONF{$etype}{$name}{tmpfile};
 
         } else {
 
