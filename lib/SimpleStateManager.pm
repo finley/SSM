@@ -228,7 +228,6 @@ my (
     %BUNDLEFILE,  # name of bundlefile where each file or package is defined
 
     %BUNDLEFILE_LIST,   # simple list of bundle files
-    %GLOBAL_ENTRIES,    # simple list of global variables
 );
 
 my $OUTSTANDING_PACKAGES_TO_INSTALL   = 0;
