@@ -243,6 +243,7 @@ my %valid_pkg_managers = (
                             'aptitude' => 'Dpkg',
                             'apt-get'  => 'Dpkg',
                             'yum'      => 'Yum',
+                            'zypper'   => 'Zypper',
                             'none'     => 'None',
                          ); # pkgmgr   =>  SSM Module to use
 
@@ -1098,6 +1099,7 @@ sub read_config_file {
                     $CONF{$etype}{$name}{depends}    = $depends    if(defined $depends);
                     $CONF{$etype}{$name}{priority}   = $priority   if(defined $priority);
                     $CONF{$etype}{$name}{generator}  = $generator  if(defined $generator);
+
                     $BUNDLEFILE{$name} = $bundlefile if(defined $bundlefile);
 
                     # And we start with a status of unknown, later to be
@@ -1108,83 +1110,30 @@ sub read_config_file {
                     return report_improper_file_definition($name);
                 }
             }
-        }
 
-        # 
-        # [variables] section
-        #
-# XXX Deprecate this, now that we have independent stanzas via [variable]
-        elsif( m/^\[variables\]/ ) {
-
-            $_ = shift @input;
-            until( m/$stanza_terminator/ ) {
-
-                if( m/$comment/ ) {
-                    # do nothing
-                } else {
-
-                    my ($var, $expression) = split(/=/, $_, 2);
-                    $var =~ s/^\s+//;   # Strip spaces from the front (shouldn't happen)
-                    $var =~ s/\s+$//;   # and back of the var name.
-
-                    if(defined $::VARS_FROM_STATE_DEFINITION{$var}) {
-                        ssm_print_always "[variables]: \$$var is defined more than once.\n";
-                        exit 1;
-
-                    }
-
-                    next if(! defined $expression);
-
-                    ## Match HERE documents, but ignore unquoted leading or trailing spaces. -BEF-
-                    if( $expression =~ m/^\s*<<\s*(.*)\s*$/ ) {
-
-                        #
-                        # Ok, cool!  We got ourselves a multi-line expression on our hands...
-                        #
-                        my $here_target = $1;
-
-                        # read in the rest of the document.
-                        $expression = "";
-                        $_ = shift @input;
-                        until( m/^$here_target$/ ) {
-                            $expression .= $_;
-                            $_ = shift @input;
-                        }
-                    }
-
-                    #
-                    # Take the expression and write it into an executable file and capture the output value
-                    my $expression_script = choose_tmp_file();
-                    open(FILE,">$expression_script") or die("Couldn't open $expression_script for writing.");
-                    print FILE $expression;
-                    close(FILE);
-                    chmod oct(700), $expression_script;
-                    
-                    # Execute expression and capture results
-                    if( $::o{debug} ) { print ">>>  The Expressionist(tm): $expression_script\n"; }
-                    
-                    my $value;
-                    open(INPUT,"$expression_script|") or die("Couldn't run $expression_script $!");
-                    while(<INPUT>) {
-                        $value .= $_;
-                    }
-                    close(INPUT);
-                    unlink $expression_script;
-                    
-                    chomp $value;
-                    $::VARS_FROM_STATE_DEFINITION{$var} = $value;
-
-                    if($::o{debug}) { 
-                        ssm_print_always "[variables]: $var => $::VARS_FROM_STATE_DEFINITION{$var}\n";
-                    }
-
-                    #
-                    # For --analyze-config option. -BEF-
-                    my $priority = 0;
-                    push @analyze, qq($priority \$$var $bundlefile);
-                }
-
-                $_ = shift @input;
+            # Take the generator and write it into an executable file and capture the output value
+            my $generator_script = choose_tmp_file();
+            open(FILE,">$generator_script") or die("Couldn't open $generator_script for writing.");
+            print FILE $CONF{$etype}{$name}{generator};
+            close(FILE);
+            chmod oct(700), $generator_script;
+            
+            # Execute generator and capture results
+            if( $::o{debug} ) { print ">>>  The Expressionist(tm): $generator_script\n"; }
+            
+            my $value;
+            open(INPUT,"$generator_script|") or die("Couldn't run $generator_script $!");
+            while(<INPUT>) {
+                $value .= $_;
+            }
+            close(INPUT);
+            unlink $generator_script;
+            
+            chomp $value;
+            $CONF{$etype}{$name}{value} = $value;
+            
+            if($::o{debug}) { 
+                ssm_print_always "[variables]: $name => $CONF{$etype}{$name}{value}\n";
             }
         }
     }  
@@ -1192,26 +1141,32 @@ sub read_config_file {
     #
     # Do variable substitutions
     #
-    foreach my $var (keys %::VARS_FROM_STATE_DEFINITION) {
-
+    foreach my $variable (keys %{$CONF{variable}}) {
         #
-        #   Process [variables] substitutions in file _names_
+        #   Process [variable] substitutions in file _names_
         #
         my $etype = 'file';
         foreach my $name (keys %{$CONF{$etype}}) {
-
             my $orig_file = $name;
-            if( $name =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g ) {
+            if( $name =~ s/\$\{$variable\}/$CONF{variable}{$variable}{value}/g ) {
                 # Effectively renaming the hash entry from $orig_file to $name
                 $CONF{$etype}{$name} = delete $CONF{$etype}{$orig_file};
             }
         }
 
         foreach my $name (keys %{$CONF{$etype}}) {
-            $CONF{$etype}{$name}{generator} =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g;
-            $CONF{$etype}{$name}{depends} =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g;
-            $CONF{$etype}{$name}{postscript} =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g;
-            $CONF{$etype}{$name}{prescript} =~ s/\$\{$var\}/$::VARS_FROM_STATE_DEFINITION{$var}/g;
+            if($CONF{$etype}{$name}{generator}) {
+                $CONF{$etype}{$name}{generator}     =~ s/\$\{$variable\}/$CONF{variable}{$variable}{value}/g;
+            }
+            if($CONF{$etype}{$name}{depends}) {
+                $CONF{$etype}{$name}{depends}       =~ s/\$\{$variable\}/$CONF{variable}{$variable}{value}/g;
+            }
+            if($CONF{$etype}{$name}{postscript}) {
+                $CONF{$etype}{$name}{postscript}    =~ s/\$\{$variable\}/$CONF{variable}{$variable}{value}/g;
+            }
+            if($CONF{$etype}{$name}{prescript}) {
+                $CONF{$etype}{$name}{prescript}     =~ s/\$\{$variable\}/$CONF{variable}{$variable}{value}/g;
+            }
         }
     }
 
@@ -1376,6 +1331,11 @@ sub load_pkg_manager_functions {
         ssm_print "$debug_prefix require SimpleStateManager::Yum;\n" if($::o{debug});
         require SimpleStateManager::Yum;
         SimpleStateManager::Yum->import();
+    }
+    elsif( $::o{pkg_manager} eq "zypper" ) {
+        ssm_print "$debug_prefix require SimpleStateManager::Zypper;\n" if($::o{debug});
+        require SimpleStateManager::Zypper;
+        SimpleStateManager::Zypper->import();
     }
     elsif( $::o{pkg_manager} eq "none" ) {
         ssm_print "$debug_prefix require SimpleStateManager::None;\n" if($::o{debug});
