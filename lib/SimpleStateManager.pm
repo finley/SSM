@@ -519,6 +519,7 @@ sub read_config_file {
                                           "upgrade_ssm_before_sync", 
                                           "pkg_repo_update", 
                                           "pkg_repo_update_window", 
+                                          "pkg_manager_update_window",  # deprecated 2017.04.05 -BEF-
                                           "base_url", 
                                           "git_url", 
                                           "svn_url", 
@@ -562,6 +563,11 @@ sub read_config_file {
             # default to 'auto'
             if(! $::o{pkg_repo_update}) {
                 $::o{pkg_repo_update} = 'auto';
+            }
+
+            # pkg_manager_update_window deprecated 2017.04.05 -BEF-
+            if(! $::o{pkg_repo_update_window} and $::o{pkg_manager_update_window}) {
+                $::o{pkg_repo_update_window} = $::o{pkg_manager_update_window}; 
             }
 
             # default to '12' hours

@@ -59,6 +59,7 @@ install:  all
 	install -m 644 $(TOPDIR)/lib/SimpleStateManager/Filesystem.pm  	${libdir}/SimpleStateManager/
 	install -m 644 $(TOPDIR)/lib/SimpleStateManager/Dpkg.pm 		${libdir}/SimpleStateManager/
 	install -m 644 $(TOPDIR)/lib/SimpleStateManager/Yum.pm  		${libdir}/SimpleStateManager/
+	install -m 644 $(TOPDIR)/lib/SimpleStateManager/Zypper.pm  		${libdir}/SimpleStateManager/
 	install -m 644 $(TOPDIR)/lib/SimpleStateManager/None.pm 		${libdir}/SimpleStateManager/
 		
 	#
