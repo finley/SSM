@@ -16,7 +16,7 @@ SSM includes the following features, among others:
 
 ### Installation
 
-Simple State Manager packages are availble here:
+Simple State Manager packages are available here:
 
     http://systemimager.org/download
 
