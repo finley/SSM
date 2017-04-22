@@ -79,7 +79,7 @@ use SimpleStateManager::Filesystem;
 #
 #   This package provides the following functions:
 #
-#       % egrep '^sub ' lib/SimpleStateManager.pm | perl -p -e 's/^sub /#   /; s/ {//;' | sort
+#       % egrep '^sub ' lib/SimpleStateManager.pm | perl -p -e 's/^sub /#   /; s/\s+{\s+$//;' | sort
 #
 #   add_bundlefile_stanza_to_bundlefile
 #   add_file_to_repo
@@ -89,6 +89,7 @@ use SimpleStateManager::Filesystem;
 #   add_new_packages
 #   add_package_stanza_to_bundlefile
 #   add_packages_to_repo
+#   assign_state_to_thingy
 #   autoremove_packages_interactive
 #   backup
 #   check_depends
@@ -100,6 +101,8 @@ use SimpleStateManager::Filesystem;
 #   compare_package_options
 #   contents_unwanted_interactive
 #   copy_file_to_upstream_repo
+#   declare_file_actions
+#   declare_OK_or_Not_OK
 #   diff_file
 #   diff_ownership_and_permissions
 #   directory_interactive
@@ -107,6 +110,7 @@ use SimpleStateManager::Filesystem;
 #   email_log_file
 #   execute_postscript
 #   execute_prescript
+#   export_config
 #   fully_qualified_file_name
 #   generated_file_interactive
 #   _get_arch
@@ -134,6 +138,8 @@ use SimpleStateManager::Filesystem;
 #   install_packages_interactive
 #   install_softlink
 #   install_special_file
+#   list_bundlefiles
+#   load_pkg_manager_functions
 #   md5sum_match
 #   multisort
 #   please_specify_a_valid_pkg_manager
@@ -142,11 +148,14 @@ use SimpleStateManager::Filesystem;
 #   regular_file_interactive
 #   remove_file
 #   remove_packages_interactive
+#   rename_file
+#   report_conflicting_definitions()
 #   report_improper_file_definition
 #   report_improper_service_definition
 #   rotate_log_file
 #   run_cmd
 #   set_ownership_and_permissions
+#   show_debug_output_for_filespec
 #   softlink_interactive
 #   special_file_interactive
 #   _specify_an_upload_url
@@ -167,6 +176,7 @@ use SimpleStateManager::Filesystem;
 #   upgrade_packages_interactive
 #   user_is_root
 #   user_to_uid
+#   verify_packages_exist
 #   version
 #   _which
 #
@@ -1153,10 +1163,18 @@ sub read_config_file {
         #
         my $etype = 'file';
         foreach my $name (keys %{$CONF{$etype}}) {
-            my $orig_file = $name;
+            my $original_name = $name;
             if( $name =~ s/\$\{$variable\}/$CONF{variable}{$variable}{value}/g ) {
-                # Effectively renaming the hash entry from $orig_file to $name
-                $CONF{$etype}{$name} = delete $CONF{$etype}{$orig_file};
+
+                # Effectively renaming the hash entry from $original_name to $name
+                $CONF{$etype}{$name} = delete $CONF{$etype}{$original_name};
+
+                # Preserve the original element name -- might need it for
+                # certain operations, such as interactively commenting it out
+                $CONF{$etype}{$name}{original_name} = $original_name;
+
+                # Add a lookup entry to find the new_name based on the original_name;
+                $CONF{new_name}{$original_name} = $name;
             }
         }
 
@@ -3475,6 +3493,12 @@ sub update_bundle_file_comment_out_entry {
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
+    my $new_name;
+
+    if( $CONF{$etype}{$name}{original_name} ) {
+        $name = $CONF{$etype}{$name}{original_name};
+    }
+
     if(! $::o{"upload_url"} ) {
 
         _specify_an_upload_url();
@@ -3517,7 +3541,12 @@ sub update_bundle_file_comment_out_entry {
                 $_ = pop @newfile;
             }
 
-            ssm_print qq(Updating:  Commenting out entry for "$name" in config file "$BUNDLEFILE{$name}".\n);
+            if( $CONF{new_name}{$name} ) {
+                ssm_print qq(Updating:  Commenting out entry for "$CONF{new_name}{$name}" in config file "$BUNDLEFILE{$name}".\n);
+                ssm_print qq(           The entry for "$CONF{new_name}{$name}" in the config file is "$name".\n);
+            } else {
+                ssm_print qq(Updating:  Commenting out entry for "$name" in config file "$BUNDLEFILE{$name}".\n);
+            }
 
             my $hostname = get_hostname();
             push @newfile, "#\n";
