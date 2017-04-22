@@ -1,3 +1,18 @@
+- For faster work, add this variable (or something like it):
+
+    - $invalidate_installed_pkg_cache
+
+        Boolean.  If set, re-load installed package cache in each package
+        section.  If not set, no need to reload. :-)
+
+- Allow "i" and "d" for as options in this situation:
+
+	Not OK:  Unwanted: /etc/apt/sources.list.d/google-chrome.list.save
+	         Need to:
+	         - remove /etc/apt/sources.list.d/google-chrome.list.save
+	         Shall I do this? [N/y/a/i/d/#/?]: i
+
+
 - Add "--move-to-bundle BUNDLENAME"
     
     Say you have added /etc/hosts, assuming it's in bundle.common, but
@@ -11,12 +26,14 @@
         ssm --move-to-bundle bundle.common --bundle bundle.bond-10g [BUNDLE ...]
     
 - Add "--priority NN" option to --add-file and --add-pkg directives
-
+- Add "--add-bundlefile BUNDLEFILE" and "--remove-bundlefile BUNDLEFILE" options.
 - Add "--modify" option to work in conjunction with --priority and --depends options.
 
     Examples:
-        ssm --modify --file /etc/hosts --priority NN
-        ssm --modify --file /etc/hosts --depends "PKG1 /filename1 [[PKG ...][FILE ...]]"
+        ssm --modify --priority NN --file /etc/hosts 
+        ssm --modify --depends "PKG1 /filename1 [[PKG ...][FILE ...]]" --file /etc/hosts 
+        ssm --modify --add-bundlefile bundle.evolution
+        ssm --modify --remove-bundlefile bundle.evolution
 
 - Add "--show-details" option to show details for any configuration element:
 
@@ -44,14 +61,6 @@
         #
         [packages]
         kvm priority=7
-
-
-- Allow "i" for Ignore as an option in this situation:
-
-	Not OK:  Unwanted: /etc/apt/sources.list.d/google-chrome.list.save
-	         Need to:
-	         - remove /etc/apt/sources.list.d/google-chrome.list.save
-	         Shall I do this? [N/y/a/i/#/?]: i
 
 
 - Handle this gracefully:
