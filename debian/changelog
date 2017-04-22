@@ -1,3 +1,51 @@
+simple-state-manager (0.7.6) stable; urgency=medium
+
+  * 2281561 - Allow for forward and reverse lookup of variablized file
+    names -- to find the   new_name based on the original_name or the
+    other way around.  This allows us   to support commenting out an
+    entry for a variablized file name. :-)
+  * f1b2aa1 .
+  * 4dfc0ec Veribiage fix -- Thanks to Bob Morman!
+  * cf125e7 - Add support for SUSE's Zypper! - Handle mis-written
+    pkg_manager_update_window, which should have been
+    "pkg_repo_update_window" as a deprecated option.
+  * 15112b6 - Converted these independent hashes into a canonical object
+    oriented hash form inside %CONF: $::VARS_FROM_STATE_DEFINITION
+  * b0050bf - Removed %GLOBAL_ENTRIES hash -- not used.
+  * 504b8dc - Converted these independent hashes into a canonical object
+    oriented hash form inside %CONF: TMPFILE
+  * 33c9fcf - Minor comments clean-up
+  * 343e1ca - Converted these independent hashes into a canonical object
+    oriented hash form inside %CONF: GENERATOR (tweaked)
+  * 94515ab - Converted these independent hashes into a canonical object
+    oriented hash form inside %CONF: DETAILS
+  * 3431a64 - Converted these independent hashes into a canonical object
+    oriented hash form inside %CONF: MAJOR, MINOR
+  * 237cf43 - Converted these independent hashes into a canonical object
+    oriented hash form inside %CONF: MD5SUM
+  * aa71655 - Converted these independent hashes into a canonical object
+    oriented hash form inside %CONF: OWNER, GROUP
+  * 6b2d9d0 - Normalize element names from $dir, $file, etc. to all be
+    $name - Converted these independent hashes into a canonical object
+    oriented hash form inside %CONF: MODE
+  * 48c238b - Converted these independent hashes into a canonical object
+    oriented hash form inside %CONF: TARGET
+  * d6b63b6 - Converted these independent hashes into the canonical
+    object oriented hash form inside %CONF: TARGET
+  * 49f1118 - Converted these independent hashes into a canonical object
+    oriented hash form inside %CONF: PRIORITY, DEPENDS, TYPE, PRESCRIPT,
+    POSTSCRIPT, GENERATOR - Added one-per-stanza variables [variable]
+    with support for prioritization.  More consistent with other stanz a
+    declarations.  Will deprecate the interim [variables] stanza style
+    soon. - Added the report_conflicting_definitions() subroutine.
+  * a07dee8 - Process variables in post and pre-scripts
+  * 9078beb - Include "ignore" in list of file action options
+  * 10fa9d4 - Rename variable demo file entries w/tmp prefix
+  * c6a29a2 Minor output cleanup
+  * 3b4344c .
+
+ -- Brian Finley <bfinley@tbob>  Sat, 22 Apr 2017 18:59:31 -0500
+
 simple-state-manager (0.7.5) stable; urgency=medium
 
   * ddcb75d Include depends entries as variable substitution targets
