@@ -5,14 +5,6 @@
         Boolean.  If set, re-load installed package cache in each package
         section.  If not set, no need to reload. :-)
 
-- Allow "i" and "d" for as options in this situation:
-
-	Not OK:  Unwanted: /etc/apt/sources.list.d/google-chrome.list.save
-	         Need to:
-	         - remove /etc/apt/sources.list.d/google-chrome.list.save
-	         Shall I do this? [N/y/a/i/d/#/?]: i
-
-
 - Add "--move-to-bundle BUNDLENAME"
     
     Say you have added /etc/hosts, assuming it's in bundle.common, but

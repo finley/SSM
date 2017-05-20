@@ -2357,7 +2357,7 @@ sub unwanted_file_interactive {
         unless( $::o{summary} ) {
 
             declare_file_actions($name, "remove $name");
-            take_file_action( $name, 'remove_file', 'ynai#' );
+            take_file_action( $name, 'remove_file', 'ynaid#' );
         }
 
     } else {
@@ -2920,6 +2920,55 @@ sub md5sum_match {
 }
 
 
+#
+#   Usage:  if( element_exists_in_repo($name, $etype) ) { do stuff; }
+#
+sub element_exists_in_repo {
+
+    my $name    = shift;
+    my $etype   = shift;
+
+    if( $CONF{$etype}{$name} ) { return 1; }
+
+    return undef;
+}
+
+
+#
+#   Usage:  my $md5sum = get_element_md5sum($name, $etype);
+#
+sub get_element_md5sum {
+
+    my $name    = shift;
+    my $etype   = shift;
+
+    if( ! element_exists_in_repo($name, $etype) ) { return undef; }
+    if( ! defined($CONF{$etype}{$name}{md5sum}) ) { return undef; }
+    if( $CONF{$etype}{$name}{md5sum} eq "" )      { return undef; }
+
+    my $md5sum = $CONF{$etype}{$name}{md5sum};
+
+    return $md5sum;
+}
+
+
+#
+#   Usage:  my $url = get_element_url($name, $etype);
+#
+sub get_element_url {
+
+    my $name    = shift;
+    my $etype   = shift;
+
+    my $md5sum = get_element_md5sum($name, $etype);
+    if(! defined $md5sum) { return undef; }
+
+    my $url = qq($::o{base_url}/$name/$md5sum);
+
+    return $url;
+}
+
+
 sub diff_file {
 
     my $name     = shift;
@@ -2939,23 +2988,23 @@ sub diff_file {
 
     my $unlink = 'no';
 
-    my $url;
     if( ! defined $tmp_file ) {
-        if( defined $CONF{$etype}{$name}{tmpfile} ) {
+        if( $CONF{$etype}{$name}{tmpfile} ) {
             # generated files will have one of these
             $tmp_file = $CONF{$etype}{$name}{tmpfile};
 
-        } else {
-            $url = qq($::o{base_url}/$name/$CONF{$etype}{$name}{md5sum});
-            $tmp_file = get_file($url, 'warn');
-            $unlink = 'yes';
+        } 
+        elsif( element_exists_in_repo($name, $etype) ) {
+            my $url = get_element_url($name, $etype);
+            if(defined $url) {
+                $tmp_file = get_file($url, 'warn');
+                $unlink = 'yes';
+            }
         }
-    }
 
-    if( ! defined $tmp_file ) {
-        # Hmm.  get_file must have failed
-        # Just drop the user back to their choices...
-        return 1;
+        if(! defined $tmp_file) {
+            $tmp_file = '/dev/null';
+        }
     }
 
     my $diff;
