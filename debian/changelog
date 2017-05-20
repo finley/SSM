@@ -1,3 +1,11 @@
+simple-state-manager (0.7.7) stable; urgency=medium
+
+  * 2b4254e - Add feature - allow "d" option for "unwanted" files, even
+    if they don't exist   in the repo, and even if they are added via a
+    "directory+contents-unwanted"   element.
+
+ -- Brian Finley <bfinley@tbob>  Sat, 20 May 2017 12:07:08 -0500
+
 simple-state-manager (0.7.6) stable; urgency=medium
 
   * 2281561 - Allow for forward and reverse lookup of variablized file
