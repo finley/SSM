@@ -1,3 +1,10 @@
+simple-state-manager (0.7.8) stable; urgency=medium
+
+  * aad3574 - Add test for diff_file() to not attempt a diff on a
+    directory. - Improve readability of diff output explanation.
+
+ -- Brian Finley <bfinley@tbob>  Sat, 20 May 2017 17:12:08 -0500
+
 simple-state-manager (0.7.7) stable; urgency=medium
 
   * 2b4254e - Add feature - allow "d" option for "unwanted" files, even
