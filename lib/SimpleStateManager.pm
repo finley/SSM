@@ -2982,6 +2982,7 @@ sub diff_file {
         return 1;
     }
 
+    ssm_print "\n";
     ssm_print "         DIFFING:  $name\n";
 
     if($::o{debug}) { ssm_print "diff_file($name)\n"; }
@@ -3034,22 +3035,30 @@ sub diff_file {
         }
     }
 
-    ssm_print "\n";
-    ssm_print "           <<<------------------------------------------------------>>>\n";
-    ssm_print "           Here's a diff between the file on your system (on top ---)\n";
-    ssm_print "           and the file from the repository (on bottom +++).\n";
-    if( ! -e "$name" ) {
+    #
+    # If directory, return with friendly message.
+    # 
+    if( -d "$name" ) {
+        print "\n";
+        print "           $name is a directory.  Skipping diff operation.\n";
+        return 1;
+    }
+    elsif( ! -e "$name" ) {
         print "\n";
         print "           $name does not yet exist, so diffing against /dev/null.\n";
         $name = '/dev/null';
     }
 
-    my $cmd = qq($diff_cmd "$name" "$tmp_file");
+    ssm_print "\n";
+    ssm_print "============================================================\n";
+    ssm_print "#   Local version prefix:  -\n";
+    ssm_print "#   Repo version prefix:   +\n";
+    ssm_print "============================================================\n";
 
+    my $cmd = qq($diff_cmd "$name" "$tmp_file");
     run_cmd($cmd, undef, 1);
 
-    ssm_print "\n";
-    ssm_print "           ------------------------------------------------------------\n";
+    ssm_print "============================================================\n";
     ssm_print "\n";
 
     #
