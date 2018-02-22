@@ -2987,13 +2987,13 @@ sub diff_file {
 
     if($::o{debug}) { ssm_print "diff_file($name)\n"; }
 
-    my $unlink = 'no';
+    my $unlink;
 
     if( ! defined $tmp_file ) {
         if( $CONF{$etype}{$name}{tmpfile} ) {
             # generated files will have one of these
             $tmp_file = $CONF{$etype}{$name}{tmpfile};
-
+            $unlink = 'no';
         } 
         elsif( element_exists_in_repo($name, $etype) ) {
             my $url = get_element_url($name, $etype);
@@ -3004,7 +3004,8 @@ sub diff_file {
         }
 
         if(! defined $tmp_file) {
-            $tmp_file = '/dev/null';
+            $tmp_file = get_file("file:///dev/null", 'warn');
+            $unlink = 'yes';
         }
     }
 
