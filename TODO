@@ -1,3 +1,82 @@
+- improvement:
+
+    Current behavior:
+    
+		root@sm1.hwx.lenovoguru.net:/tmp# ssm -s                        
+		
+		ERROR: Multiple (conflicting) definitions for:
+		
+		  [file]
+		  name     = /etc/yum.repos.d/CentOS-fasttrack.repo
+		  priority = 0
+		  ...
+		
+		  This instance of this file was found in bundle.common
+		
+		  [etc...]
+
+
+    Target behavior:
+    
+		root@sm1.hwx.lenovoguru.net:/tmp# ssm -s                        
+		
+		ERROR: Multiple (conflicting) definitions for:
+		
+		  [file]
+		  name     = /etc/yum.repos.d/CentOS-fasttrack.repo
+		  priority = 0
+		  ...
+		
+		  Instances of this file were found in:
+			 bundle.common
+			 bundle.uncommon
+			 my_fav_node.conf
+		
+		  [etc...]
+
+
+- feature:
+    ssm-admin -bf bundle.mapr-common --add --target-file (CONFIG_FILE|OTHER_BUNDLE_FILE)
+
+    Add --bundlefile to --targetfile
+
+- feature:
+    ssm-admin -bf bundle.common --list-elements
+
+    Print out list of elements in bundlefile.
+
+- Automatically use UID/GID if username not available.
+    
+	root@ipa1.lenovoguru.net:/var/lib/ssm/repos# ssm -af /var/www/html/REPOs/SAPHanaVora/config/mapr/vora_default_settings.sh
+	
+	Configuration File: file:///var/lib/ssm/repos/ipa1.lenovoguru.net
+	Adding:  Entry for "/var/www/html/REPOs/SAPHanaVora/config/mapr/vora_default_settings.sh" in configuration file "ipa1.lenovoguru.net" as type regular.
+	-------------------------------
+	Added 1 files.
+	Encountered 0 errors.
+	
+	root@ipa1.lenovoguru.net:/var/lib/ssm/repos# tail ipa1.lenovoguru.net                                                 
+	
+	[file]
+	name        = /var/www/html/REPOs/SAPHanaVora/config/mapr/vora_default_settings.sh
+	comment     = From ipa1.lenovoguru.net on 2017-05-23 19:34:02
+	type        = regular
+	mode        = 0755
+	md5sum      = c789a2734ba0a8aff8aec1fd7ca04f16  # 2017-05-23 19:34:02
+
+		NOTE:  no user / group info in the entry
+	
+	root@ipa1.lenovoguru.net:/var/lib/ssm/repos# ls -l /var/www/html/REPOs/SAPHanaVora/config/mapr/vora_default_settings.sh
+	-rwxr-xr-x. 1 56141 1005 5632 Mar 30 15:54 /var/www/html/REPOs/SAPHanaVora/config/mapr/vora_default_settings.sh
+
+		NOTE:  UID/GID above
+
+
+
+
+- Allow for global_option to use UID/GID instead of username/groupname
+
+  
 - For faster work, add this variable (or something like it):
 
     - $invalidate_installed_pkg_cache

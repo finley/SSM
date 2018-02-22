@@ -1,3 +1,9 @@
+simple-state-manager (0.7.9) stable; urgency=medium
+
+  * eb1cd06 - Fix bug: don't test for perms on symlinks
+
+ -- Brian Finley <bfinley@imap.thefinleys.com>  Thu, 22 Feb 2018 12:26:31 -0600
+
 simple-state-manager (0.7.8) stable; urgency=medium
 
   * aad3574 - Add test for diff_file() to not attempt a diff on a
