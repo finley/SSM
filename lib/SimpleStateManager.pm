@@ -3524,6 +3524,15 @@ sub uid_gid_and_mode_match {
 
     my $mode  = sprintf "%04o", $st_mode & 07777;
 
+    #
+    # DEBUG Help
+    #
+    # my ($package, $filename, $line) = caller;
+    # print ">> package: $package\n";
+    # print ">> filename: $filename\n";
+    # print ">> line: $line\n";
+    # print ">> On system($mode) == in config($CONF{$etype}{$name}{mode})\n"; 
+
     if(    (   $mode == $CONF{$etype}{$name}{mode}  )
         and( $st_uid == $CONF{$etype}{$name}{owner} )
         and( $st_gid == $CONF{$etype}{$name}{group} ) ) {
@@ -5214,6 +5223,7 @@ sub declare_file_actions {
     if(
             ( ! defined $dir_will_be_removed    )
         and ( $CONF{$etype}{$name}{type} ne 'unwanted'        )
+        and ( $CONF{$etype}{$name}{type} ne 'softlink'        )
         and ( -e $name                          )
         and ( ! uid_gid_and_mode_match($name)   )
       ) {
