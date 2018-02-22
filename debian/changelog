@@ -1,3 +1,11 @@
+simple-state-manager (0.7.10) stable; urgency=medium
+
+  * f28b0e8 Handle use of /dev/null more carefully, when used in diff of
+    file with no copy in repo
+  * d65b1dc Add a 'sort' for consistency in example generated output
+
+ -- Brian Finley <bfinley@imap.thefinleys.com>  Thu, 22 Feb 2018 14:59:36 -0600
+
 simple-state-manager (0.7.9) stable; urgency=medium
 
   * eb1cd06 - Fix bug: don't test for perms on symlinks

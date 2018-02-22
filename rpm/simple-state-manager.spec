@@ -1,6 +1,6 @@
 Name:         simple-state-manager
 Summary:      Manage the state of specific files and packages on a system.
-Version:      0.7.9
+Version:      0.7.10
 Release:      1
 BuildArch:    noarch
 Group:        System Environment/Applications
