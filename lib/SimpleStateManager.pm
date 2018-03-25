@@ -1,5 +1,5 @@
 #  
-#   Copyright (C) 2006-2016 Brian Elliott Finley
+#   Copyright (C) 2006-2018 Brian Elliott Finley
 #
 #    vi: set filetype=perl tw=0 number:
 #
@@ -54,7 +54,7 @@ use strict;
 # Filesystem related
 use File::Copy;
 #                 Use 'make_path' as preferred to 'mkpath' or 'mkdir -p'
-use File::Path qw(make_path);
+use File::Path qw(make_path remove_tree);
 use File::Basename;
 use Unix::Mknod qw(:all);
 use File::stat qw(:FIELDS);
@@ -4653,9 +4653,10 @@ sub remove_file {
     my $calling_function = (caller(1))[3];
     execute_prescript($name) if( $calling_function eq 'SimpleStateManager::take_file_action' );
 
-    my $rm = _which("rm");
-    my $cmd = "$rm -fr $name";
-    !system($cmd) or die("FAILED: $cmd\n $!");
+    remove_tree( $name, { 
+        verbose => $verbose,
+        safe => 1,
+    });
 
     execute_postscript($name) if( $calling_function eq 'SimpleStateManager::take_file_action' );
 
