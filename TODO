@@ -1,3 +1,15 @@
+- bug
+    if: -otf $file
+    and $file doesn't exist in definition
+    but $file is being called out as unwanted
+    we should handle gracefully
+
+    maybe: 
+    - test 
+        - if $file lives in a directory+contents_unwanted directory, and if so, add as unwanted in in-memory config
+        - else add $file to in-memory config as ignore
+
+
 - improvement:
 
     Current behavior:
