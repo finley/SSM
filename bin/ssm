@@ -73,7 +73,7 @@ GetOptions(
     "af|add-file|add-files=s@"          => \$o{add_file},
     "ap|add-package|add-packages=s@"    => \$o{add_package},
     "bf|bundlefile=s"                   => \$o{bundlefile},
-    "rename-file=s@"                    => \$o{rename_file},
+    "mv|move-file|rename-file=s@"       => \$o{rename_file},
     "analyze-config"                    => \$o{analyze_config},
     "export-config=s"                   => \$o{export_config},
 ) or usage() and exit(1);
@@ -597,6 +597,10 @@ OPTIONS
     --rename-file FILE NEWFILE
 
         Rename FILE to NEWFILE in the repository, and mark FILE as unwanted.
+
+    --mv, --move-file
+
+        Same as --rename-file.
 
     --debug
 
