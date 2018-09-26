@@ -1,4 +1,32 @@
 - bug
+    Variables:
+
+        - Need to support depends, so that binaries used are in place
+          before trying to calculate variable
+
+
+- improvement
+
+    Add option "--remove-package | -rp"
+
+    Simply comments out all entries of PKG, rather than lowering it's priority.
+
+- improvement
+
+    - Add ability to ignore certain lines that may change inconsequentially.
+    - Apply to regular and generated file types
+
+    - Example:
+
+        ignore-line: [REGEX]
+
+      So, for the file "/etc/NetworkManager/system-connections/AI_Lab", the
+      following entry could be added to the file definition:
+
+        ignore-line: ^timestamp=
+
+
+- bug
     if: -otf $file
     and $file doesn't exist in definition
     but $file is being called out as unwanted
