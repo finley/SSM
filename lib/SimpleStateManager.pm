@@ -1476,7 +1476,13 @@ sub sync_state {
 
         # Get integer value that represents the number of packages defined.
         if( (scalar (keys %::PKGS_FROM_STATE_DEFINITION)) == 0) {
-            ssm_print "INFO:    Packages -> No [packages] defined in the configuration.\n";
+
+            #
+            # No need to be noisy.  If no packages have been defined, that's
+            # OK, even if a package manager has been specified.  So I'm
+            # commenting this out. -BEF-
+            #
+            #ssm_print "INFO:    Packages -> No [packages] defined in the configuration.\n";
             return ($ERROR_LEVEL, $CHANGES_MADE);
         }
         elsif( $::o{pkg_manager} eq 'none' ) {
