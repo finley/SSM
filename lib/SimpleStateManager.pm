@@ -252,6 +252,7 @@ my %valid_pkg_managers = (
                             'dpkg'     => 'Dpkg',
                             'aptitude' => 'Dpkg',
                             'apt-get'  => 'Dpkg',
+                            'apt'      => 'Dpkg',
                             'yum'      => 'Yum',
                             'zypper'   => 'Zypper',
                             'none'     => 'None',
