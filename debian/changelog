@@ -1,3 +1,15 @@
+simple-state-manager (0.7.12) stable; urgency=medium
+
+  * aa2e614 Merge pull request #3 from valeriob01/master
+  * 86b36ec Don't be noisy if package manager specified, but no packages
+    listed.
+  * 50ea69a .
+  * d32dcfd Add new 'apt' package manager for Debian.
+  * 6f16a3b Delete SimpleStateManager.pm
+  * a5832ca Add 'apt' as package manager for Debian
+
+ -- Brian Finley <bfinley@xbob4.thefinleys.com>  Wed, 26 Sep 2018 17:24:18 -0500
+
 simple-state-manager (0.7.11) stable; urgency=medium
 
   * 013601f Add mv and move-file as synonyms for rename-file
