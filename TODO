@@ -1,3 +1,11 @@
+- improvement
+    - Add a "don't ask" option.
+    - always take a prescribed action without prompting
+    - Tag:  
+        - always = any of the typical options, such as "[y|n|a]"
+
+            Perhaps it could also include [i|#|d], but not sure that would be very useful.
+
 - bug
     Variables:
 
