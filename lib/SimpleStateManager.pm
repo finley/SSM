@@ -3840,7 +3840,7 @@ sub update_or_add_file_stanza_to_bundlefile {
 
     } else {
 
-        ssm_print qq(Adding:  Entry for "$filespec{name}" in configuration file "$BUNDLEFILE{$filespec{name}}" as type $filespec{type}.\n);
+        ssm_print qq(Adding:    Entry for "$filespec{name}" in configuration file "$BUNDLEFILE{$filespec{name}}" as type $filespec{type}.\n);
 
         push @newfile,   "\n";
         push @newfile,   "[file]\n";
@@ -3916,7 +3916,7 @@ sub add_bundlefile_stanza_to_bundlefile {
     push @newstanza, "$new_bundlefile\n";
     push @newstanza,   "\n";
 
-    ssm_print qq(Adding:  The following bundles stanza to configuration file "$parent_bundlefile":\n);
+    ssm_print qq(Adding:    The following bundles stanza to configuration file "$parent_bundlefile":\n);
     ssm_print "\n";
     foreach (@newstanza) {
         ssm_print qq(  $_);
@@ -4006,7 +4006,7 @@ sub add_package_stanza_to_bundlefile {
     }
     push @newstanza,   "\n";
 
-    ssm_print qq(Adding:  The following package stanza to configuration file "$bundlefile".\n\n);
+    ssm_print qq(Adding:    The following package stanza to configuration file "$bundlefile".\n\n);
     foreach (@newstanza) {
         ssm_print qq(  $_);
     }
