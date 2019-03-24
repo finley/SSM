@@ -1,4 +1,23 @@
 - improvement
+
+    - Add ability to ignore certain lines that may change inconsequentially.
+    - Apply to regular and generated file types
+
+    - Example:
+
+        ignore-line = [REGEX]
+
+      So, for the file "/etc/NetworkManager/system-connections/AI_Lab", the
+      following entry could be added to the file definition:
+
+        ignore-line = ^timestamp=
+
+
+- improvement
+    - INFO:    Package repo update -> skipping (updated in the last 12 hours)
+        - test to see if any changes have happened to the yum config files and update if yes
+
+- improvement
     - Add a "don't ask" option.
     - always take a prescribed action without prompting
     - Tag:  
@@ -18,21 +37,6 @@
     Add option "--remove-package | -rp"
 
     Simply comments out all entries of PKG, rather than lowering it's priority.
-
-- improvement
-
-    - Add ability to ignore certain lines that may change inconsequentially.
-    - Apply to regular and generated file types
-
-    - Example:
-
-        ignore-line: [REGEX]
-
-      So, for the file "/etc/NetworkManager/system-connections/AI_Lab", the
-      following entry could be added to the file definition:
-
-        ignore-line: ^timestamp=
-
 
 - bug
     if: -otf $file
@@ -336,12 +340,16 @@
         Only include files that match REGEX in export.
 
 
-    --full-history 
+    --history 
 
-        Includes all history for specified configuration elements.  This
+        Display all history for specified configuration elements.  This
         includes prior file versions and each declaration of a config element,
-        not just the one with the winning priority.
+        not just the one with the winning priority.  (json output available)
 
+    --json
+
+        Display output in JSON format.  Only applies to certain options
+        indicated with "(json output available)".
 
 
     --export will create a distributable copy of your SSM repository
