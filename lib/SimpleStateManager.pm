@@ -3822,11 +3822,15 @@ sub update_or_add_file_stanza_to_bundlefile {
                     $_ = shift @input;
                 }
 
-                # Add any entries that did not exist in the original filespec, but only in the new file (ie. changed from regular to softlink)
+                # Add any entries that did not exist in the original filespec,
+                # but only in the new file (ie. changed from regular to
+                # softlink)
                 foreach my $key (keys %filespec) {
                     next if( $key =~ /^(name|type|comment)$/ );
                     push @newfile, "$key     = $filespec{$key}\n";
-                    print ">>> $key       = $filespec{$key} <<<\n";
+                    if( $::o{debug} ) { 
+                        print ">>> $key       = $filespec{$key} <<<\n";
+                    }
                 }
             }
         }
