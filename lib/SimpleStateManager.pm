@@ -2171,6 +2171,9 @@ sub diff_ownership_and_permissions {
     my ($i, $m, $u, $g);
 
     ($m, $u, $g) = ($mode, (getpwuid $st_uid)[0], (getgrgid $st_gid)[0]);
+    if( ! $u ) { $u = $st_uid; }
+    if( ! $g ) { $g = $st_gid; }
+
     $i = 0; until ($i eq $spaces) { $i++ ; ssm_print " "; }
     ssm_print "from:  $m - $u:$g\n";
 
