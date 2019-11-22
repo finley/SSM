@@ -21,8 +21,7 @@ rpmbuild    = ~/rpmbuild
 
 VERSION = $(shell cat VERSION)
 
-TOPDIR := $(CURDIR)
-
+TOPDIR := $(shell pwd | sed -e 's/ /\\ /g')
 
 .PHONY: all
 all:  $(TOPDIR)/tmp/lib/SimpleStateManager.pm
