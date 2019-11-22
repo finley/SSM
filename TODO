@@ -1,3 +1,100 @@
+- Add a file type of "merge"
+
+    #[file]
+    #type        = merge
+    #
+    #keyfield    = none
+    #keyfield    = 1
+    #   - Number of the field to treat as the key
+    #   - DEFAULTs to '1'.
+    #   - With 'none' treat entire line as a unique entry to merge into target file
+    #
+    #delimiter    = DELIMITER
+    #   Where DELIMITER may be one or more characters that indicate the
+    #   separation of fields.  DELIMITER may also be a regular expression
+    #   pattern.
+    #
+    #   DEFAULTs to the first character on the first line of the file that is
+    #   not a single quote, double quote, or an alphanumeric character.  The
+    #   chosen character will be declared on STDOUT when a file is added.  Here
+    #   is the regex used to identify that character: 
+    #
+    #       /^[a-zA-Z0-9"](.)/+
+    #                      ^
+    #                      | This is the character that will be selected.
+    #
+    #   Examples:
+    #       delimiter = :
+    #           # such as for /etc/passwd, /etc/shadow, /etc/group
+    #       delimiter = ' '
+    #           # for a file with spaces as the delimiter
+    #       delimiter = '\s+'
+    #           # alternate version for files with spaces as the delimiter
+    #       delimiter = ' "<'
+    #           # as a more complex, multi-character example
+    #
+    [file]
+    type        = merge
+    keyfield    = 2         # /opt/ohpc/pub in this example
+    delimiter   = ' '       # [[:space:]] or \s+ character
+    owner       = root
+    group       = root
+    mode        = 644
+    values = <EOF
+    nfs:/opt/ohpc/pub /opt/ohpc/pub nfs nfsvers=4.1,nodev,noatime 0 0
+    EOF
+
+    [file]
+    type        = merge
+    keyfield    = 1
+    delimiter   = :
+    owner       = root
+    group       = root
+    mode        = 644
+    values = <EOF
+    dcmtk:x:123:132::/var/lib/dcmtk/db:/bin/sh
+    dictd:x:124:133:Dictd Server,,,:/var/lib/dictd:/bin/false
+    libvirt-qemu:x:125:131:Libvirt Qemu,,,:/var/lib/libvirt:/bin/false
+    libvirt-dnsmasq:x:126:135:Libvirt Dnsmasq,,,:/var/lib/libvirt/dnsmasq:/bin/false
+    postfix:x:127:136::/var/spool/postfix:/bin/false
+    statd:x:128:65534::/var/lib/nfs:/bin/false
+    sshd:x:129:65534::/var/run/sshd:/usr/sbin/nologin
+    EOF
+
+    When "a" is chosen to add the local file to the repository, all entries in
+    that file are merged into the merge file, with local file entries "winning"
+    when there are conflicts.  A "merge" file is always additive, never
+    reductive.  If an entry exists in the repo version, but not in the local
+    file, it is not removed from the repo version.
+
+- Add a "--type TYPE" option to allow initial command line addition via
+  --add-file, for files that would be detected as 'regular' or 'directory', to
+  be specified as an alternate type, such as:
+
+    ssm -af /etc/passwd --type merge --keyfield NN  --delimiter DD
+    ssm -af /this-hard-link-file-name --type hardlink --target /that-hard-link-file-name
+    ssm -af /etc/yum.repos.d --type directory+contents-unwanted
+
+- improvement
+    - ssm -rp (--remove-package)  PKG1 PKG2
+
+        results in:
+        [packages]
+        PKG1 unwanted
+        PKG2 unwanted
+
+- improvement
+    - support hostnames to config files like systemimager does.
+    
+        e.g.: if hostname is p3m1.lenovoguru.net, and url ends in slash (/),
+        then try for config files in this order:
+        - p3m1.lenovoguru.net (FQDN)
+        - p3m1 (Short hostname)
+        - p3m  (short hostname with trailing digits removed -> this becomes the implied node class)
+            - 
+    - Support snappy package management
+    - Support flatpak package management
+
 - improvement
 
     - Add ability to ignore certain lines that may change inconsequentially.
@@ -11,7 +108,6 @@
       following entry could be added to the file definition:
 
         ignore-line = ^timestamp=
-
 
 - improvement
     - INFO:    Package repo update -> skipping (updated in the last 12 hours)
@@ -213,72 +309,6 @@
 - Bug: if a package is 'unwanted' and doesn't exist as an "available" package,
   then ignore it and don't error out saying can't find it.
 
-- Add a file type of "merge"
-
-    #[file]
-    #type        = merge
-    #
-    #keyfield    = none
-    #keyfield    = 1
-    #   - Number of the field to treat as the key
-    #   - DEFAULTs to '1'.
-    #   - With 'none' treat entire line as a unique entry to merge into target file
-    #
-    #delimiter    = DELIMITER
-    #   Where DELIMITER may be one or more characters that indicate the
-    #   separation of fields.  DELIMITER may also be a regular expression
-    #   pattern.
-    #
-    #   DEFAULTs to the first character on the first line of the file that is
-    #   not a single quote, double quote, or an alphanumeric character.  The
-    #   chosen character will be declared on STDOUT when a file is added.  Here
-    #   is the regex used to identify that character: 
-    #
-    #       /^[a-zA-Z0-9"](.)/+
-    #                      ^
-    #                      | This is the character that will be selected.
-    #
-    #   Examples:
-    #       delimiter = :
-    #           # such as for /etc/passwd, /etc/shadow, /etc/group
-    #       delimiter = ' '
-    #           # for a file with spaces as the delimiter
-    #       delimiter = '\s+'
-    #           # alternate version for files with spaces as the delimiter
-    #       delimiter = ' "<'
-    #           # as a more complex, multi-character example
-    #
-
-    [file]
-    type        = merge
-    keyfield    = 1
-    delimiter   = :
-    owner       = root
-    group       = root
-    mode        = 644
-    values = <EOF
-    dcmtk:x:123:132::/var/lib/dcmtk/db:/bin/sh
-    dictd:x:124:133:Dictd Server,,,:/var/lib/dictd:/bin/false
-    libvirt-qemu:x:125:131:Libvirt Qemu,,,:/var/lib/libvirt:/bin/false
-    libvirt-dnsmasq:x:126:135:Libvirt Dnsmasq,,,:/var/lib/libvirt/dnsmasq:/bin/false
-    postfix:x:127:136::/var/spool/postfix:/bin/false
-    statd:x:128:65534::/var/lib/nfs:/bin/false
-    sshd:x:129:65534::/var/run/sshd:/usr/sbin/nologin
-    EOF
-
-    When "a" is chosen to add the local file to the repository, all entries in
-    that file are merged into the merge file, with local file entries "winning"
-    when there are conflicts.  A "merge" file is always additive, never
-    reductive.  If an entry exists in the repo version, but not in the local
-    file, it is not removed from the repo version.
-
-- Add a "--type TYPE" option to allow initial command line addition via
-  --add-file, for files that would be detected as 'regular' or 'directory', to
-  be specified as an alternate type, such as:
-
-    ssm -af /etc/passwd --type merge --keyfield NN  --delimiter DD
-    ssm -af /this-hard-link-file-name --type hardlink --target /that-hard-link-file-name
-    ssm -af /etc/yum.repos.d --type directory+contents-unwanted
 
 - Add a "diff arguments" global setting
     default to -uN
