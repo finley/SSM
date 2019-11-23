@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 
 #
-# Copyright (C) 2006-2016 Brian Elliott Finley <brian@thefinleys.com>
+# Copyright (C) 2006-2019 Brian Elliott Finley <brian@thefinleys.com>
 #
 
 use strict;
@@ -71,6 +71,7 @@ GetOptions(
     "of|only-files"                     => \$o{only_files},
     "otf|only-this-file=s@"             => \$o{only_this_file},
     "af|add-file|add-files=s@"          => \$o{add_file},
+    "t|type=s"                          => \$o{type},
     "ap|add-package|add-packages=s@"    => \$o{add_package},
     "bf|bundlefile=s"                   => \$o{bundlefile},
     "mv|move-file|rename-file=s@"       => \$o{rename_file},
@@ -286,6 +287,37 @@ sub validate_options {
         print "\n";
         exit 1;
     }
+
+    if($o{type} and ! $o{add_file}) { 
+        usage();
+        print "\n";
+        print "The --type option only has effect when used with --add-file\n";
+        print "\n";
+    }
+
+    # If type is defined, verify it.  If it's not, that's OK. -BEF-
+    if($o{type}) {
+
+        if($o{type} eq 'directory+contents-unwanted') {
+            $o{type} = 'directory+contents_unwanted';
+        }
+
+        if($o{type} ne 'directory+contents_unwanted' and
+           $o{type} ne 'unwanted' and
+           $o{type} ne 'ignored') {
+
+                usage();
+                print "\n";
+                print "Suggestion -- Please specify one of the following options for --type:\n";
+                print "\n";
+                print "  directory+contents-unwanted\n";
+                print "  unwanted\n";
+                print "  ignored\n";
+                print "\n";
+                exit(1);
+        }
+    }
+
 
     # only_files
     if($o{only_files} and $o{only_packages}) { 
@@ -525,6 +557,17 @@ OPTIONS
         explicitly.
 
         Example:  --add-file file1 "/etc/other directory/" ../file3
+
+    --t, --type TYPE
+
+        Where TYPE is one of:
+
+            directory+contents-unwanted
+            ignored
+            unwanted
+
+        This argument modifies the behavior of --add-file, by explicitly
+        setting the file type.
 
     --ap, --add-package PACKAGE [PACKAGE...]
 

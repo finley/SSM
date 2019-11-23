@@ -67,13 +67,6 @@
     reductive.  If an entry exists in the repo version, but not in the local
     file, it is not removed from the repo version.
 
-- Add a "--type TYPE" option to allow initial command line addition via
-  --add-file, for files that would be detected as 'regular' or 'directory', to
-  be specified as an alternate type, such as:
-
-    ssm -af /etc/passwd --type merge --keyfield NN  --delimiter DD
-    ssm -af /this-hard-link-file-name --type hardlink --target /that-hard-link-file-name
-    ssm -af /etc/yum.repos.d --type directory+contents-unwanted
 
 - improvement
     - ssm -rp (--remove-package)  PKG1 PKG2

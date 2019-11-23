@@ -1,5 +1,5 @@
 #  
-#   Copyright (C) 2006-2018 Brian Elliott Finley
+#   Copyright (C) 2006-2019 Brian Elliott Finley
 #
 #    vi: set filetype=perl tw=0 number:
 #
@@ -4276,7 +4276,7 @@ sub add_new_files {
     push @{$::o{add_file}}, @ARGV;
 
     foreach my $name ( @{$::o{add_file}} ) {
-        add_file_to_repo($name);
+        add_file_to_repo($name, $::o{type});
         $CHANGES_MADE++;
     }
 
@@ -4398,8 +4398,26 @@ sub add_file_to_repo {
         $BUNDLEFILE{$name} = choose_valid_bundlefile();
     }
 
-    if( ! defined $type ) {
-        $type = get_file_type($name);
+    my $detected_type = get_file_type($name);
+    if( defined $type ) {
+        #
+        # Types that need no validation with regard to the detected_type:
+        # - unwanted
+        # - ignored
+        #
+        #print ">>> if ( $type eq 'directory+contents_unwanted' and $detected_type ne 'directory' )\n";
+        if($type eq 'directory+contents_unwanted' and $detected_type ne 'directory') {
+
+            ssm_print qq(\n);
+            ssm_print qq(ERROR:\n);
+            ssm_print "  --type \"$type\" isn't supported with this file.  It doesn't appear to be a directory.\n";
+            ssm_print qq(\n);
+
+            exit 1;
+        }
+
+    } else {
+        $type = $detected_type;
     }
 
     if($type eq 'non-existent') {
