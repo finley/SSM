@@ -1170,6 +1170,9 @@ sub read_config_file {
                 # Effectively renaming the hash entry from $original_name to $name
                 $CONF{$etype}{$name} = delete $CONF{$etype}{$original_name};
 
+                # Update the bundlefile entry too
+                $BUNDLEFILE{$name} = $BUNDLEFILE{$original_name};
+
                 # Preserve the original element name -- might need it for
                 # certain operations, such as interactively commenting it out
                 $CONF{$etype}{$name}{original_name} = $original_name;
