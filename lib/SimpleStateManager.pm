@@ -749,7 +749,7 @@ sub read_config_file {
             my ($retval, @unsatisfied) = check_depends($name, $etype);
             if($retval eq 0) {
 
-                ssm_print "Not OK:  Service $name -> Unmet Dependencies\n";
+                ssm_print "Not OK:  Service $name -> Unmet Dependencies  [In config file: $BUNDLEFILE{$name}]\n";
                 foreach (@unsatisfied) {
                     ssm_print "           - $_\n";
                 }
@@ -1946,7 +1946,7 @@ sub softlink_interactive {
 
         assign_state_to_thingy($name, 'b0rken');
 
-        ssm_print "Not OK:  Soft link $name -> $CONF{$etype}{$name}{target}\n";
+        ssm_print "Not OK:  Soft link $name -> $CONF{$etype}{$name}{target}  [In config file: $BUNDLEFILE{$name}]\n";
 
         unless( $::o{summary} ) {
 
@@ -2570,7 +2570,11 @@ sub generated_file_interactive {
 
         assign_state_to_thingy($name, 'b0rken');
 
-        ssm_print "Not OK:  Generated file $name\n";
+        ssm_print "Not OK:  Generated file $name";
+        if(defined $BUNDLEFILE{$name}) {
+            ssm_print "  [In config file: $BUNDLEFILE{$name}]";
+        }
+        ssm_print "\n";
 
         unless( $::o{summary} ) {
 
@@ -2653,7 +2657,7 @@ sub regular_file_interactive {
         if( ! check_depends_interactive($name, $etype) ) { return 1; }
 
         assign_state_to_thingy($name, 'b0rken');
-        ssm_print "Not OK:  Regular file $name\n";
+        ssm_print "Not OK:  Regular file $name  [In config file: $BUNDLEFILE{$name}]\n";
 
         unless( $::o{summary} ) {
 
@@ -5326,6 +5330,10 @@ sub declare_OK_or_Not_OK {
 
     if($append_message) {
         $message .= " -> $append_message";
+    }
+
+    if("$is_OK" ne "1") {
+        $message .= "  [In config file: $BUNDLEFILE{$name}]";
     }
 
     ssm_print $message . "\n";
