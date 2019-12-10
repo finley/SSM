@@ -1,3 +1,6 @@
+- When there's a file conflict, show all known bundle files where the config
+  element exists.
+
 - Add a file type of "merge"
 
     #[file]
