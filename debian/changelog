@@ -1,3 +1,30 @@
+simple-state-manager (0.7.13) stable; urgency=medium
+
+  * a770073 .
+  * eaf1ab1 Internals -- When a variable is used in a file name, update
+    that BUNDLEFILE hash to include it's post-variableized name.
+  * 22fbbab Internals -- When a variable is used in a file name, update
+    that BUNDLEFILE hash to include it's post-variableized name.
+  * 4f399d9 Include relevant config file in output, when config element
+    needs attention.
+  * 71a3ca9 Added feature -- ability to specify a file type (--type
+    TYPE) along with --add-file.
+  * 44c1e4a Tweak Makefile to deal with source dir that has spaces in
+    the path
+  * 248d85d .
+  * df5f231 - Handle case where UID and/or GID don't map to a username
+    or groupname when diffing file ownership.
+  * 116b0c7 - Minor cosmetic fix -- when updating a file to a type that
+    required additional   attributes, such as from a softlink to a
+    regular file, unnecessary debug   output was produced.  Now that
+    debug output is only shown if running with the   debug flag
+  * 1f5c504 .
+  * b3b7aa3 Improved visual spacing with 'Adding:' output
+  * 5c7fe45 minor verbiage tweak
+  * c855cb9 .
+
+ -- Brian Finley <bfinley@v-eight.thefinleys.com>  Tue, 10 Dec 2019 00:30:42 -0600
+
 simple-state-manager (0.7.12) stable; urgency=medium
 
   * aa2e614 Merge pull request #3 from valeriob01/master
