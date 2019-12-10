@@ -2331,6 +2331,7 @@ sub contents_unwanted_interactive {
         foreach my $name (sort @files) {
             ssm_print ">>> in_directory: $dir\n" if( $::o{debug} );
             $CONF{$etype}{$name}{type} = 'unwanted';
+        	$BUNDLEFILE{$name} = $BUNDLEFILE{$dir};
             unwanted_file_interactive($name);
         }
     }
@@ -5336,7 +5337,11 @@ sub declare_OK_or_Not_OK {
     }
 
     if("$is_OK" ne "1") {
-        $message .= "  [In config file: $BUNDLEFILE{$name}]";
+        if(defined $BUNDLEFILE{$name}) {
+            $message .= "  [In config file: $BUNDLEFILE{$name}]";
+        } else {
+            $message .= "  [Not in a config file]";
+        }
     }
 
     ssm_print $message . "\n";
