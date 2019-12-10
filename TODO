@@ -1,18 +1,3 @@
-- Add info
-    - If "Not OK", then also show the bundlefile with the element
-
-- --remove-file (no -rf abbreviation for now)
-    - opposite of --add-file -- comments out entry for file in config
-
-- Improper [file] definition:
-
-    Here's what I know about it:
-        - Include bundle file from whence it came
-
-
-
-- When 'd' to diff a file, show the bundle file from whence it came.
-
 - Add a file type of "merge"
 
     #[file]
@@ -82,6 +67,11 @@
     reductive.  If an entry exists in the repo version, but not in the local
     file, it is not removed from the repo version.
 
+
+- --remove-file (no -rf abbreviation for now)
+    - opposite of --add-file -- comments out entry for file in config
+
+- When 'd' to diff a file, show the bundle file from whence it came. (maybe...  let's sit on it and see if the "Not OK" bundlefile callout is enough)
 
 - improvement
     - ssm -rp (--remove-package)  PKG1 PKG2
