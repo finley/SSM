@@ -1,3 +1,6 @@
+- Support 'ssm -ap @xfce'
+    - Where @xfce is a package group on a yum system
+
 - When there's a file conflict, show all known bundle files where the config
   element exists.
 
