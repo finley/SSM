@@ -1,3 +1,76 @@
+- ssm --rename-config-file CurrentName NewName
+
+- ssm --list [config-files|settings|files|packages|everything]
+
+- Choose security model for
+    - --add-file
+    - client access to certain files in repo
+
+-   New feature:  action-tag (or maybe call "common-postscript"?)
+
+        #- action-tag
+        #- group-postscript
+        #- group-script
+        - groupscript
+
+    Alternate Concept (depends_ok):  
+    - Simply have dependency on not just existence, but in an OK state
+
+    Concept:  
+     - Ability to assign an "action-tag" to each file in a group of
+       associated files.  If one or more of those files is modified
+       during an SSM run (installed, chowned, etc.), then that file's
+       action-tag is activated.
+
+     - Ability to assign an "action-tag" to packages too.
+
+     - At the end of an SSM run, if an action-tag was activated,
+       then the action specified by that action-tag's stanza is
+       executed.
+
+    [file]
+    name        = /etc/iptables.d/chunks/monkey
+    type        = regular
+    mode        = 640
+    owner       = root
+    group       = root
+    action-tag  = iptables-restart
+
+    [file]
+    name        = /etc/iptables.d/chunks/soup
+    type        = regular
+    mode        = 640
+    owner       = root
+    group       = root
+    action-tag  = iptables-restart
+
+    [action-tag]
+    name        = iptables-restart
+    action      = /etc/init.d/iptables restart
+
+
+- Contemplate supporting multiple package types
+    - [packages]  /* uses default package manager specified in [global] settings
+    - [packages pkg_mgr=pip]
+    - [packages pkg_mgr=flatpak]
+    - [packages pkg_mgr=yum]
+    - [packages pkg_mgr=apt]
+
+- Add 'attributes' option
+    Examples:
+    - attributes = immutable
+
+        immutable -> put an immutable file in shared config file, then if an
+        addition is made on a client of the same file, then that file gets
+        added to that client's main config file, rather than overwriting the
+        immutable version.
+
+    - attributes = update-hosts=hostname.domain.name
+
+- Add --not-ok option
+    - Implies --summary
+    - Only shows elements that are "Not OK"
+
 - Support 'ssm -ap @xfce'
     - Where @xfce is a package group on a yum system
 
@@ -77,7 +150,6 @@
 - --remove-file (no -rf abbreviation for now)
     - opposite of --add-file -- comments out entry for file in config
 
-- When 'd' to diff a file, show the bundle file from whence it came. (maybe...  let's sit on it and see if the "Not OK" bundlefile callout is enough)
 
 - improvement
     - ssm -rp (--remove-package)  PKG1 PKG2
@@ -96,8 +168,6 @@
         - p3m1 (Short hostname)
         - p3m  (short hostname with trailing digits removed -> this becomes the implied node class)
             - 
-    - Support snappy package management
-    - Support flatpak package management
 
 - improvement
 
@@ -227,6 +297,11 @@
 
 
 - Allow for global_option to use UID/GID instead of username/groupname
+    - Existing entries that specify username/groupnanme will still function
+      properly, but new entries added via SSM (ssm -af) will be added with
+      uid/gid.
+
+      Contempation:  should updated entries be tweaked to use uid/gid?
 
   
 - For faster work, add this variable (or something like it):
@@ -1060,44 +1135,6 @@ Add a --not-ok option like "GSS"
 
 -   Have upload_url default to ssh@ or file:// version of
     'config_file'
-
--   New feature:  action-tag (or maybe call "common-postscript"?)
-
-    Alternate Concept (depends_ok):  
-    - Simply have dependency on not just existence, but in an OK state
-
-    Concept:  
-     - Ability to assign an "action-tag" to each file in a group of
-       associated files.  If one or more of those files is modified
-       during an SSM run (installed, chowned, etc.), then that file's
-       action-tag is activated.
-
-     - Ability to assign an "action-tag" to packages too.
-
-     - At the end of an SSM run, if an action-tag was activated,
-       then the action specified by that action-tag's stanza is
-       executed.
-
-    [file]
-    name        = /etc/iptables.d/chunks/monkey
-    type        = regular
-    mode        = 640
-    owner       = root
-    group       = root
-    action-tag  = iptables-restart
-
-    [file]
-    name        = /etc/iptables.d/chunks/soup
-    type        = regular
-    mode        = 640
-    owner       = root
-    group       = root
-    action-tag  = iptables-restart
-
-    [action-tag]
-    name        = iptables-restart
-    action      = /etc/init.d/iptables restart
-
 
 - Consider changing --summary:
 
