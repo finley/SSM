@@ -1,7 +1,7 @@
 #  
-#   Copyright (C) 2006-2019 Brian Elliott Finley
+# Copyright (C) 2006-2020 Brian Elliott Finley
 #
-#    vi: set filetype=perl tw=0 number:
+#   vi: set filetype=perl tw=0 number:
 #
 # 2008.09.12 Brian Elliott Finley
 #   * ssm_print function added -- print output to screen and logfile
@@ -462,7 +462,7 @@ sub read_config_file {
         }
     }
 
-    ssm_print "\nConfiguration File: $::o{config_file}\n" unless($::o{only_this_file});
+    ssm_print "\nConfiguration File: $::o{config_file}\n" unless($::o{only_this_file} or $::o{not_ok});
 
     my $tmp_file = get_file($::o{config_file}, 'error');
 
@@ -749,7 +749,7 @@ sub read_config_file {
             my ($retval, @unsatisfied) = check_depends($name, $etype);
             if($retval eq 0) {
 
-                ssm_print "Not OK:  Service $name -> Unmet Dependencies  [In config file: $BUNDLEFILE{$name}]\n";
+                ssm_print "Not OK:    Service $name -> Unmet Dependencies  [In config file: $BUNDLEFILE{$name}]\n";
                 foreach (@unsatisfied) {
                     ssm_print "           - $_\n";
                 }
@@ -786,6 +786,7 @@ sub read_config_file {
                 $target,
                 $prescript,
                 $postscript,
+                $groupscript,
                 $depends,
                 $priority,
                 $generator,
@@ -843,11 +844,11 @@ sub read_config_file {
 
                 } elsif($key eq 'owner') {
                     $value =~ s/\s.*//;
-                    $owner = $value;
+                    $owner = user_to_uid($value);
 
                 } elsif($key eq 'group') {
                     $value =~ s/\s.*//;
-                    $group = $value;
+                    $group = group_to_gid($value);
 
                 } elsif($key eq 'md5sum') {
                     $value =~ s/\s.*//;
@@ -869,6 +870,9 @@ sub read_config_file {
 
                 } elsif($key eq 'postscript') { 
                     $postscript = $value;
+
+                } elsif($key eq 'groupscript') { 
+                    $groupscript = $value;
 
                 } elsif(($key eq 'depends') or ($key eq 'deps')) { 
                     $depends = $value;
@@ -963,6 +967,7 @@ sub read_config_file {
                     $CONF{$etype}{$name}{target}     = $target     if(defined $target);
                     $CONF{$etype}{$name}{prescript}  = $prescript  if(defined $prescript);
                     $CONF{$etype}{$name}{postscript} = $postscript if(defined $postscript);
+                    $CONF{$etype}{$name}{groupscript} = $groupscript if(defined $groupscript);
                     $CONF{$etype}{$name}{depends}    = $depends    if(defined $depends);
                     $CONF{$etype}{$name}{priority}   = $priority   if(defined $priority);
                     $CONF{$etype}{$name}{generator}  = $generator  if(defined $generator);
@@ -978,6 +983,141 @@ sub read_config_file {
                 return report_improper_file_definition($name);
             }
         }
+
+
+        # 
+        # [groupscript] sections
+        #
+        elsif( m/^\[groupscript\]/ ) {
+
+            my $etype = 'groupscript';
+
+            my( $name, 
+                $script,
+                $depends,       # can specify depends in the groupscript definition or by referencing a groupscript from another entry. -BEF-
+                $priority,
+                );
+
+            $_ = shift @input;
+            until( m/$stanza_terminator/ ) {
+                
+                #
+                # Collect all the values
+                chomp;
+
+                #
+                # Allow "key = value" or "key=value" type definitions.
+                s/\s*=\s*/ /o;
+
+                my ($key, $value) = split('\s+', $_, 2);
+
+                # Remove any trailing space at the end of value.
+                # Trailing space messes up filenames, links, etc.
+                if( defined($value) ) {
+                    $value =~ s/\s+$//o;
+                } else {
+                    $ERROR_LEVEL++;
+                    ssm_print "Config Error.  Next 10 lines in the configuration:\n";
+                    #
+                    # Print 10 lines below
+                    # in the array @input to give reference to the point 
+                    # of incorrect config chunk. -BEF-
+                    #
+                    my $count = 0;
+                    until( $count == 10 ) {
+                        $_ = shift @input;
+                        chomp;
+                        ssm_print "  $_\n";
+                        $count++;
+                    }
+                    ssm_print "\n";
+                }
+
+                if($key eq 'name') { 
+                    $name = $value; 
+
+                } elsif($key eq 'script') {
+                    $script = $value;
+
+                } elsif(($key eq 'depends') or ($key eq 'deps')) { 
+                    $depends = $value;
+
+                } elsif($key eq 'priority') { 
+
+                    if( $value =~ /^[-\+]?\d+$/ ) {
+                        $priority = $value;
+
+                    } else {
+                        # Easter egg or bug -- you decide...  You can
+                        # use a value like "two" which is translated to
+                        # "3" (character count). ;-)  heh, heh, heh... -BEF-
+                        $priority = length $value;
+                    }
+                }
+
+                $_ = shift @input;
+            }
+
+            # If no priority is set, or the priority field is blank, use the default of zero.
+            if(! defined $priority) {
+                $priority = 0;
+            }
+
+            push @analyze, qq($priority $name $bundlefile);
+
+            # If existing priority is higher than this file's priority
+            if( (defined $CONF{$etype}{$name}{priority}) and ($CONF{$etype}{$name}{priority} > $priority) ) {
+                # do nothing;
+
+            # If existing priority is equal to this file's priority
+            } elsif( (defined $CONF{$etype}{$name}{priority}) and ($CONF{$etype}{$name}{priority} == $priority) ) {
+                # error out;
+                ssm_print_always "\n";
+                ssm_print_always "ERROR: Multiple (conflicting) definitions for:\n";
+                ssm_print_always "\n";
+                ssm_print_always "  [$etype]\n";
+                ssm_print_always "  name     = $name\n";
+                ssm_print_always "  priority = $priority\n";
+                ssm_print_always "  ...\n";
+                ssm_print_always "\n";
+                ssm_print_always "  This instance was found in $bundlefile\n";
+                ssm_print_always "\n";
+                ssm_print_always "  Exiting now.  Please examine your\n";
+                ssm_print_always "  configuration and eliminate all but one of the definitions\n";
+                ssm_print_always "  for this entry, or change the priority of one of the definitions.\n";
+                ssm_print_always "\n";
+
+                $ERROR_LEVEL++;
+                if($::o{debug}) { ssm_print_always "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+
+                # We go ahead and exit here to be super conservative.
+                ssm_print_always "\n";
+                exit $ERROR_LEVEL;
+
+            # If either:
+            #   a) this config element has no existing priority
+            #   b) this config element's priority is higher than the existing priority
+            } else {
+                #
+                # Assign the values to hashes
+                #
+                if( defined $name ) {
+                    $CONF{$etype}{$name}{script}     = $script     if(defined $script);
+                    $CONF{$etype}{$name}{depends}    = $depends    if(defined $depends);
+                    $CONF{$etype}{$name}{priority}   = $priority   if(defined $priority);
+                    $BUNDLEFILE{$name} = $bundlefile if(defined $bundlefile);
+
+                    # And we start with a status of unknown, later to be
+                    # determined as broken or fixed as appropriate.
+                    assign_state_to_thingy($name, 'untriggered') unless(defined $::outstanding{$name}); 
+                }
+            }
+
+            unless(defined $CONF{$etype}{$name}{script}) {
+                return report_improper_groupscript_definition($name);
+            }
+        }
+
 
         # 
         # [variable] sections
@@ -1192,6 +1332,9 @@ sub read_config_file {
             if($CONF{$etype}{$name}{postscript}) {
                 $CONF{$etype}{$name}{postscript}    =~ s/\$\{$variable\}/$CONF{variable}{$variable}{value}/g;
             }
+            if($CONF{$etype}{$name}{groupscript}) {
+                $CONF{$etype}{$name}{groupscript}    =~ s/\$\{$variable\}/$CONF{variable}{$variable}{value}/g;
+            }
             if($CONF{$etype}{$name}{prescript}) {
                 $CONF{$etype}{$name}{prescript}     =~ s/\$\{$variable\}/$CONF{variable}{$variable}{value}/g;
             }
@@ -1313,7 +1456,10 @@ sub turn_groupnames_into_gids {
     return 1;
 }
 
-
+#
+# Usage:
+#  $uid = user_to_uid($username_or_uid)
+#
 sub user_to_uid {
 
     my $user = shift;
@@ -1327,6 +1473,10 @@ sub user_to_uid {
 }
 
 
+#
+# Usage:
+#  $gid = group_to_gid($groupname_or_gid)
+#
 sub group_to_gid {
 
     my $group = shift;
@@ -1381,6 +1531,8 @@ sub sync_state {
 
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
+    my $etype;
+
     $CHANGES_MADE = 0;
 
     load_pkg_manager_functions();
@@ -1427,7 +1579,11 @@ sub sync_state {
         }
     }
 
-    my $etype = 'file';
+    ####################################################################
+    #
+    # BEGIN file related activities
+    #
+    $etype = 'file';
     foreach my $name (sort keys %{$CONF{$etype}}) {
 
         next if( $::o{only_this_file} and !defined($only_this_file_hash{$name}) );
@@ -1470,6 +1626,26 @@ sub sync_state {
             return report_improper_file_definition($name);
         }
     }
+    #
+    # END file related activities
+    #
+    ####################################################################
+
+
+    ####################################################################
+    #
+    # BEGIN groupscript related activities
+    #
+    $etype = 'groupscript';
+    foreach my $name (sort keys %{$CONF{$etype}}) {
+#print "GroupScript => $name\n";
+#XXX        groupscript_interactive($name);
+    }
+    #
+    # END groupscript related activities
+    #
+    ####################################################################
+    
 
     ####################################################################
     #
@@ -1486,7 +1662,6 @@ sub sync_state {
             # OK, even if a package manager has been specified.  So I'm
             # commenting this out. -BEF-
             #
-            #ssm_print "INFO:    Packages -> No [packages] defined in the configuration.\n";
             return ($ERROR_LEVEL, $CHANGES_MADE);
         }
         elsif( $::o{pkg_manager} eq 'none' ) {
@@ -1498,11 +1673,11 @@ sub sync_state {
             return ($ERROR_LEVEL, $CHANGES_MADE);
         }
         elsif( $::o{only_files} ) {
-            ssm_print "INFO:    Option --only-files specified.  Skipping any [packages] sections.\n"; 
+            ssm_print "INFO:    Option --only-files specified.  Skipping any [packages] sections.\n" unless($o::{not_ok});
             return ($ERROR_LEVEL, $CHANGES_MADE);
         } 
 
-        ssm_print "INFO:    Package manager -> $::o{pkg_manager}\n";
+        ssm_print "INFO:    Package manager -> $::o{pkg_manager}\n" unless($::o{not_ok});
 
         update_package_repository_info_interactive();
 
@@ -1949,7 +2124,7 @@ sub softlink_interactive {
 
         assign_state_to_thingy($name, 'b0rken');
 
-        ssm_print "Not OK:  Soft link $name -> $CONF{$etype}{$name}{target}  [In config file: $BUNDLEFILE{$name}]\n";
+        ssm_print "Not OK:    Soft link $name -> $CONF{$etype}{$name}{target}  [In config file: $BUNDLEFILE{$name}]\n";
 
         unless( $::o{summary} ) {
 
@@ -1966,7 +2141,7 @@ sub softlink_interactive {
     } else {
 
         assign_state_to_thingy($name, 'fixed');
-        ssm_print "OK:      Soft link $name -> $CONF{$etype}{$name}{target}\n";
+        ssm_print "OK:      Soft link $name -> $CONF{$etype}{$name}{target}\n" unless($::o{not_ok});
     }
 
     return 1;
@@ -2340,6 +2515,45 @@ sub contents_unwanted_interactive {
 }
 
 
+sub groupscript_interactive {
+
+    my $name   = shift;
+    my $etype = 'groupscript';
+
+
+    # validate input
+    if(    !defined($name)                                  # must exist
+        or !defined $CONF{$etype}{$name}{script}            # must exist
+        or          $CONF{$etype}{$name}{script} !~ m/\S/   # must contain a non-space character
+        ) { return report_improper_groupscript_definition($name); }
+
+foreach my $key (sort keys %::outstanding) {
+    print "$key  =>  $::outstanding{$key}\n";
+};
+
+    #    # Has this script been triggered?
+    #
+    #        # don't do "check_depends_interactive" for an unwanted file...
+    #
+    #        assign_state_to_thingy($name, 'b0rken');
+    #        declare_OK_or_Not_OK($name, 0);
+    #
+    #        unless( $::o{summary} ) {
+    #
+    #            #declare_file_actions($name, "remove $name");
+    #            #take_file_action( $name, 'remove_file', 'ynaid#' );
+    #        }
+    #
+    #    } else {
+    #
+    #        #assign_state_to_thingy($name, 'fixed');
+    #        #declare_OK_or_Not_OK($name, 1);
+    #    }
+
+    return 1;
+}
+
+
 sub unwanted_file_interactive {
 
     my $name   = shift;
@@ -2574,7 +2788,7 @@ sub generated_file_interactive {
 
         assign_state_to_thingy($name, 'b0rken');
 
-        ssm_print "Not OK:  Generated file $name";
+        ssm_print "Not OK:    Generated file $name";
         if(defined $BUNDLEFILE{$name}) {
             ssm_print "  [In config file: $BUNDLEFILE{$name}]";
         }
@@ -2604,7 +2818,7 @@ sub generated_file_interactive {
     } else {
         assign_state_to_thingy($name, 'fixed');
         if( $::o{debug} ) { print ">>> Assigning $name as 'fixed'\n"; }
-        ssm_print "OK:      Generated file $name\n";
+        ssm_print "OK:      Generated file $name\n" unless($::o{not_ok});
     }
 
     unlink $CONF{$etype}{$name}{tmpfile};
@@ -2661,7 +2875,7 @@ sub regular_file_interactive {
         if( ! check_depends_interactive($name, $etype) ) { return 1; }
 
         assign_state_to_thingy($name, 'b0rken');
-        ssm_print "Not OK:  Regular file $name  [In config file: $BUNDLEFILE{$name}]\n";
+        ssm_print "Not OK:    Regular file $name  [In config file: $BUNDLEFILE{$name}]\n";
 
         unless( $::o{summary} ) {
 
@@ -2689,7 +2903,7 @@ sub regular_file_interactive {
             
     } else {
         assign_state_to_thingy($name, 'fixed');
-        ssm_print "OK:      Regular file $name\n";
+        ssm_print "OK:      Regular file $name\n" unless($::o{not_ok});
     }
 
     return 1;
@@ -2798,7 +3012,7 @@ sub take_file_action {
     my $timer_start; my $debug_prefix; if( $main::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     #
-    # test for --yes and --no and --summary right here. Hmm...
+    # Maybe test for --yes and --no and --summary right here?  Yes?  Instead of testing in _all_ the other places... Hmm...
     #
     my $name    = shift;
     my $action  = shift;
@@ -3327,7 +3541,7 @@ sub choose_tmp_file {
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(1))[3] . ":" . (caller(1))[2] . "() " . (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     unless($name) {
-        $name = "/tmp/system-state-manager_tmp_file";
+        $name = "/tmp/simple-state-manager_tmp_file";
     }
 
     my $count = 0;
@@ -3338,7 +3552,7 @@ sub choose_tmp_file {
 
     umask 0077;
     open(FILE,">$name") or die "Couldn't open $name for writing";
-        print FILE "I am a little tmp file created by System State Manager.\n";
+        print FILE "I am a little tmp file created by Simple State Manager.\n";
     close(FILE);
 
     ssm_print "$debug_prefix FILE $name\n" if( $::o{debug} );
@@ -3439,22 +3653,22 @@ sub report_improper_service_definition {
     my $etype = 'service';
     
     my ($package, $filename, $line) = caller;
-    ssm_print "\n";
-    ssm_print "Improper [service] definition (called from line $line of $filename)\n";
-    ssm_print "\n";
-    ssm_print "Here's what I know about it:\n";
-    ssm_print "\n";
-    ssm_print "  name   = $name\n";
+    ssm_print "# \n";
+    ssm_print "# Improper [service] definition (called from line $line of $filename)\n";
+    ssm_print "# \n";
+    ssm_print "# Here's what I know about it:\n";
+    ssm_print "# \n";
+    ssm_print "#   name   = $name\n";
 
-    if(defined($CONF{$etype}{$name}{details})) { ssm_print "  mode   = $CONF{$etype}{$name}{details}\n";
-                          } else { ssm_print "  mode   =\n"; }
+    if(defined($CONF{$etype}{$name}{details})) { ssm_print "#   mode   = $CONF{$etype}{$name}{details}\n";
+                          } else { ssm_print "#   mode   =\n"; }
 
-    if(defined($CONF{$etype}{$name}{depends})) { ssm_print "  depends   = $CONF{$etype}{$name}{depends}\n";
-                          } else { ssm_print "  depends   =\n"; }
+    if(defined($CONF{$etype}{$name}{depends})) { ssm_print "#   depends   = $CONF{$etype}{$name}{depends}\n";
+                          } else { ssm_print "#   depends   =\n"; }
 
-    ssm_print "\n";
-    ssm_print "  Skipping entry and incrementing ERROR_LEVEL...\n";
-    ssm_print "\n";
+    ssm_print "# \n";
+    ssm_print "#   Skipping entry and incrementing ERROR_LEVEL...\n";
+    ssm_print "# \n";
 
     $ERROR_LEVEL++;
     if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
@@ -3465,65 +3679,105 @@ sub report_improper_service_definition {
 }
 
 
+sub report_improper_groupscript_definition {
+
+    my $name = shift;
+    my $etype = 'groupscript';
+
+    my ($package, $filename, $line) = caller;
+
+    ssm_print "# \n";
+    ssm_print "# Improper [$etype] definition (called from line $line of $filename)\n";
+    ssm_print "# \n";
+    ssm_print "# Here's what I know about it:\n";
+
+    if(defined($name)) { 
+        ssm_print "#   name   = $name\n";
+    } else { 
+        ssm_print "#   name   =\n";
+    }
+
+    if(defined($CONF{$etype}{$name}{script})) { 
+        ssm_print "#   type   = $CONF{$etype}{$name}{script}\n";
+    } else { 
+        ssm_print "#   type   =\n";
+    }
+
+    ssm_print "# \n";
+    ssm_print "#   Skipping entry and incrementing ERROR_LEVEL...\n";
+    ssm_print "# \n";
+
+    $ERROR_LEVEL++;
+    if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
+
+    sleep 1;
+
+    return $ERROR_LEVEL;
+}
+
+
 sub report_improper_file_definition {
 
     my $name = shift;
     my $etype = 'file';
 
     my ($package, $filename, $line) = caller;
-    ssm_print "\n";
-    ssm_print "Improper [file] definition (called from line $line of $filename)\n";
-    ssm_print "\n";
-    ssm_print "Here's what I know about it:\n";
+    ssm_print "# \n";
+    ssm_print "# Improper [file] definition (called from line $line of $filename)\n";
+    ssm_print "# \n";
+    ssm_print "# Here's what I know about it:\n";
 
-    if(defined($name)) { ssm_print "  name   = $name\n";
-                } else { ssm_print "  name   =\n"; }
+    if(defined($name)) { ssm_print "#   name   = $name\n";
+                } else { ssm_print "#   name   =\n"; }
 
-    if(defined($CONF{$etype}{$name}{type})) { ssm_print "  type   = $CONF{$etype}{$name}{type}\n";
-                       } else { ssm_print "  type   =\n"; }
+    if(defined($CONF{$etype}{$name}{type})) { ssm_print "#   type   = $CONF{$etype}{$name}{type}\n";
+                       } else { ssm_print "#   type   =\n"; }
 
-    if(defined($CONF{$etype}{$name}{target})) { ssm_print "  target = $CONF{$etype}{$name}{target}\n";
-                         } else { ssm_print "  target =\n"; }
+    if(defined($CONF{$etype}{$name}{target})) { ssm_print "#   target = $CONF{$etype}{$name}{target}\n";
+                         } else { ssm_print "#   target =\n"; }
 
-    if(defined($CONF{$etype}{$name}{mode})) { ssm_print "  mode   = $CONF{$etype}{$name}{mode}\n";
-                       } else { ssm_print "  mode   =\n"; }
+    if(defined($CONF{$etype}{$name}{mode})) { ssm_print "#   mode   = $CONF{$etype}{$name}{mode}\n";
+                       } else { ssm_print "#   mode   =\n"; }
 
-    if(defined($CONF{$etype}{$name}{owner})) { ssm_print "  owner  = $CONF{$etype}{$name}{owner}\n";
-                        } else { ssm_print "  owner  =\n"; }
+    if(defined($CONF{$etype}{$name}{owner})) { ssm_print "#   owner  = $CONF{$etype}{$name}{owner}\n";
+                        } else { ssm_print "#   owner  =\n"; }
 
-    if(defined($CONF{$etype}{$name}{group})) { ssm_print "  group  = $CONF{$etype}{$name}{group}\n";
-                        } else { ssm_print "  group  =\n"; }
+    if(defined($CONF{$etype}{$name}{group})) { ssm_print "#   group  = $CONF{$etype}{$name}{group}\n";
+                        } else { ssm_print "#   group  =\n"; }
 
-    if(defined($CONF{$etype}{$name}{major})) { ssm_print "  major  = $CONF{$etype}{$name}{major}\n";
-                        } else { ssm_print "  major  =\n"; }
+    if(defined($CONF{$etype}{$name}{major})) { ssm_print "#   major  = $CONF{$etype}{$name}{major}\n";
+                        } else { ssm_print "#   major  =\n"; }
 
-    if(defined($CONF{$etype}{$name}{minor})) { ssm_print "  minor  = $CONF{$etype}{$name}{minor}\n";
-                        } else { ssm_print "  minor  =\n"; }
+    if(defined($CONF{$etype}{$name}{minor})) { ssm_print "#   minor  = $CONF{$etype}{$name}{minor}\n";
+                        } else { ssm_print "#   minor  =\n"; }
 
-    if(defined($CONF{$etype}{$name}{md5sum})) { ssm_print "  md5sum = $CONF{$etype}{$name}{md5sum}\n";
-                         } else { ssm_print "  md5sum =\n"; }
+    if(defined($CONF{$etype}{$name}{md5sum})) { ssm_print "#   md5sum = $CONF{$etype}{$name}{md5sum}\n";
+                         } else { ssm_print "#   md5sum =\n"; }
 
-    if(defined($CONF{$etype}{$name}{prescript})) { ssm_print "  prescript = $CONF{$etype}{$name}{prescript}\n";
-                            } else { ssm_print "  prescript =\n"; }
+    if(defined($CONF{$etype}{$name}{prescript})) { ssm_print "#   prescript = $CONF{$etype}{$name}{prescript}\n";
+                            } else { ssm_print "#   prescript =\n"; }
 
-    if(defined($CONF{$etype}{$name}{postscript})) { ssm_print "  postscript = $CONF{$etype}{$name}{postscript}\n";
-                             } else { ssm_print "  postscript =\n"; }
+    if(defined($CONF{$etype}{$name}{postscript})) { ssm_print "#   postscript = $CONF{$etype}{$name}{postscript}\n";
+                             } else { ssm_print "#   postscript =\n"; }
 
-    if(defined($CONF{$etype}{$name}{depends})) { ssm_print "  depends = $CONF{$etype}{$name}{depends}\n";
-                          } else { ssm_print "  depends =\n"; }
+    if(defined($CONF{$etype}{$name}{groupscript})) { ssm_print "#   groupscript = $CONF{$etype}{$name}{groupscript}\n";
+                             } else { ssm_print "#   groupscript =\n"; }
 
-    if(defined($CONF{$etype}{$name}{generator})) { ssm_print "  generator = $CONF{$etype}{$name}{generator}\n";
-                            } else { ssm_print "  generator =\n"; }
+    if(defined($CONF{$etype}{$name}{depends})) { ssm_print "#   depends = $CONF{$etype}{$name}{depends}\n";
+                          } else { ssm_print "#   depends =\n"; }
+
+    if(defined($CONF{$etype}{$name}{generator})) { ssm_print "#   generator = $CONF{$etype}{$name}{generator}\n";
+                            } else { ssm_print "#   generator =\n"; }
 
     if( defined($CONF{$etype}{$name}{type}) and ($CONF{$etype}{$name}{type} eq 'softlink') ) { 
-        ssm_print "\n";
-        ssm_print "  Make sure that file and target are absolute paths.  Relative\n";
-        ssm_print "  links will still be created.\n";
+        ssm_print "# \n";
+        ssm_print "#   Make sure that file and target are absolute paths.  Relative\n";
+        ssm_print "#   links will still be created.\n";
     }
 
-    ssm_print "\n";
-    ssm_print "  Skipping entry and incrementing ERROR_LEVEL...\n";
-    ssm_print "\n";
+    ssm_print "# \n";
+    ssm_print "#   Skipping entry and incrementing ERROR_LEVEL...\n";
+    ssm_print "# \n";
 
     $ERROR_LEVEL++;
     if($::o{debug}) { ssm_print "ERROR_LEVEL: $ERROR_LEVEL\n"; }
@@ -3851,11 +4105,11 @@ sub update_or_add_file_stanza_to_bundlefile {
 
     if( $found_entry eq 'yes' ) {
 
-        ssm_print qq(Updating:  Entry for "$filespec{name}" in configuration file "$BUNDLEFILE{$filespec{name}}" as type $filespec{type}.\n);
+        ssm_print qq(Updating:  Entry for "$filespec{name}" in config file "$BUNDLEFILE{$filespec{name}}" as type $filespec{type}.\n);
 
     } else {
 
-        ssm_print qq(Adding:    Entry for "$filespec{name}" in configuration file "$BUNDLEFILE{$filespec{name}}" as type $filespec{type}.\n);
+        ssm_print qq(Adding:    Entry for "$filespec{name}" in config file "$BUNDLEFILE{$filespec{name}}" as type $filespec{type}.\n);
 
         push @newfile,   "\n";
         push @newfile,   "[file]\n";
@@ -3931,11 +4185,7 @@ sub add_bundlefile_stanza_to_bundlefile {
     push @newstanza, "$new_bundlefile\n";
     push @newstanza,   "\n";
 
-    ssm_print qq(Adding:    The following bundles stanza to configuration file "$parent_bundlefile":\n);
-    ssm_print "\n";
-    foreach (@newstanza) {
-        ssm_print qq(  $_);
-    }
+    ssm_print qq(Adding:    Entry for "$new_bundlefile" to a [bundlefile] stanza in config file "$parent_bundlefile".\n);
     
     # Append the new stanza to the existing bundle file
     my @newfile;
@@ -4205,7 +4455,7 @@ sub _include_bundle {
     my $name = shift;
 
     chomp($name);
-    ssm_print "Bundle:  $name\n" unless($::o{only_this_file});
+    ssm_print "Bundle:  $name\n" unless($::o{only_this_file} or $::o{not_ok});
 
     $BUNDLEFILE_LIST{$name} = 1;
 
@@ -4762,7 +5012,7 @@ sub remove_packages_interactive {
 
     if(%pending_pkg_changes) {
 
-        ssm_print "Not OK:  Package removes\n";
+        ssm_print "Not OK:    Package removes\n";
         ssm_print "\n";
         ssm_print "         Need to:\n";
 
@@ -4790,7 +5040,7 @@ sub remove_packages_interactive {
         take_pkg_action('remove_pkgs', (keys %pending_pkg_changes) );
 
     } else {
-        ssm_print "OK:      Package removes\n";
+        ssm_print "OK:      Package removes\n" unless($::o{not_ok});
     }
 
     if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
@@ -4812,11 +5062,11 @@ sub autoremove_packages_interactive {
 
         if( $pending_pkg_changes{'-autoremove_unsupported'} ) {
 
-            ssm_print "INFO:     Package autoremoves -> not supported by this package manager\n";
+            ssm_print "INFO:     Package autoremoves -> not supported by this package manager\n" unless($o::{not_ok});
 
         } else {
 
-            ssm_print "Not OK:  Package autoremoves\n";
+            ssm_print "Not OK:    Package autoremoves\n";
             ssm_print "\n";
             ssm_print "         Need to:\n";
 
@@ -4847,7 +5097,7 @@ sub autoremove_packages_interactive {
         }
 
     } else {
-        ssm_print "OK:      Package autoremoves\n";
+        ssm_print "OK:      Package autoremoves\n" unless($::o{not_ok});
     }
 
     if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
@@ -4867,7 +5117,7 @@ sub upgrade_packages_interactive {
 
     if(%pending_pkg_changes) {
 
-        ssm_print "Not OK:  Package upgrades\n";
+        ssm_print "Not OK:    Package upgrades\n";
         ssm_print "\n";
         ssm_print "         Need to:\n";
 
@@ -4905,7 +5155,7 @@ sub upgrade_packages_interactive {
         take_pkg_action('upgrade_pkgs', (keys %pending_pkg_changes) );
 
     } else {
-        ssm_print "OK:      Package upgrades\n";
+        ssm_print "OK:      Package upgrades\n" unless($::o{not_ok});
     }
 
     if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
@@ -4925,7 +5175,7 @@ sub install_packages_interactive {
 
     if(%pending_pkg_changes) {
 
-        ssm_print "Not OK:  Package installs\n";
+        ssm_print "Not OK:    Package installs\n";
         ssm_print "\n";
         ssm_print "         Need to:\n";
 
@@ -4969,7 +5219,7 @@ sub install_packages_interactive {
         take_pkg_action('install_pkgs', @installs );
 
     } else {
-        ssm_print "OK:      Package installs\n";
+        ssm_print "OK:      Package installs\n" unless($::o{not_ok});
     }
 
     if( $::o{debug} ) { my $duration = time - $timer_start; ssm_print "$debug_prefix Execution time: $duration s\n$debug_prefix\n"; }
@@ -4990,7 +5240,7 @@ sub update_package_repository_info_interactive {
     my $return_code;
     if( $::o{pkg_repo_update} eq 'no' ) {
 
-        ssm_print "INFO:    Package repo update -> skipping\n";
+        ssm_print "INFO:    Package repo update -> skipping\n" unless($::o{not_ok});
         return 1;
     }
     elsif( $::o{pkg_repo_update} eq 'auto' ) {
@@ -5010,13 +5260,13 @@ sub update_package_repository_info_interactive {
             my $age_of_timestamp = $current_time - $timestamp;
 
             if( $age_of_timestamp < $window_in_seconds ) {
-                ssm_print "INFO:    Package repo update -> skipping (updated in the last $::o{pkg_repo_update_window} hours)\n";
+                ssm_print "INFO:    Package repo update -> skipping (updated in the last $::o{pkg_repo_update_window} hours)\n" unless($::o{not_ok});
                 return 1;
             }
         }
     }
 
-    ssm_print "INFO:    Package repo update -> updating\n";
+    ssm_print "INFO:    Package repo update -> updating\n" unless($::o{not_ok});
 
     $return_code = update_pkg_availability_data();
 
@@ -5054,7 +5304,7 @@ sub multisort {
 
 
 sub _specify_an_upload_url {
-        ssm_print "INFO:  You don't have an upload_url specified in the definition.\n";
+        ssm_print "INFO:  You don't have an upload_url specified in the definition.\n" unless($o::{not_ok});
         ssm_print "       Please take a moment to add an entry to your [global] section.\n";
         ssm_print "\n";
         ssm_print "       Here's an example or two (I highly recommend an ssh URL):\n";
@@ -5278,6 +5528,11 @@ sub declare_file_actions {
         ssm_print "         - $CONF{$etype}{$name}{postscript}\n";
     }
 
+    if($CONF{$etype}{$name}{groupscript}) {
+        ssm_print ">> call out groupscript later, instead of here, with y/n options <<         - execute groupscript: $CONF{$etype}{$name}{groupscript}\n";
+        #XXX    push deps here
+    }
+
     return 1;
 }
 
@@ -5300,7 +5555,7 @@ sub declare_OK_or_Not_OK {
     if("$is_OK" eq "1") {
         $state = "OK:      ";
     } else {
-        $state = "Not OK:  ";
+        $state = "Not OK:    ";
     }
 
     my $type = ucfirst($CONF{$etype}{$name}{type});
@@ -5344,7 +5599,7 @@ sub declare_OK_or_Not_OK {
         }
     }
 
-    ssm_print $message . "\n";
+    ssm_print $message . "\n" unless($::o{not_ok} and $is_OK eq 1);
 
     return 1;
 }
@@ -5440,14 +5695,17 @@ sub rename_file {
 }
 
 
-sub list_bundlefiles {
-
-    foreach my $bundlefile (sort keys %BUNDLEFILE_LIST) {
-        ssm_print "Bundle:  $bundlefile\n";
-    }
-
-    return ($ERROR_LEVEL, $CHANGES_MADE);
-}
+#
+# Doesn't appear that this subroutine is currently used.  Commenting out to avoid confusion. -BEF-
+#
+#sub list_bundlefiles {
+#
+#    foreach my $bundlefile (sort keys %BUNDLEFILE_LIST) {
+#        ssm_print "Bundle:  $bundlefile\n" unless($o::{not_ok});
+#    }
+#
+#    return ($ERROR_LEVEL, $CHANGES_MADE);
+#}
 
 
 sub export_config {
@@ -5530,27 +5788,27 @@ sub report_conflicting_definitions() {
                 my $bundlefile = shift;
 
                 # error out;
-                ssm_print_always "\n";
-                ssm_print_always "ERROR: Multiple (conflicting) definitions for:\n";
-                ssm_print_always "\n";
-                ssm_print_always "  [$etype]\n";
-                ssm_print_always "  name     = $name\n";
-                ssm_print_always "  priority = $priority\n";
-                ssm_print_always "  ...\n";
-                ssm_print_always "\n";
-                ssm_print_always "  This instance was found in $bundlefile\n";
-                ssm_print_always "  The conflicting instance was found in $BUNDLEFILE{$name}\n";
-                ssm_print_always "\n";
-                ssm_print_always "  Exiting now with no changes made.  Please examine your\n";
-                ssm_print_always "  configuration and eliminate all but one of the definitions for\n";
-                ssm_print_always "  this file, or change the priority of one of the definitions.\n";
-                ssm_print_always "\n";
+                ssm_print_always "# \n";
+                ssm_print_always "# ERROR: Multiple (conflicting) definitions for:\n";
+                ssm_print_always "# \n";
+                ssm_print_always "#   [$etype]\n";
+                ssm_print_always "#   name     = $name\n";
+                ssm_print_always "#   priority = $priority\n";
+                ssm_print_always "#   ...\n";
+                ssm_print_always "# \n";
+                ssm_print_always "#   This instance was found in $bundlefile\n";
+                ssm_print_always "#   The conflicting instance was found in $BUNDLEFILE{$name}\n";
+                ssm_print_always "# \n";
+                ssm_print_always "#   Exiting now with no changes made.  Please examine your\n";
+                ssm_print_always "#   configuration and eliminate all but one of the definitions for\n";
+                ssm_print_always "#   this file, or change the priority of one of the definitions.\n";
+                ssm_print_always "# \n";
 
                 $ERROR_LEVEL++;
                 if($::o{debug}) { ssm_print_always "ERROR_LEVEL: $ERROR_LEVEL\n"; }
 
                 # We go ahead and exit here to be super conservative.
-                ssm_print_always "\n";
+                ssm_print_always "# \n";
                 exit $ERROR_LEVEL;
 }
 

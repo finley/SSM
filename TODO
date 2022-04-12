@@ -1,3 +1,28 @@
+- With
+- Feature: add a --list option
+    Examples:
+        ssm -bf -list
+        ssm -of -list
+        ssm -list
+
+    Note:  this is different from --summary.  Summary checks against the system.  --list simply lists elements.
+
+- BUG:
+    - prescripts (postscripts?) for a file with a lower priority show as
+      present for a file with a higher priority if that file doesn't also have
+      such a script.
+    - Fix -> when a higher priority is found, need to nullify all prior values
+      before reading in new ones
+
+- Default repo dir to /var/lib/ssm ?
+
+- Notes to self:
+
+    Adding:    Entry for "bundle.10" to a [bundlefile] stanza in config file "v-eight".
+    Adding:    Entry for "/tmp/a10"  to a [file]       stanza in config file "bundle.10" as type regular.
+    Adding:    Entry for "rsync"     to a [packages]   stanza in config file "bundle.10" as type [deb|rpm|flatpak|snap|pip|gem].
+
+
 - ssm --rename-config-file CurrentName NewName
 
 - ssm --list [config-files|settings|files|packages|everything]
@@ -158,6 +183,10 @@
         [packages]
         PKG1 unwanted
         PKG2 unwanted
+
+      A user may need to remove a package from the config that no longer exists
+      in the repos, so don't validate package existence in the repos prior to
+      marking for removal.
 
 - improvement
     - support hostnames to config files like systemimager does.
@@ -498,9 +527,6 @@
 	wn0103:           /etc/yum.repos.d/.bu_backups
 	wn0103:
 	wn0103: *** ssh exited with error code 1.
-
-- Add a --not-ok sub option for --summary
-    - Only shows entries that are _NOT OK_
 
 - Add bzip2 to dep list
 

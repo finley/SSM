@@ -279,7 +279,7 @@ sub update_pkg_availability_data {
     my $timer_start; my $debug_prefix; if( $::o{debug} ) { $debug_prefix = (caller(0))[3] . "()"; $timer_start = time; ssm_print "$debug_prefix\n"; }
 
     if( $::o{no_pkg_repo_update} ) {
-        ssm_print "INFO:    Not updating package repo info\n";
+        ssm_print "INFO:    Not updating package repo info\n" unless($::o{not_ok});
         return 1;
     }
 

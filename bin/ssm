@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 
 #
-# Copyright (C) 2006-2019 Brian Elliott Finley <brian@thefinleys.com>
+# Copyright (C) 2006-2022 Brian Elliott Finley <brian@thefinleys.com>
 #
 
 use strict;
@@ -64,6 +64,7 @@ GetOptions(
     "config|state-definition-file=s"    => \$o{config_file},
     "s|sy|sync|sync-state"              => \$o{sync_state},
     "summary"                           => \$o{summary},
+    "not-ok"                            => \$o{not_ok},
     "yes"                               => \$o{yes},
     "n|no"                              => \$o{no},
     "debug"                             => \$o{debug},
@@ -351,6 +352,7 @@ sub validate_options {
                 $o{add_package} 
                 or $o{sync_state}
                 or $o{summary} 
+                or $o{not_ok} 
                 or $o{only_packages} 
                 or $o{only_files} 
                 or $o{only_this_file} 
@@ -418,7 +420,21 @@ sub validate_options {
         exit(1);
     }
 
+    if($o{yes} and $o{not_ok}) { 
+        usage();
+        print "\n";
+        print "The --yes and --not-ok options conflict.  Use one or the other.\n";
+        print "\n";
+        exit(1);
+    }
+
     if($o{summary}) { 
+        $o{sync_state} = 1; 
+        $o{no} = 1; 
+    }
+
+    if($o{not_ok}) { 
+        $o{summary} = 1; 
         $o{sync_state} = 1; 
         $o{no} = 1; 
     }
@@ -446,6 +462,7 @@ sub validate_options {
         or $o{add_file} 
         or $o{add_package} 
         or $o{summary}
+        or $o{not_ok}
         or $o{rename_file}
         or $o{export_config}
         ) { 
@@ -455,6 +472,7 @@ sub validate_options {
         print "\n";
         print "  --sync\n";
         print "  --summary\n";
+        print "  --not-ok\n";
         print "  --only-this-file FILE\n";
         print "  --only-files\n";
         print "  --only-packages\n";
@@ -480,6 +498,7 @@ sub validate_options {
                 $o{add_package}
                 or $o{sync_state}
                 or $o{summary} 
+                or $o{not_ok} 
                 #or $o{only_packages} 
                 #or $o{only_files} 
                 #or $o{only_this_file} 
@@ -636,6 +655,12 @@ OPTIONS
         Implies "--no" and "--sync".  Does not include diff output on files that
         are out of sync.  Only shows a one line summary for each configuration
         element.
+
+    --not-ok
+
+        Implies "--summary" and filters output to only show configuration
+        elements in a "Not OK" state.  Useful to get a succinct view of what 
+        will be fixed prior to running "ssm --sync --yes".
 
     --rename-file FILE NEWFILE
 
